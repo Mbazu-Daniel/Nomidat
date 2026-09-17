@@ -1,0 +1,11 @@
+{
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.turbo/**",
+    "**/.output/**",
+    "**/.tanstack/**",
+    "**/routeTree.gen.ts",
+    "pnpm-lock.yaml"
+  ]
+}
