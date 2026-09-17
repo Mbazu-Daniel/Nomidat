@@ -6,6 +6,8 @@ import type { Database } from "@nomidat/db";
 import { hashPassword, verifyPassword } from "../helpers/hash-password";
 import type { CreateAuthOptions } from "../types/index";
 
+export const API_VERSION_PATH = "/api/v1";
+
 export function createAuth(options: CreateAuthOptions) {
   const socialProviders =
     options.google &&
@@ -20,6 +22,7 @@ export function createAuth(options: CreateAuthOptions) {
       : undefined;
 
   return betterAuth({
+    basePath: `${API_VERSION_PATH}/auth`,
     database: drizzleAdapter(options.db, {
       provider: "pg",
       schema,

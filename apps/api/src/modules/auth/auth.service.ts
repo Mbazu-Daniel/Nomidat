@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { createDb } from "@nomidat/db";
-import { createAuth, type Auth } from "../../common/config/better-auth.config";
+import { createAuth, API_VERSION_PATH, type Auth } from "../../common/config/better-auth.config";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
 import type { SignUpDto } from "./dto/sign-up.dto";
@@ -16,7 +16,7 @@ export class AuthService {
     this.auth = createAuth({
       db,
       secret: env.BETTER_AUTH_SECRET,
-      baseURL: env.BETTER_AUTH_URL,
+      baseURL: `${env.BETTER_AUTH_URL}${API_VERSION_PATH}`,
       webOrigin: env.WEB_ORIGIN,
       google:
         env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET

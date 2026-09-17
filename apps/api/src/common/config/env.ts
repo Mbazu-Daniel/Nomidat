@@ -12,7 +12,11 @@ export const apiEnvSchema = z.object({
   WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
   DATABASE_URL: z.string().nonempty(),
   BETTER_AUTH_SECRET: z.string().min(32),
-  BETTER_AUTH_URL: z.string().url().default("http://localhost:3001/api/v1"),
+  BETTER_AUTH_URL: z
+    .string()
+    .url()
+    .default("http://localhost:3001")
+    .transform((url) => url.replace(/\/+$/, "")),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 });
