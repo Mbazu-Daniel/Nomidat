@@ -5,3 +5,5 @@ allowBuilds:
   esbuild: true
   "@nestjs/core": true
   pnpm: true
+  msw: set this to true or false
+  '@scarf/scarf': set this to true or false

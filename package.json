@@ -12,13 +12,14 @@
     "db:down": "docker compose down",
     "db:generate": "pnpm --filter @nomidat/db db:generate",
     "db:migrate": "pnpm --filter @nomidat/db db:migrate",
-    "db:studio": "pnpm --filter @nomidat/db db:studio"
+    "db:studio": "pnpm --filter @nomidat/db db:studio",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "oxfmt": "latest",
-    "oxlint": "latest",
-    "pnpm": "latest",
-    "turbo": "latest"
+    "husky": "^9.1.7",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.82.0",
+    "turbo": "^2.10.12"
   },
   "engines": {
     "node": ">=24"

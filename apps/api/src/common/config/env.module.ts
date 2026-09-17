@@ -1,5 +1,5 @@
 import { Global, Module } from "@nestjs/common";
-import { apiEnvSchema } from "./env";
+import { parseApiEnv } from "./env";
 
 export const API_ENV = Symbol("API_ENV");
 
@@ -8,7 +8,7 @@ export const API_ENV = Symbol("API_ENV");
   providers: [
     {
       provide: API_ENV,
-      useFactory: () => apiEnvSchema.parse(process.env),
+      useFactory: () => parseApiEnv(),
     },
   ],
   exports: [API_ENV],
