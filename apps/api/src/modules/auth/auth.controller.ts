@@ -4,14 +4,16 @@ import type { Request, Response as ExpressResponse } from "express";
 import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-http";
 import { AuthService } from "./auth.service";
 import { AuthSocialService } from "./auth-social.service";
-import { AuthTelegramService } from "./auth-telegram.service";
+// TODO(channels): re-enable with telegram auth service
+// import { AuthTelegramService } from "./auth-telegram.service";
 import {
   SignUpDto,
   SignInDto,
   SignInSocialDto,
   SignInGoogleDto,
   LinkSocialDto,
-  CreateTelegramMiniAppSessionDto,
+  // TODO(channels): re-enable with telegram mini-app session DTO
+  // CreateTelegramMiniAppSessionDto,
 } from "./dto";
 
 @ApiTags("Auth")
@@ -20,7 +22,8 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly authSocialService: AuthSocialService,
-    private readonly authTelegramService: AuthTelegramService,
+    // TODO(channels): re-enable with telegram auth service
+    // private readonly authTelegramService: AuthTelegramService,
   ) {}
 
   @Post("sign-up/email")
@@ -89,23 +92,24 @@ export class AuthController {
     );
   }
 
-  @Post("sign-in/telegram")
-  @ApiOperation({ summary: "Sign in from a Telegram Mini App via initData" })
-  @ApiResponse({ status: 200, description: "Session created from verified Telegram initData" })
-  @ApiResponse({ status: 401, description: "Invalid or expired initData" })
-  async createSessionWithTelegramMiniApp(
-    @Body() body: CreateTelegramMiniAppSessionDto,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: ExpressResponse,
-  ) {
-    return proxyAuthResponse(
-      res,
-      await this.authTelegramService.createSessionWithTelegramMiniApp(
-        body.initData,
-        extractHeaders(req),
-      ),
-    );
-  }
+  // TODO(channels): re-enable sign-in/telegram once staged
+  // @Post("sign-in/telegram")
+  // @ApiOperation({ summary: "Sign in from a Telegram Mini App via initData" })
+  // @ApiResponse({ status: 200, description: "Session created from verified Telegram initData" })
+  // @ApiResponse({ status: 401, description: "Invalid or expired initData" })
+  // async createSessionWithTelegramMiniApp(
+  //   @Body() body: CreateTelegramMiniAppSessionDto,
+  //   @Req() req: Request,
+  //   @Res({ passthrough: true }) res: ExpressResponse,
+  // ) {
+  //   return proxyAuthResponse(
+  //     res,
+  //     await this.authTelegramService.createSessionWithTelegramMiniApp(
+  //       body.initData,
+  //       extractHeaders(req),
+  //     ),
+  //   );
+  // }
 
   @Post("link-social")
   @ApiOperation({ summary: "Link a social provider to the current account" })

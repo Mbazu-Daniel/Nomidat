@@ -7,9 +7,10 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { OrganizationModule } from "./modules/organization/organization.module";
 import { MemberModule } from "./modules/member/member.module";
 import { InvitationModule } from "./modules/invitation/invitation.module";
-import { ChannelModule } from "./modules/channel/channel.module";
-import { TelegramModule } from "./modules/telegram/telegram.module";
-import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
+// TODO(channels): re-enable with channel/telegram/whatsapp modules
+// import { ChannelModule } from "./modules/channel/channel.module";
+// import { TelegramModule } from "./modules/telegram/telegram.module";
+// import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
 
 @Module({
   imports: [
@@ -21,9 +22,10 @@ import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
     OrganizationModule,
     MemberModule,
     InvitationModule,
-    ChannelModule,
-    TelegramModule,
-    WhatsAppModule,
+    // TODO(channels): re-enable with channel/telegram/whatsapp modules
+    // ChannelModule,
+    // TelegramModule,
+    // WhatsAppModule,
   ],
 })
 export class AppModule {}
