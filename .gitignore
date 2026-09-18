@@ -6,6 +6,7 @@ dist/
 .env
 .env.*
 !.env.example
+!README.md
 apps/web/src/routeTree.gen.ts
 inventory-bot-backend
 
@@ -14,5 +15,3 @@ inventory-bot-backend
 .agents/
 .cursor/
 .scratch/
-.husky/
-.fallowrc.json

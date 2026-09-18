@@ -8,5 +8,7 @@ export function createDb(connectionString: string): { db: Database; client: post
   return { db: drizzle(client), client };
 }
 
+export { generateId } from "./id";
 export * from "./env";
-export * from "./schema";
+export * as schema from "./schema";
+export { and, eq, isNull } from "drizzle-orm";
