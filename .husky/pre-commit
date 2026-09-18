@@ -1,0 +1,31 @@
+#!/usr/bin/env sh
+
+MAX_FILES=50
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+BRANCH_PATTERN='^(feat|fix|refactor|chore|docs|test|ci|build|perf|style|hotfix)/[a-z0-9][a-z0-9/-]*$'
+
+# Protected branches skip the naming check
+case "$BRANCH" in
+  main|master|dev|HEAD) ;;
+  *)
+    if ! printf '%s\n' "$BRANCH" | grep -Eq "$BRANCH_PATTERN"; then
+      echo "BLOCKED: invalid branch name: $BRANCH"
+      echo ""
+      echo "Expected: type/short-slug"
+      echo "Examples: feat/better-auth-mount  fix/health-check  chore/husky-hooks"
+      echo "Allowed types: feat fix refactor chore docs test ci build perf style hotfix"
+      exit 1
+    fi
+    ;;
+esac
+
+# Count staged files (excluding deletes)
+STAGED_FILES="$(git diff --cached --name-only --diff-filter=d | wc -l | tr -d ' ')"
+
+if [ "$STAGED_FILES" -gt "$MAX_FILES" ]; then
+  echo "BLOCKED: $STAGED_FILES files staged (max: $MAX_FILES)"
+  echo ""
+  echo "Split into smaller commits. Each commit should be atomic."
+  echo "Use 'git reset HEAD' to unstage, then commit in batches."
+  exit 1
+fi

@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+
+MAX_FILES=50
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+BRANCH_PATTERN='^(feat|fix|refactor|chore|docs|test|ci|build|perf|style|hotfix)/[a-z0-9][a-z0-9/-]*$'
+
+case "$BRANCH" in
+  main|master|dev|HEAD) ;;
+  *)
+    if ! printf '%s\n' "$BRANCH" | grep -Eq "$BRANCH_PATTERN"; then
+      echo "BLOCKED: invalid branch name: $BRANCH"
+      echo ""
+      echo "Expected: type/short-slug"
+      echo "Examples: feat/better-auth-mount  fix/health-check  chore/husky-hooks"
+      echo "Allowed types: feat fix refactor chore docs test ci build perf style hotfix"
+      exit 1
+    fi
+    ;;
+esac
+
+# Skip file-count gate on protected branches
+case "$BRANCH" in
+  main|master|dev)
+    exit 0
+    ;;
+esac
+
+BASE=""
+if git show-ref --verify --quiet refs/heads/main; then
+  BASE="main"
+elif git show-ref --verify --quiet refs/remotes/origin/main; then
+  BASE="origin/main"
+elif git show-ref --verify --quiet refs/heads/master; then
+  BASE="master"
+elif git show-ref --verify --quiet refs/remotes/origin/master; then
+  BASE="origin/master"
+fi
+
+if [ -z "$BASE" ]; then
+  echo "WARNING: no main/master base found; skipping branch file-count check"
+else
+  CHANGED_FILES="$(git diff --name-only "$BASE"...HEAD | wc -l | tr -d ' ')"
+
+  if [ "$CHANGED_FILES" -gt "$MAX_FILES" ]; then
+    echo "BLOCKED: branch '$BRANCH' changes $CHANGED_FILES files (max: $MAX_FILES)"
+    echo ""
+    echo "Keep branches small. Split the work into multiple PRs/branches."
+    echo "Base compared: $BASE"
+    exit 1
+  fi
+fi
+
+# Local CI gate: fallow audit must pass before push (same check CI enforces).
+# Use `pnpm ci:local` manually for a full act-based CI run; it is too slow for a hook.
+echo "Running fallow audit..."
+pnpm fallow:audit || {
+  echo "BLOCKED: fallow audit failed. Fix the findings above before pushing."
+  exit 1
+}

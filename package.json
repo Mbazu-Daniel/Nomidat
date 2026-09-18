@@ -13,13 +13,18 @@
     "db:generate": "pnpm --filter @nomidat/db db:generate",
     "db:migrate": "pnpm --filter @nomidat/db db:migrate",
     "db:studio": "pnpm --filter @nomidat/db db:studio",
+    "fallow:audit": "npx fallow audit --format json --quiet",
+    "ci:local": "act -P ubuntu-latest=catthehacker/ubuntu:act-22.04 --pull=false --bind -v",
     "prepare": "husky"
   },
   "devDependencies": {
+    "@vitest/coverage-istanbul": "^5.0.1",
+    "fallow": "3.27.0",
     "husky": "^9.1.7",
     "oxfmt": "^0.67.0",
     "oxlint": "^1.82.0",
-    "turbo": "^2.10.12"
+    "turbo": "^2.10.12",
+    "vitest": "^5.0.1"
   },
   "engines": {
     "node": ">=24"
