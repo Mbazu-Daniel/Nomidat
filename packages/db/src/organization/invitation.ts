@@ -1,17 +1,11 @@
 import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { generateId } from "../id";
-import { organization } from "./organization";
-import { user } from "./user";
+import { createOrgScopedColumns } from "../org-scoped-columns";
+import { user } from "../auth/user";
 
 export const invitation = pgTable(
   "invitation",
   {
-    id: uuid("id")
-      .$defaultFn(() => generateId())
-      .primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
+    ...createOrgScopedColumns(),
     email: text("email").notNull(),
     role: text("role").notNull(),
     status: text("status").notNull().default("pending"),

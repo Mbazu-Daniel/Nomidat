@@ -1,17 +1,11 @@
 import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { generateId } from "../id";
-import { organization } from "../auth/organization";
+import { createOrgScopedColumns } from "../org-scoped-columns";
 import { user } from "../auth/user";
 
 export const channelLinkCode = pgTable(
   "channel_link_code",
   {
-    id: uuid("id")
-      .$defaultFn(() => generateId())
-      .primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
+    ...createOrgScopedColumns(),
     code: text("code").notNull().unique(),
     createdByUserId: uuid("created_by_user_id")
       .notNull()

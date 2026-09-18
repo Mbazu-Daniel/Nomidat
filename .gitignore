@@ -15,5 +15,3 @@ inventory-bot-backend
 .agents/
 .cursor/
 .scratch/
-.husky/
-.fallowrc.json

@@ -1,0 +1,43 @@
+#!/usr/bin/env sh
+
+msg="$(cat "$1")"
+# Validate first line only (conventional commits) — same pattern as teamlyf
+first="$(printf '%s\n' "$msg" | head -n 1)"
+
+pattern='^(feat|fix|refactor|chore|docs|test|ci|build|perf|style)(\([a-z0-9/-]+\))?: .{1,100}$'
+
+if ! printf '%s\n' "$first" | grep -Eq "$pattern"; then
+  echo "Invalid commit message:"
+  echo "  $first"
+  echo ""
+  echo "Expected: type(scope): subject"
+  echo "Example: feat(api): mount better auth on nest"
+  exit 1
+fi
+
+# Block AI attribution trailers
+DIRTY=0
+for trailer_pattern in \
+  "^Co-authored-by:.*cursor" \
+  "^Co-authored-by:.*factory-droid" \
+  "^Co-authored-by:.*copilot" \
+  "^Co-authored-by:.*claude" \
+  "^Co-authored-by:.*gpt" \
+  "^Co-authored-by:.*ai\." \
+  "^Co-authored-by:.*bot" \
+  "^Authored-by:.*cursor" \
+  "^Authored-by:.*factory-droid" \
+  "^Signed-off-by:.*cursor" \
+  "^Signed-off-by:.*factory-droid"
+do
+  if printf '%s\n' "$msg" | grep -qiE "$trailer_pattern"; then
+    echo "BLOCKED: AI attribution trailer detected: $trailer_pattern"
+    DIRTY=1
+  fi
+done
+
+if [ "$DIRTY" -eq 1 ]; then
+  echo ""
+  echo "Remove AI attribution trailers before committing."
+  exit 1
+fi
