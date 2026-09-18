@@ -1,1 +1,1 @@
-export type { CreateAuthOptions } from "./create-auth-options.type";
+export type { CreateBetterAuthOptions } from "./create-better-auth-options.type";
