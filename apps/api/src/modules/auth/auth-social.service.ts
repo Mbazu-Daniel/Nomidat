@@ -47,11 +47,4 @@ export class AuthSocialService {
       asResponse: true,
     });
   }
-
-  async linkGoogle(
-    body: Omit<LinkSocialDto, "provider">,
-    headers: Headers,
-  ) {
-    return this.linkSocial({ ...body, provider: "google" }, headers);
-  }
 }

@@ -5,8 +5,8 @@ import { generateId } from "@nomidat/db";
 import { hashPassword, verifyPassword } from "../helpers/hash-password";
 import type { CreateAuthOptions } from "../types/index";
 
-export const API_VERSION_PATH = "/api/v1";
-export const AUTH_BASE_PATH = `${API_VERSION_PATH}/auth`;
+const API_VERSION_PATH = "/api/v1";
+const AUTH_BASE_PATH = `${API_VERSION_PATH}/auth`;
 
 function resolveGoogleProvider(google: CreateAuthOptions["google"]) {
   if (google?.clientId && google.clientSecret) {

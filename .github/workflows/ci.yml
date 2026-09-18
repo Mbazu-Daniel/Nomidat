@@ -43,12 +43,51 @@ jobs:
         run: pnpm build
 
       - uses: fallow-rs/fallow@v3
+        id: fallow
         with:
-          format: sarif
+          # human prints file:line findings in the job log; SARIF is still written for upload
+          format: human
           fail-on-issues: true
           auto-changed-since: true
+          comment: true
+          annotations: true
+
+      - name: Print fallow JSON summary
+        if: failure() && hashFiles('fallow-results.json') != ''
+        run: |
+          node <<'EOF'
+          const fs = require("fs");
+          const report = JSON.parse(fs.readFileSync("fallow-results.json", "utf8"));
+          const check = report.check ?? report;
+          const exports = check.unused_exports ?? [];
+          const types = check.unused_types ?? [];
+          const files = check.unused_files ?? [];
+          const deps = [
+            ...(check.unused_dependencies ?? []),
+            ...(check.unused_dev_dependencies ?? []),
+          ];
+          const members = check.unused_class_members ?? [];
+          const cycles = check.circular_dependencies ?? [];
+          const health = report.health?.findings ?? [];
+
+          const lines = [];
+          for (const i of exports) lines.push(`unused-export  ${i.path}:${i.line}  ${i.export_name}`);
+          for (const i of types) lines.push(`unused-type    ${i.path}:${i.line}  ${i.export_name}`);
+          for (const i of files) lines.push(`unused-file    ${i.path}`);
+          for (const i of deps) lines.push(`unused-dep     ${i.name ?? i}  (${i.workspace ?? i.path ?? ""})`);
+          for (const i of members) lines.push(`unused-member  ${i.path}:${i.line}  ${i.member_name ?? i.name}`);
+          for (const i of cycles) lines.push(`circular       ${i.path ?? JSON.stringify(i)}`);
+          for (const i of health) lines.push(`health         ${i.path}:${i.line}  ${i.function_name ?? i.name}  CRAP=${i.crap ?? "?"}`);
+
+          if (!lines.length) {
+            console.log("No structured findings in fallow-results.json; see the Fallow step log above.");
+            process.exit(0);
+          }
+          console.log(`Fallow findings (${lines.length}):\n`);
+          console.log(lines.join("\n"));
+          EOF
 
       - uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && hashFiles('fallow-results.sarif') != ''
         with:
           sarif_file: fallow-results.sarif
