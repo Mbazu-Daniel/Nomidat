@@ -2,12 +2,16 @@ import { Controller, Post, Get, Body, Req, Res } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import type { Request, Response as ExpressResponse } from "express";
 import { AuthService } from "./auth.service";
-import { SignUpDto, SignInDto } from "./dto";
+import { AuthSocialService } from "./auth-social.service";
+import { SignUpDto, SignInDto, SignInSocialDto, SignInGoogleDto, LinkSocialDto } from "./dto";
 
 @ApiTags("Auth")
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly authSocialService: AuthSocialService,
+  ) {}
 
   @Post("sign-up/email")
   @ApiOperation({ summary: "Register a new user" })
@@ -37,6 +41,59 @@ export class AuthController {
   ) {
     const headers = this.extractHeaders(req);
     const response = await this.authService.signInEmail(body, headers);
+
+    this.forwardCookies(res, response);
+    return this.readBody(response);
+  }
+
+  @Post("sign-in/social")
+  @ApiOperation({ summary: "Sign in with a social provider (Google)" })
+  @ApiResponse({
+    status: 200,
+    description: "Returns an OAuth redirect URL, or a session when idToken is provided",
+  })
+  @ApiResponse({ status: 400, description: "Provider not configured or invalid request" })
+  async signInSocial(
+    @Body() body: SignInSocialDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    const headers = this.extractHeaders(req);
+    const response = await this.authSocialService.signInSocial(body, headers);
+
+    this.forwardCookies(res, response);
+    return this.readBody(response);
+  }
+
+  @Post("sign-in/google")
+  @ApiOperation({ summary: "Sign in with Google" })
+  @ApiResponse({
+    status: 200,
+    description: "Returns an OAuth redirect URL, or a session when idToken is provided",
+  })
+  async signInGoogle(
+    @Body() body: SignInGoogleDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    const headers = this.extractHeaders(req);
+    const response = await this.authSocialService.signInWithGoogle(body, headers);
+
+    this.forwardCookies(res, response);
+    return this.readBody(response);
+  }
+
+  @Post("link-social")
+  @ApiOperation({ summary: "Link a social provider to the current account" })
+  @ApiResponse({ status: 200, description: "Returns an OAuth redirect URL or link status" })
+  @ApiResponse({ status: 401, description: "Not authenticated" })
+  async linkSocial(
+    @Body() body: LinkSocialDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    const headers = this.extractHeaders(req);
+    const response = await this.authSocialService.linkSocial(body, headers);
 
     this.forwardCookies(res, response);
     return this.readBody(response);

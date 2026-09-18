@@ -1,5 +1,5 @@
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { generateId } from "../index";
+import { generateId } from "../id";
 
 export const verification = pgTable("verification", {
   id: uuid("id").$defaultFn(() => generateId()).primaryKey(),

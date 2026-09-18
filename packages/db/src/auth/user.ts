@@ -1,5 +1,5 @@
 import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { generateId } from "../index";
+import { generateId } from "../id";
 
 export const user = pgTable("user", {
   id: uuid("id").$defaultFn(() => generateId()).primaryKey(),
