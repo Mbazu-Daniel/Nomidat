@@ -5,8 +5,7 @@ import * as schema from "@nomidat/db/schema";
 import { generateId } from "@nomidat/db";
 import { hashPassword, verifyPassword } from "../helpers/hash-password";
 import type { CreateBetterAuthOptions } from "../types/index";
-// TODO(channels): re-enable with telegram mini-app plugin
-// import { telegramMiniApp } from "./plugins/telegram-mini-app.plugin";
+import { telegramMiniApp } from "./plugins/telegram-mini-app.plugin";
 
 const API_VERSION_PATH = "/api/v1";
 const AUTH_BASE_PATH = `${API_VERSION_PATH}/auth`;
@@ -72,10 +71,9 @@ export function createBetterAuth(options: CreateBetterAuthOptions) {
           ? { sendInvitationEmail: options.sendInvitationEmail }
           : {}),
       }),
-      // TODO(channels): re-enable with telegram mini-app plugin
-      // ...(options.telegramBotToken
-      //   ? [telegramMiniApp({ botToken: options.telegramBotToken })]
-      //   : []),
+      ...(options.telegramBotToken
+        ? [telegramMiniApp({ botToken: options.telegramBotToken })]
+        : []),
     ],
   });
 }
