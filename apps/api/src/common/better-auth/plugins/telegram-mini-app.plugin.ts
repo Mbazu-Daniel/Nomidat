@@ -1,10 +1,7 @@
 import { createAuthEndpoint, APIError } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { z } from "zod";
-import {
-  getTelegramDisplayName,
-  getVerifiedTelegramMiniAppUser,
-} from "./telegram-mini-app-init-data";
+import { resolveTelegramUser } from "./telegram-mini-app-init-data";
 
 export type TelegramMiniAppPluginOptions = {
   botToken: string;
@@ -28,44 +25,18 @@ export function telegramMiniApp(options: TelegramMiniAppPluginOptions) {
           }),
         },
         async (ctx) => {
-          let telegramUser;
+          let user;
           try {
-            telegramUser = getVerifiedTelegramMiniAppUser(
+            user = await resolveTelegramUser(
               ctx.body.initData,
               options.botToken,
               options.maxAuthAgeSeconds,
+              ctx.context.internalAdapter,
             );
           } catch (error) {
             throw new APIError("UNAUTHORIZED", {
               message: error instanceof Error ? error.message : "Invalid Telegram initData",
             });
-          }
-
-          const accountId = String(telegramUser.id);
-          const existing = await ctx.context.internalAdapter.findAccountByKey({
-            providerId: "telegram",
-            accountId,
-          });
-
-          let user =
-            existing != null
-              ? await ctx.context.internalAdapter.findUserById(existing.userId)
-              : null;
-
-          if (!user) {
-            const created = await ctx.context.internalAdapter.createOAuthUser(
-              {
-                name: getTelegramDisplayName(telegramUser),
-                email: `tg_${accountId}@telegram.local`,
-                emailVerified: true,
-                image: telegramUser.photo_url,
-              },
-              {
-                providerId: "telegram",
-                accountId,
-              },
-            );
-            user = created.user;
           }
 
           const session = await ctx.context.internalAdapter.createSession(user.id);

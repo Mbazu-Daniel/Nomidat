@@ -4,5 +4,8 @@
     "class-transformer",
     "@nestjs/schematics",
     "shadcn"
-  ]
+  ],
+  "audit": {
+    "healthBaseline": ".fallow/health-baseline.json"
+  }
 }

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { createApiRequest } from "@/lib/api";
+import { createTelegramSession } from "@/lib/telegram-session";
 import "@/lib/types/telegram-web-app.type";
 
 export const Route = createFileRoute("/mini-app")({
@@ -14,15 +14,6 @@ export const Route = createFileRoute("/mini-app")({
   }),
 });
 
-type SessionPayload = {
-  user?: {
-    id: string;
-    name: string;
-    email: string;
-    image?: string | null;
-  };
-};
-
 function MiniAppPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState("Opening Telegram session…");
@@ -31,40 +22,18 @@ function MiniAppPage() {
   useEffect(() => {
     let cancelled = false;
 
-    async function createTelegramSession() {
-      const webApp = window.Telegram?.WebApp;
-      if (!webApp?.initData) {
-        if (!cancelled) {
-          setStatus("error");
-          setMessage("Open this page from your Telegram bot Mini App.");
-        }
-        return;
-      }
-
-      webApp.ready();
-      webApp.expand();
-
-      try {
-        const result = await createApiRequest<SessionPayload>(
-          "/auth/sign-in/telegram",
-          {
-            method: "POST",
-            body: JSON.stringify({ initData: webApp.initData }),
-          },
-        );
-
-        if (cancelled) return;
-        setUserName(result.user?.name ?? webApp.initDataUnsafe.user?.first_name ?? "there");
+    void createTelegramSession(window.Telegram?.WebApp).then((result) => {
+      if (cancelled) return;
+      if (result.ok) {
+        setUserName(result.userName);
         setStatus("ready");
         setMessage("Signed in with Telegram.");
-      } catch (error) {
-        if (cancelled) return;
+      } else {
         setStatus("error");
-        setMessage(error instanceof Error ? error.message : "Telegram sign-in failed");
+        setMessage(result.message);
       }
-    }
+    });
 
-    void createTelegramSession();
     return () => {
       cancelled = true;
     };

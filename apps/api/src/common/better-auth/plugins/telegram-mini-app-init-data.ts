@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export type TelegramMiniAppUser = {
+type TelegramMiniAppUser = {
   id: number;
   first_name?: string;
   last_name?: string;
@@ -12,7 +12,7 @@ export type TelegramMiniAppUser = {
 
 const DEFAULT_MAX_AUTH_AGE_SECONDS = 86_400;
 
-export function getVerifiedTelegramMiniAppUser(
+function getVerifiedTelegramMiniAppUser(
   initData: string,
   botToken: string,
   maxAuthAgeSeconds = DEFAULT_MAX_AUTH_AGE_SECONDS,
@@ -62,7 +62,44 @@ export function getVerifiedTelegramMiniAppUser(
   return user;
 }
 
-export function getTelegramDisplayName(user: TelegramMiniAppUser): string {
+function getTelegramDisplayName(user: TelegramMiniAppUser): string {
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
   return fullName || user.username || `Telegram ${user.id}`;
+}
+
+export type TelegramUserStore<TUser extends { id: string }> = {
+  findAccountByKey: (key: {
+    providerId: string;
+    accountId: string;
+  }) => Promise<{ userId: string } | null>;
+  findUserById: (userId: string) => Promise<TUser | null>;
+  createOAuthUser: (
+    user: { name: string; email: string; emailVerified: boolean; image?: string },
+    account: { providerId: string; accountId: string },
+  ) => Promise<{ user: TUser }>;
+};
+
+export async function resolveTelegramUser<TUser extends { id: string }>(
+  initData: string,
+  botToken: string,
+  maxAuthAgeSeconds: number | undefined,
+  store: TelegramUserStore<TUser>,
+): Promise<TUser> {
+  const telegramUser = getVerifiedTelegramMiniAppUser(initData, botToken, maxAuthAgeSeconds);
+  const accountId = String(telegramUser.id);
+  const existing = await store.findAccountByKey({ providerId: "telegram", accountId });
+  const user = existing != null ? await store.findUserById(existing.userId) : null;
+  if (user) {
+    return user;
+  }
+  const created = await store.createOAuthUser(
+    {
+      name: getTelegramDisplayName(telegramUser),
+      email: `tg_${accountId}@telegram.local`,
+      emailVerified: true,
+      image: telegramUser.photo_url,
+    },
+    { providerId: "telegram", accountId },
+  );
+  return created.user;
 }
