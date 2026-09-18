@@ -19,6 +19,17 @@ const apiEnvSchema = z.object({
     .transform((url) => url.replace(/\/+$/, "")),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  ZEPTOMAIL_TOKEN: z.string().optional(),
+  ZEPTOMAIL_URL: z.string().default("api.zeptomail.com/"),
+  ZEPTOMAIL_FROM_ADDRESS: z.string().email().optional(),
+  ZEPTOMAIL_FROM_NAME: z.string().default("Nomidat"),
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_VERIFY_TOKEN: z.string().optional(),
+  WHATSAPP_APP_SECRET: z.string().optional(),
+  WHATSAPP_TEMPLATE_NAME: z.string().optional(),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

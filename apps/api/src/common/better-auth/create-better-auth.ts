@@ -1,14 +1,16 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { organization } from "better-auth/plugins";
 import * as schema from "@nomidat/db/schema";
 import { generateId } from "@nomidat/db";
 import { hashPassword, verifyPassword } from "../helpers/hash-password";
-import type { CreateAuthOptions } from "../types/index";
+import type { CreateBetterAuthOptions } from "../types/index";
+import { telegramMiniApp } from "./plugins/telegram-mini-app.plugin";
 
 const API_VERSION_PATH = "/api/v1";
 const AUTH_BASE_PATH = `${API_VERSION_PATH}/auth`;
 
-function resolveGoogleProvider(google: CreateAuthOptions["google"]) {
+function resolveGoogleProvider(google: CreateBetterAuthOptions["google"]) {
   if (google?.clientId && google.clientSecret) {
     return {
       google: {
@@ -21,8 +23,9 @@ function resolveGoogleProvider(google: CreateAuthOptions["google"]) {
   }
 }
 
-export function createAuth(options: CreateAuthOptions) {
+export function createBetterAuth(options: CreateBetterAuthOptions) {
   const socialProviders = resolveGoogleProvider(options.google);
+  const useCrossSiteCookies = options.webOrigin.startsWith("https://");
 
   return betterAuth({
     basePath: AUTH_BASE_PATH,
@@ -37,6 +40,14 @@ export function createAuth(options: CreateAuthOptions) {
       database: {
         generateId,
       },
+      ...(useCrossSiteCookies
+        ? {
+            defaultCookieAttributes: {
+              sameSite: "none" as const,
+              secure: true,
+            },
+          }
+        : {}),
     },
     emailAndPassword: {
       enabled: true,
@@ -54,7 +65,17 @@ export function createAuth(options: CreateAuthOptions) {
           : ["email-password"],
       },
     },
+    plugins: [
+      organization({
+        ...(options.sendInvitationEmail
+          ? { sendInvitationEmail: options.sendInvitationEmail }
+          : {}),
+      }),
+      ...(options.telegramBotToken
+        ? [telegramMiniApp({ botToken: options.telegramBotToken })]
+        : []),
+    ],
   });
 }
 
-export type Auth = ReturnType<typeof createAuth>;
+export type BetterAuthInstance = ReturnType<typeof createBetterAuth>;

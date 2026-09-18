@@ -1,9 +1,18 @@
 import { Controller, Post, Get, Body, Req, Res } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import type { Request, Response as ExpressResponse } from "express";
+import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-http";
 import { AuthService } from "./auth.service";
 import { AuthSocialService } from "./auth-social.service";
-import { SignUpDto, SignInDto, SignInSocialDto, SignInGoogleDto, LinkSocialDto } from "./dto";
+import { AuthTelegramService } from "./auth-telegram.service";
+import {
+  SignUpDto,
+  SignInDto,
+  SignInSocialDto,
+  SignInGoogleDto,
+  LinkSocialDto,
+  CreateTelegramMiniAppSessionDto,
+} from "./dto";
 
 @ApiTags("Auth")
 @Controller("auth")
@@ -11,39 +20,38 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly authSocialService: AuthSocialService,
+    private readonly authTelegramService: AuthTelegramService,
   ) {}
 
   @Post("sign-up/email")
   @ApiOperation({ summary: "Register a new user" })
   @ApiResponse({ status: 201, description: "User created successfully" })
   @ApiResponse({ status: 400, description: "Validation error" })
-  @ApiResponse({ status: 409, description: "User already exists" })
-  async signUp(
+  @ApiResponse({ status: 409, description: "An account with this email already exists" })
+  async createUserWithEmail(
     @Body() body: SignUpDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
-    const headers = this.extractHeaders(req);
-    const response = await this.authService.signUpEmail(body, headers);
-
-    this.forwardCookies(res, response);
-    return this.readBody(response);
+    return proxyAuthResponse(
+      res,
+      await this.authService.createUserWithEmail(body, extractHeaders(req)),
+    );
   }
 
   @Post("sign-in/email")
   @ApiOperation({ summary: "Sign in with email and password" })
   @ApiResponse({ status: 200, description: "Signed in successfully" })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
-  async signIn(
+  async createSessionWithEmail(
     @Body() body: SignInDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
-    const headers = this.extractHeaders(req);
-    const response = await this.authService.signInEmail(body, headers);
-
-    this.forwardCookies(res, response);
-    return this.readBody(response);
+    return proxyAuthResponse(
+      res,
+      await this.authService.createSessionWithEmail(body, extractHeaders(req)),
+    );
   }
 
   @Post("sign-in/social")
@@ -53,16 +61,15 @@ export class AuthController {
     description: "Returns an OAuth redirect URL, or a session when idToken is provided",
   })
   @ApiResponse({ status: 400, description: "Provider not configured or invalid request" })
-  async signInSocial(
+  async createSessionWithSocial(
     @Body() body: SignInSocialDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
-    const headers = this.extractHeaders(req);
-    const response = await this.authSocialService.signInSocial(body, headers);
-
-    this.forwardCookies(res, response);
-    return this.readBody(response);
+    return proxyAuthResponse(
+      res,
+      await this.authSocialService.createSessionWithSocial(body, extractHeaders(req)),
+    );
   }
 
   @Post("sign-in/google")
@@ -71,97 +78,69 @@ export class AuthController {
     status: 200,
     description: "Returns an OAuth redirect URL, or a session when idToken is provided",
   })
-  async signInGoogle(
+  async createSessionWithGoogle(
     @Body() body: SignInGoogleDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
-    const headers = this.extractHeaders(req);
-    const response = await this.authSocialService.signInWithGoogle(body, headers);
+    return proxyAuthResponse(
+      res,
+      await this.authSocialService.createSessionWithGoogle(body, extractHeaders(req)),
+    );
+  }
 
-    this.forwardCookies(res, response);
-    return this.readBody(response);
+  @Post("sign-in/telegram")
+  @ApiOperation({ summary: "Sign in from a Telegram Mini App via initData" })
+  @ApiResponse({ status: 200, description: "Session created from verified Telegram initData" })
+  @ApiResponse({ status: 401, description: "Invalid or expired initData" })
+  async createSessionWithTelegramMiniApp(
+    @Body() body: CreateTelegramMiniAppSessionDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    return proxyAuthResponse(
+      res,
+      await this.authTelegramService.createSessionWithTelegramMiniApp(
+        body.initData,
+        extractHeaders(req),
+      ),
+    );
   }
 
   @Post("link-social")
   @ApiOperation({ summary: "Link a social provider to the current account" })
   @ApiResponse({ status: 200, description: "Returns an OAuth redirect URL or link status" })
   @ApiResponse({ status: 401, description: "Not authenticated" })
-  async linkSocial(
+  async createSocialLink(
     @Body() body: LinkSocialDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
-    const headers = this.extractHeaders(req);
-    const response = await this.authSocialService.linkSocial(body, headers);
-
-    this.forwardCookies(res, response);
-    return this.readBody(response);
+    return proxyAuthResponse(
+      res,
+      await this.authSocialService.createSocialLink(body, extractHeaders(req)),
+    );
   }
 
   @Get("session")
   @ApiOperation({ summary: "Get current session" })
   @ApiResponse({ status: 200, description: "Session returned" })
   @ApiResponse({ status: 401, description: "Not authenticated" })
-  async session(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: ExpressResponse,
-  ) {
-    const headers = this.extractHeaders(req);
-    const response = await this.authService.getSession(headers);
-
-    this.forwardCookies(res, response);
-    return this.readBody(response);
+  async getSession(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
+    return proxyAuthResponse(res, await this.authService.getSession(extractHeaders(req)));
   }
 
   @Post("sign-out")
   @ApiOperation({ summary: "Sign out" })
   @ApiResponse({ status: 200, description: "Signed out" })
-  async signOut(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
-    const headers = this.extractHeaders(req);
-    const response = await this.authService.signOut(headers);
-
-    this.forwardCookies(res, response);
-    return this.readBody(response);
+  async deleteSession(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
+    return proxyAuthResponse(res, await this.authService.deleteSession(extractHeaders(req)));
   }
 
   @Get("sessions")
   @ApiOperation({ summary: "List all sessions" })
   @ApiResponse({ status: 200, description: "Sessions returned" })
-  async sessions(@Req() req: Request) {
-    const headers = this.extractHeaders(req);
-    const response = await this.authService.listSessions(headers);
-
-    return this.readBody(response);
-  }
-
-  private forwardCookies(res: ExpressResponse, upstream: globalThis.Response): void {
-    const cookies = upstream.headers.getSetCookie?.() ?? [];
-    for (const cookie of cookies) {
-      res.append("Set-Cookie", cookie);
-    }
-  }
-
-  private async readBody(response: globalThis.Response): Promise<unknown> {
-    if (response.status === 204) {
-      return null;
-    }
-    const text = await response.text();
-    if (!text) return null;
-    try {
-      return JSON.parse(text);
-    } catch {
-      return text;
-    }
-  }
-
-  private extractHeaders(req: Request): Headers {
-    const headers = new globalThis.Headers();
-    for (const [key, value] of Object.entries(req.headers)) {
-      if (value !== undefined) {
-        headers.set(key, Array.isArray(value) ? value.join(", ") : String(value));
-      }
-    }
-    return headers;
+  async getSessions(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
+    return proxyAuthResponse(res, await this.authService.getSessions(extractHeaders(req)));
   }
 }

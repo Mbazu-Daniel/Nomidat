@@ -45,6 +45,9 @@ jobs:
       - uses: fallow-rs/fallow@v3
         id: fallow
         with:
+          # audit = changed-files quality gate (verdict); health baseline for
+          # known no-coverage findings lives in .fallowrc.json -> .fallow/health-baseline.json
+          command: audit
           # human prints file:line findings in the job log; SARIF is still written for upload
           format: human
           fail-on-issues: true

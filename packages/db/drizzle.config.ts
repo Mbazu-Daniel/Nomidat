@@ -9,7 +9,7 @@ const env = parseDatabaseEnv(process.env);
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/auth/index.ts",
+  schema: "./src/schema/index.ts",
   out: "./drizzle",
   dbCredentials: {
     url: env.DATABASE_URL,

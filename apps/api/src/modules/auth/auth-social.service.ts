@@ -1,14 +1,16 @@
-import { Injectable } from "@nestjs/common";
-import { AuthService } from "./auth.service";
+import { Inject, Injectable } from "@nestjs/common";
+import { BETTER_AUTH, type BetterAuthInstance } from "../../common/better-auth";
 import type { SignInSocialDto } from "./dto/sign-in-social.dto";
 import type { LinkSocialDto } from "./dto/link-social.dto";
 
 @Injectable()
 export class AuthSocialService {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    @Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance,
+  ) {}
 
-  async signInSocial(body: SignInSocialDto, headers: Headers) {
-    return this.authService.auth.api.signInSocial({
+  async createSessionWithSocial(body: SignInSocialDto, headers: Headers) {
+    return this.betterAuth.api.signInSocial({
       body: {
         provider: body.provider,
         callbackURL: body.callbackURL,
@@ -25,15 +27,15 @@ export class AuthSocialService {
     });
   }
 
-  async signInWithGoogle(
+  async createSessionWithGoogle(
     body: Omit<SignInSocialDto, "provider">,
     headers: Headers,
   ) {
-    return this.signInSocial({ ...body, provider: "google" }, headers);
+    return this.createSessionWithSocial({ ...body, provider: "google" }, headers);
   }
 
-  async linkSocial(body: LinkSocialDto, headers: Headers) {
-    return this.authService.auth.api.linkSocialAccount({
+  async createSocialLink(body: LinkSocialDto, headers: Headers) {
+    return this.betterAuth.api.linkSocialAccount({
       body: {
         provider: body.provider,
         callbackURL: body.callbackURL,

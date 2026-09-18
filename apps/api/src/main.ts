@@ -21,11 +21,35 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  app.use(helmet());
+  // Scalar loads its UI + spec from the jsdelivr CDN via inline <script type="module">.
+  // Helmet's default contentSecurityPolicy (script-src 'self') blocks that, leaving /docs blank.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+          imgSrc: ["'self'", "data:", "https:"],
+          fontSrc: ["'self'", "https:", "data:"],
+          connectSrc: ["'self'", "https://cdn.jsdelivr.net"],
+          workerSrc: ["'self'", "blob:"],
+        },
+      },
+      // Scalar's ESM bundle pulls cross-origin chunks; COEP would block them.
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
   app.use(compression());
   app.use(morgan("combined"));
 
-  app.use(json());
+  app.use(
+    json({
+      verify: (req, _res, buf) => {
+        (req as Request & { rawBody?: Buffer }).rawBody = buf;
+      },
+    }),
+  );
   app.use(urlencoded({ extended: true }));
 
   app.useGlobalPipes(
