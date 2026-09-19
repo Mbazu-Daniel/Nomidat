@@ -1,8 +1,6 @@
 import { createApiRequest } from "./api";
 
-export type TelegramSessionResult =
-  | { ok: true; userName: string }
-  | { ok: false; message: string };
+export type TelegramSessionResult = { ok: true; userName: string } | { ok: false; message: string };
 
 export type TelegramWebAppLike = {
   initData?: string;
@@ -13,9 +11,7 @@ export type TelegramWebAppLike = {
 
 export async function createTelegramSession(
   webApp: TelegramWebAppLike | null | undefined,
-  request: (initData: string) => Promise<{ user?: { name?: string | null } | null }> = (
-    initData,
-  ) =>
+  request: (initData: string) => Promise<{ user?: { name?: string | null } | null }> = (initData) =>
     createApiRequest<{ user?: { name?: string | null } | null }>("/auth/sign-in/telegram", {
       method: "POST",
       body: JSON.stringify({ initData }),

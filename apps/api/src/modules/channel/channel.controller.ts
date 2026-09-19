@@ -1,57 +1,60 @@
-import { Body, Controller, Delete, Get, Post, Query, Req } from "@nestjs/common";
-import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Controller, Get, Param, ParseUUIDPipe, Post, Delete, Req } from "@nestjs/common";
+import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { ChannelAuthService } from "./channel-auth.service";
 import { ChannelService } from "./channel.service";
-import {
-  CreateChannelLinkCodeDto,
-  DeleteChannelIdentityDto,
-  GetChannelIdentitiesQueryDto,
-} from "./dto";
+import { ChannelIdentityParamsDto } from "./dto";
 
 @ApiTags("Channels")
-@Controller("channels")
+@Controller()
 export class ChannelController {
   constructor(
     private readonly channelService: ChannelService,
     private readonly channelAuthService: ChannelAuthService,
   ) {}
 
-  @Get()
+  @Get("organizations/:organizationId/channels")
   @ApiOperation({ summary: "Get linked channel identities for an organization" })
-  async getChannelIdentities(
-    @Query() query: GetChannelIdentitiesQueryDto,
+  @ApiParam({ name: "organizationId", type: "string", format: "uuid" })
+  async getOrganizationChannelIdentities(
+    @Param("organizationId", ParseUUIDPipe) organizationId: string,
     @Req() req: Request,
   ) {
     await this.channelAuthService.getAuthorizedOrganizationUser(
       extractHeaders(req),
-      query.organizationId,
+      organizationId,
     );
-    return this.channelService.getChannelIdentities(query.organizationId);
+    return this.channelService.getOrganizationChannelIdentities(organizationId);
   }
 
-  @Post("link-codes")
+  @Post("organizations/:organizationId/channels/link-codes")
   @ApiOperation({ summary: "Create a one-time channel link code" })
-  async createChannelLinkCode(@Body() body: CreateChannelLinkCodeDto, @Req() req: Request) {
-    const { userId, organizationId } =
-      await this.channelAuthService.getAuthorizedOrganizationUser(
-        extractHeaders(req),
-        body.organizationId,
-      );
-    return this.channelService.createChannelLinkCode(organizationId, userId);
+  @ApiParam({ name: "organizationId", type: "string", format: "uuid" })
+  async createOrganizationChannelLinkCode(
+    @Param("organizationId", ParseUUIDPipe) organizationId: string,
+    @Req() req: Request,
+  ) {
+    const { userId } = await this.channelAuthService.getAuthorizedOrganizationUser(
+      extractHeaders(req),
+      organizationId,
+    );
+    return this.channelService.createOrganizationChannelLinkCode(organizationId, userId);
   }
 
-  @Delete("identities")
+  @Delete("organizations/:organizationId/channels/identities/:channelIdentityId")
   @ApiOperation({ summary: "Unlink a channel identity from an organization" })
-  async deleteChannelIdentity(@Body() body: DeleteChannelIdentityDto, @Req() req: Request) {
+  async deleteOrganizationChannelIdentity(
+    @Param() params: ChannelIdentityParamsDto,
+    @Req() req: Request,
+  ) {
     await this.channelAuthService.getAuthorizedOrganizationUser(
       extractHeaders(req),
-      body.organizationId,
+      params.organizationId,
     );
-    await this.channelService.deleteChannelIdentity(
-      body.organizationId,
-      body.channelIdentityId,
+    await this.channelService.deleteOrganizationChannelIdentity(
+      params.organizationId,
+      params.channelIdentityId,
     );
     return { ok: true };
   }

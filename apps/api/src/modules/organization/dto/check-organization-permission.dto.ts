@@ -1,7 +1,7 @@
-import { IsObject, IsOptional, IsString } from "class-validator";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsObject } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
 
-export class HasPermissionDto {
+export class CheckOrganizationPermissionDto {
   @ApiProperty({
     description: "Permission map, e.g. { organization: ['update'], member: ['delete'] }",
     type: "object",
@@ -9,9 +9,4 @@ export class HasPermissionDto {
   })
   @IsObject()
   permissions!: Record<string, string[]>;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  organizationId?: string;
 }

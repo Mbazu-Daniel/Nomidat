@@ -1,23 +1,19 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { BETTER_AUTH, type BetterAuthInstance } from "../../common/better-auth";
-import type {
-  AddMemberDto,
-  LeaveOrganizationDto,
-  ListMembersQueryDto,
-  RemoveMemberDto,
-  UpdateMemberRoleDto,
-} from "./dto";
+import type { AddMemberDto, ListMembersQueryDto, UpdateMemberRoleDto } from "./dto";
 
 @Injectable()
 export class MemberService {
-  constructor(
-    @Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance,
-  ) {}
+  constructor(@Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance) {}
 
-  async getMembers(query: ListMembersQueryDto, headers: Headers) {
+  async getOrganizationMembers(
+    organizationId: string,
+    query: ListMembersQueryDto,
+    headers: Headers,
+  ) {
     return this.betterAuth.api.listMembers({
       query: {
-        organizationId: query.organizationId,
+        organizationId,
         limit: query.limit,
         offset: query.offset,
         sortBy: query.sortBy,
@@ -43,17 +39,30 @@ export class MemberService {
     });
   }
 
-  async deleteMember(body: RemoveMemberDto, headers: Headers) {
+  async deleteOrganizationMember(
+    organizationId: string,
+    memberIdOrEmail: string,
+    headers: Headers,
+  ) {
     return this.betterAuth.api.removeMember({
-      body,
+      body: { memberIdOrEmail, organizationId },
       headers,
       asResponse: true,
     });
   }
 
-  async updateMemberRole(body: UpdateMemberRoleDto, headers: Headers) {
+  async updateOrganizationMemberRole(
+    organizationId: string,
+    memberId: string,
+    body: UpdateMemberRoleDto,
+    headers: Headers,
+  ) {
     return this.betterAuth.api.updateMemberRole({
-      body,
+      body: {
+        memberId,
+        role: body.role as "member" | "admin" | "owner" | ("member" | "admin" | "owner")[],
+        organizationId,
+      },
       headers,
       asResponse: true,
     });
@@ -73,21 +82,21 @@ export class MemberService {
     });
   }
 
-  async createMember(body: AddMemberDto, headers?: Headers) {
+  async createOrganizationMember(organizationId: string, body: AddMemberDto, headers?: Headers) {
     return this.betterAuth.api.addMember({
       body: {
         userId: body.userId as string,
         role: body.role as "member" | "admin" | "owner" | ("member" | "admin" | "owner")[],
-        organizationId: body.organizationId,
+        organizationId,
       },
       ...(headers ? { headers } : {}),
       asResponse: true,
     });
   }
 
-  async deleteMembership(body: LeaveOrganizationDto, headers: Headers) {
+  async leaveOrganization(organizationId: string, headers: Headers) {
     return this.betterAuth.api.leaveOrganization({
-      body,
+      body: { organizationId },
       headers,
       asResponse: true,
     });

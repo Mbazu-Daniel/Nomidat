@@ -1,104 +1,127 @@
-import { Body, Controller, Get, Post, Query, Req, Res } from "@nestjs/common";
-import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+} from "@nestjs/common";
+import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import type { Request, Response as ExpressResponse } from "express";
 import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-http";
 import { MemberService } from "./member.service";
 import {
   AddMemberDto,
-  LeaveOrganizationDto,
   ListMembersQueryDto,
-  RemoveMemberDto,
+  OrganizationMemberParamsDto,
   UpdateMemberRoleDto,
 } from "./dto";
 
-@ApiTags("Member")
-@Controller("organization")
+@ApiTags("Members")
+@Controller()
 export class MemberController {
   constructor(private readonly memberService: MemberService) {}
 
-  @Get("list-members")
+  @Get("organizations/:organizationId/members")
   @ApiOperation({ summary: "Get organization members" })
-  async getMembers(
+  @ApiParam({ name: "organizationId", type: "string", format: "uuid" })
+  async getOrganizationMembers(
+    @Param("organizationId", ParseUUIDPipe) organizationId: string,
     @Query() query: ListMembersQueryDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     return proxyAuthResponse(
       res,
-      await this.memberService.getMembers(query, extractHeaders(req)),
+      await this.memberService.getOrganizationMembers(organizationId, query, extractHeaders(req)),
     );
   }
 
-  @Post("remove-member")
+  @Post("organizations/:organizationId/members")
+  @ApiOperation({
+    summary: "Add a member directly (server-oriented; prefers userId without session)",
+  })
+  @ApiParam({ name: "organizationId", type: "string", format: "uuid" })
+  async createOrganizationMember(
+    @Param("organizationId", ParseUUIDPipe) organizationId: string,
+    @Body() body: AddMemberDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    const headers = body.userId ? undefined : extractHeaders(req);
+    return proxyAuthResponse(
+      res,
+      await this.memberService.createOrganizationMember(organizationId, body, headers),
+    );
+  }
+
+  @Delete("organizations/:organizationId/members/:memberId")
   @ApiOperation({ summary: "Remove a member from an organization" })
-  async deleteMember(
-    @Body() body: RemoveMemberDto,
+  async deleteOrganizationMember(
+    @Param() params: OrganizationMemberParamsDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     return proxyAuthResponse(
       res,
-      await this.memberService.deleteMember(body, extractHeaders(req)),
+      await this.memberService.deleteOrganizationMember(
+        params.organizationId,
+        params.memberId,
+        extractHeaders(req),
+      ),
     );
   }
 
-  @Post("update-member-role")
+  @Patch("organizations/:organizationId/members/:memberId")
   @ApiOperation({ summary: "Update a member role" })
-  async updateMemberRole(
+  async updateOrganizationMemberRole(
+    @Param() params: OrganizationMemberParamsDto,
     @Body() body: UpdateMemberRoleDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     return proxyAuthResponse(
       res,
-      await this.memberService.updateMemberRole(body, extractHeaders(req)),
+      await this.memberService.updateOrganizationMemberRole(
+        params.organizationId,
+        params.memberId,
+        body,
+        extractHeaders(req),
+      ),
     );
   }
 
-  @Get("get-active-member")
-  @ApiOperation({ summary: "Get the current user's membership in the active organization" })
-  async getActiveMember(
+  @Post("organizations/:organizationId/leave")
+  @ApiOperation({ summary: "Leave an organization" })
+  @ApiParam({ name: "organizationId", type: "string", format: "uuid" })
+  async leaveOrganization(
+    @Param("organizationId", ParseUUIDPipe) organizationId: string,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
+    return proxyAuthResponse(
+      res,
+      await this.memberService.leaveOrganization(organizationId, extractHeaders(req)),
+    );
+  }
+
+  @Get("members/active")
+  @ApiOperation({ summary: "Get the current user's membership in the active organization" })
+  async getActiveMember(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
     return proxyAuthResponse(res, await this.memberService.getActiveMember(extractHeaders(req)));
   }
 
-  @Get("get-active-member-role")
+  @Get("members/active-role")
   @ApiOperation({ summary: "Get the current user's role in the active organization" })
-  async getActiveMemberRole(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: ExpressResponse,
-  ) {
+  async getActiveMemberRole(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
     return proxyAuthResponse(
       res,
       await this.memberService.getActiveMemberRole(extractHeaders(req)),
-    );
-  }
-
-  @Post("add-member")
-  @ApiOperation({
-    summary: "Add a member directly (server-oriented; prefers userId without session)",
-  })
-  async createMember(
-    @Body() body: AddMemberDto,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: ExpressResponse,
-  ) {
-    const headers = body.userId ? undefined : extractHeaders(req);
-    return proxyAuthResponse(res, await this.memberService.createMember(body, headers));
-  }
-
-  @Post("leave")
-  @ApiOperation({ summary: "Leave an organization" })
-  async deleteMembership(
-    @Body() body: LeaveOrganizationDto,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: ExpressResponse,
-  ) {
-    return proxyAuthResponse(
-      res,
-      await this.memberService.deleteMembership(body, extractHeaders(req)),
     );
   }
 }

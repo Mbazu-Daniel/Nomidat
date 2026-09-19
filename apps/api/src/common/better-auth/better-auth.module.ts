@@ -1,9 +1,6 @@
 import { Global, Module } from "@nestjs/common";
 import { createDb } from "@nomidat/db";
-import {
-  sendOrganizationInvitationEmail,
-  type EmailClient,
-} from "@nomidat/email";
+import { sendOrganizationInvitationEmail, type EmailClient } from "@nomidat/email";
 import { API_ENV } from "../config/env.module";
 import type { ApiEnv } from "../config/env";
 import { EMAIL_CLIENT, EmailModule } from "../email/email.module";

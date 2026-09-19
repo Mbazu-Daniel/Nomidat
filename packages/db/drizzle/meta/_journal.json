@@ -22,6 +22,13 @@
       "when": 1789718712870,
       "tag": "0002_channel",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789734784857,
+      "tag": "0003_domain-tables",
+      "breakpoints": true
     }
   ]
 }

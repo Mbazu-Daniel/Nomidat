@@ -60,9 +60,7 @@ export function createBetterAuth(options: CreateBetterAuthOptions) {
     account: {
       accountLinking: {
         enabled: true,
-        trustedProviders: socialProviders
-          ? ["google", "email-password"]
-          : ["email-password"],
+        trustedProviders: socialProviders ? ["google", "email-password"] : ["email-password"],
       },
     },
     plugins: [

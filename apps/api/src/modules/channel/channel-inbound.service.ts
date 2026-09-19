@@ -15,7 +15,7 @@ export class ChannelInboundService {
     adapter: ChannelAdapter,
   ): Promise<{ organizationId: string | null }> {
     try {
-      const resolved = await this.channelService.createOrGetOrganizationForInbound(message);
+      const resolved = await this.channelService.getOrCreateOrganizationForInbound(message);
 
       if (!resolved) {
         await adapter.createOutboundMessage(this.createTextOutbound(message, UNLINKED_HINT));
@@ -31,8 +31,7 @@ export class ChannelInboundService {
       // ponytail: AI orchestrator not wired yet — ack only when already linked
       return { organizationId: resolved.identity.organizationId };
     } catch (error) {
-      const text =
-        error instanceof Error ? error.message : "Could not process that message.";
+      const text = error instanceof Error ? error.message : "Could not process that message.";
       await adapter.createOutboundMessage(this.createTextOutbound(message, text));
       return { organizationId: null };
     }

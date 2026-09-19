@@ -25,7 +25,7 @@ function ChannelsPage() {
       try {
         setError(null);
         const rows = await createApiRequest<ChannelIdentity[]>(
-          `/channels?organizationId=${encodeURIComponent(organizationId.trim())}`,
+          `/organizations/${encodeURIComponent(organizationId.trim())}/channels`,
         );
         setIdentities(rows);
       } catch (err) {
@@ -43,10 +43,12 @@ function ChannelsPage() {
     startTransition(async () => {
       try {
         setError(null);
-        const created = await createApiRequest<ChannelLinkCode>("/channels/link-codes", {
-          method: "POST",
-          body: JSON.stringify({ organizationId: orgId }),
-        });
+        const created = await createApiRequest<ChannelLinkCode>(
+          `/organizations/${encodeURIComponent(orgId)}/channels/link-codes`,
+          {
+            method: "POST",
+          },
+        );
         setLinkCode(created);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to create link code");
@@ -60,10 +62,12 @@ function ChannelsPage() {
     startTransition(async () => {
       try {
         setError(null);
-        await createApiRequest("/channels/identities", {
-          method: "DELETE",
-          body: JSON.stringify({ organizationId: orgId, channelIdentityId }),
-        });
+        await createApiRequest(
+          `/organizations/${encodeURIComponent(orgId)}/channels/identities/${encodeURIComponent(channelIdentityId)}`,
+          {
+            method: "DELETE",
+          },
+        );
         setIdentities((prev) => prev.filter((row) => row.id !== channelIdentityId));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to unlink channel");
@@ -118,8 +122,8 @@ function ChannelsPage() {
               </li>
               <li className="flex items-start gap-2">
                 <IconBrandWhatsapp className="mt-0.5 size-4 shrink-0" />
-                WhatsApp: send{" "}
-                <code className="text-foreground">{linkCode.code}</code> as a text message
+                WhatsApp: send <code className="text-foreground">{linkCode.code}</code> as a text
+                message
               </li>
             </ul>
           </div>

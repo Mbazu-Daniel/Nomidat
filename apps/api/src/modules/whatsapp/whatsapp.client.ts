@@ -90,9 +90,7 @@ export class WhatsAppClient implements ChannelAdapter {
       },
     );
     if (!response.ok) {
-      throw new ServiceUnavailableException(
-        `WhatsApp send failed: ${await response.text()}`,
-      );
+      throw new ServiceUnavailableException(`WhatsApp send failed: ${await response.text()}`);
     }
   }
 }

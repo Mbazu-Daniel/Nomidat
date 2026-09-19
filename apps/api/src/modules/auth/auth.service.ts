@@ -5,9 +5,7 @@ import type { SignInDto } from "./dto/sign-in.dto";
 
 @Injectable()
 export class AuthService {
-  constructor(
-    @Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance,
-  ) {}
+  constructor(@Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance) {}
 
   async createUserWithEmail(body: SignUpDto, headers: Headers) {
     const localPart = body.email.split("@")[0];
@@ -39,7 +37,7 @@ export class AuthService {
     });
   }
 
-  async getSession(headers: Headers) {
+  async getCurrentSession(headers: Headers) {
     return this.betterAuth.api.getSession({
       headers,
       query: {},
@@ -47,14 +45,14 @@ export class AuthService {
     });
   }
 
-  async deleteSession(headers: Headers) {
+  async deleteCurrentSession(headers: Headers) {
     return this.betterAuth.api.signOut({
       headers,
       asResponse: true,
     });
   }
 
-  async getSessions(headers: Headers) {
+  async getUserSessions(headers: Headers) {
     return this.betterAuth.api.listSessions({
       headers,
       asResponse: true,

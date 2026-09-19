@@ -126,21 +126,24 @@ export class AuthController {
   @ApiOperation({ summary: "Get current session" })
   @ApiResponse({ status: 200, description: "Session returned" })
   @ApiResponse({ status: 401, description: "Not authenticated" })
-  async getSession(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
-    return proxyAuthResponse(res, await this.authService.getSession(extractHeaders(req)));
+  async getCurrentSession(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
+    return proxyAuthResponse(res, await this.authService.getCurrentSession(extractHeaders(req)));
   }
 
   @Post("sign-out")
   @ApiOperation({ summary: "Sign out" })
   @ApiResponse({ status: 200, description: "Signed out" })
-  async deleteSession(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
-    return proxyAuthResponse(res, await this.authService.deleteSession(extractHeaders(req)));
+  async deleteCurrentSession(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    return proxyAuthResponse(res, await this.authService.deleteCurrentSession(extractHeaders(req)));
   }
 
   @Get("sessions")
   @ApiOperation({ summary: "List all sessions" })
   @ApiResponse({ status: 200, description: "Sessions returned" })
-  async getSessions(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
-    return proxyAuthResponse(res, await this.authService.getSessions(extractHeaders(req)));
+  async getUserSessions(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
+    return proxyAuthResponse(res, await this.authService.getUserSessions(extractHeaders(req)));
   }
 }

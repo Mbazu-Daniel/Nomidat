@@ -181,6 +181,9 @@ importers:
       oxlint:
         specifier: ^1.82.0
         version: 1.83.0
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
       turbo:
         specifier: ^2.10.12
         version: 2.10.13

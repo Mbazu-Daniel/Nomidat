@@ -1,9 +1,4 @@
-import {
-  ForbiddenException,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { and, eq } from "@nomidat/db";
 import { member } from "@nomidat/db/schema";
 import { BETTER_AUTH } from "../../common/better-auth/better-auth.constants";
@@ -29,9 +24,7 @@ export class ChannelAuthService {
     const rows = await this.db.db
       .select({ id: member.id })
       .from(member)
-      .where(
-        and(eq(member.organizationId, organizationId), eq(member.userId, session.user.id)),
-      )
+      .where(and(eq(member.organizationId, organizationId), eq(member.userId, session.user.id)))
       .limit(1);
 
     if (rows.length === 0) {

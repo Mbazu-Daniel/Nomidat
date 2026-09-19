@@ -11,9 +11,7 @@ type SignInTelegramMiniAppApi = {
 
 @Injectable()
 export class AuthTelegramService {
-  constructor(
-    @Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance,
-  ) {}
+  constructor(@Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance) {}
 
   async createSessionWithTelegramMiniApp(initData: string, headers: Headers) {
     const api = this.betterAuth.api as BetterAuthInstance["api"] & SignInTelegramMiniAppApi;

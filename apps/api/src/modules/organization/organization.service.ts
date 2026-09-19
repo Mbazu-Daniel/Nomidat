@@ -1,19 +1,17 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { BETTER_AUTH, type BetterAuthInstance } from "../../common/better-auth";
 import type {
+  CheckOrganizationPermissionDto,
   CheckOrganizationSlugDto,
   CreateOrganizationDto,
   GetFullOrganizationQueryDto,
-  HasPermissionDto,
   SetActiveOrganizationDto,
   UpdateOrganizationDto,
 } from "./dto";
 
 @Injectable()
 export class OrganizationService {
-  constructor(
-    @Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance,
-  ) {}
+  constructor(@Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance) {}
 
   async createOrganization(body: CreateOrganizationDto, headers: Headers) {
     return this.betterAuth.api.createOrganization({
@@ -30,7 +28,7 @@ export class OrganizationService {
     });
   }
 
-  async getOrganizations(headers: Headers) {
+  async getUserOrganizations(headers: Headers) {
     return this.betterAuth.api.listOrganizations({
       headers,
       asResponse: true,
@@ -45,7 +43,7 @@ export class OrganizationService {
     });
   }
 
-  async getOrganization(organizationId: string, headers: Headers) {
+  async getOrganizationById(organizationId: string, headers: Headers) {
     return this.betterAuth.api.getOrganization({
       query: { organizationId },
       headers,
@@ -53,7 +51,7 @@ export class OrganizationService {
     });
   }
 
-  async getFullOrganization(
+  async getFullOrganizationById(
     organizationId: string,
     query: GetFullOrganizationQueryDto,
     headers: Headers,
@@ -65,7 +63,7 @@ export class OrganizationService {
     });
   }
 
-  async updateOrganization(
+  async updateOrganizationById(
     organizationId: string,
     body: UpdateOrganizationDto,
     headers: Headers,
@@ -85,7 +83,7 @@ export class OrganizationService {
     });
   }
 
-  async deleteOrganization(organizationId: string, headers: Headers) {
+  async deleteOrganizationById(organizationId: string, headers: Headers) {
     return this.betterAuth.api.deleteOrganization({
       body: { organizationId },
       headers,
@@ -93,9 +91,13 @@ export class OrganizationService {
     });
   }
 
-  async getHasPermission(body: HasPermissionDto, headers: Headers) {
+  async checkOrganizationPermission(
+    organizationId: string,
+    body: CheckOrganizationPermissionDto,
+    headers: Headers,
+  ) {
     return this.betterAuth.api.hasPermission({
-      body,
+      body: { ...body, organizationId },
       headers,
       asResponse: true,
     });

@@ -21,7 +21,7 @@ import type { InboundMessage } from "./types";
 export class ChannelService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
-  async getChannelIdentities(organizationId: string) {
+  async getOrganizationChannelIdentities(organizationId: string) {
     return this.db.db
       .select()
       .from(channelIdentity)
@@ -39,7 +39,7 @@ export class ChannelService {
     return rows[0] ?? null;
   }
 
-  async createChannelLinkCode(organizationId: string, createdByUserId: string) {
+  async createOrganizationChannelLinkCode(organizationId: string, createdByUserId: string) {
     const code = createChannelLinkCodeValue();
     const expiresAt = getChannelLinkCodeExpiresAt();
     const [row] = await this.db.db
@@ -54,7 +54,7 @@ export class ChannelService {
     return row;
   }
 
-  async deleteChannelIdentity(organizationId: string, channelIdentityId: string) {
+  async deleteOrganizationChannelIdentity(organizationId: string, channelIdentityId: string) {
     const deleted = await this.db.db
       .delete(channelIdentity)
       .where(
@@ -85,7 +85,7 @@ export class ChannelService {
    * Resolve org for an inbound message: existing identity, or OTC linking.
    * Returns null when the sender is unknown and the text is not a valid link code.
    */
-  async createOrGetOrganizationForInbound(message: InboundMessage) {
+  async getOrCreateOrganizationForInbound(message: InboundMessage) {
     const existing = await this.getChannelIdentityByExternalId(
       message.provider,
       message.externalId,
@@ -162,10 +162,7 @@ export class ChannelService {
         })
         .returning();
 
-      await tx
-        .update(channelLinkCode)
-        .set({ usedAt: now })
-        .where(eq(channelLinkCode.id, link.id));
+      await tx.update(channelLinkCode).set({ usedAt: now }).where(eq(channelLinkCode.id, link.id));
 
       return identity;
     });

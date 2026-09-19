@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Headers,
-  HttpCode,
-  Post,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { Body, Controller, Headers, HttpCode, Post, UnauthorizedException } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 import { ChannelInboundService } from "../channel/channel-inbound.service";
 import { ChannelProvider } from "../channel/types";

@@ -5,9 +5,7 @@ import type { LinkSocialDto } from "./dto/link-social.dto";
 
 @Injectable()
 export class AuthSocialService {
-  constructor(
-    @Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance,
-  ) {}
+  constructor(@Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance) {}
 
   async createSessionWithSocial(body: SignInSocialDto, headers: Headers) {
     return this.betterAuth.api.signInSocial({
@@ -27,10 +25,7 @@ export class AuthSocialService {
     });
   }
 
-  async createSessionWithGoogle(
-    body: Omit<SignInSocialDto, "provider">,
-    headers: Headers,
-  ) {
+  async createSessionWithGoogle(body: Omit<SignInSocialDto, "provider">, headers: Headers) {
     return this.createSessionWithSocial({ ...body, provider: "google" }, headers);
   }
 

@@ -1,10 +1,4 @@
-import {
-  IsBoolean,
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from "class-validator";
+import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class InviteMemberDto {
@@ -20,11 +14,6 @@ export class InviteMemberDto {
   @IsNotEmpty()
   role!: string | string[];
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  organizationId?: string;
-
   @ApiPropertyOptional({ description: "Resend if already invited" })
   @IsOptional()
   @IsBoolean()
@@ -36,20 +25,6 @@ export class InvitationIdDto {
   @IsString()
   @IsNotEmpty()
   invitationId!: string;
-}
-
-export class GetInvitationQueryDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  id!: string;
-}
-
-export class ListInvitationsQueryDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  organizationId?: string;
 }
 
 export class ListUserInvitationsQueryDto {

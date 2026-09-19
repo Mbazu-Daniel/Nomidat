@@ -86,10 +86,7 @@ export class WhatsAppController {
     return messages;
   }
 
-  private getInboundMessage(
-    message: WhatsAppWebhookMessage,
-    contactName?: string,
-  ): InboundMessage {
+  private getInboundMessage(message: WhatsAppWebhookMessage, contactName?: string): InboundMessage {
     const base = {
       provider: ChannelProvider.WhatsApp,
       externalId: message.from,

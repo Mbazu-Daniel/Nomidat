@@ -1,25 +1,21 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { BETTER_AUTH, type BetterAuthInstance } from "../../common/better-auth";
-import type {
-  GetInvitationQueryDto,
-  InvitationIdDto,
-  InviteMemberDto,
-  ListInvitationsQueryDto,
-  ListUserInvitationsQueryDto,
-} from "./dto";
+import type { InviteMemberDto, ListUserInvitationsQueryDto } from "./dto";
 
 @Injectable()
 export class InvitationService {
-  constructor(
-    @Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance,
-  ) {}
+  constructor(@Inject(BETTER_AUTH) private readonly betterAuth: BetterAuthInstance) {}
 
-  async createInvitation(body: InviteMemberDto, headers: Headers) {
+  async createOrganizationInvitation(
+    organizationId: string,
+    body: InviteMemberDto,
+    headers: Headers,
+  ) {
     return this.betterAuth.api.createInvitation({
       body: {
         email: body.email,
         role: body.role as "member" | "admin" | "owner" | ("member" | "admin" | "owner")[],
-        organizationId: body.organizationId,
+        organizationId,
         resend: body.resend,
       },
       headers,
@@ -27,41 +23,41 @@ export class InvitationService {
     });
   }
 
-  async acceptInvitation(body: InvitationIdDto, headers: Headers) {
+  async acceptInvitationById(invitationId: string, headers: Headers) {
     return this.betterAuth.api.acceptInvitation({
-      body,
+      body: { invitationId },
       headers,
       asResponse: true,
     });
   }
 
-  async cancelInvitation(body: InvitationIdDto, headers: Headers) {
+  async cancelInvitationById(invitationId: string, headers: Headers) {
     return this.betterAuth.api.cancelInvitation({
-      body,
+      body: { invitationId },
       headers,
       asResponse: true,
     });
   }
 
-  async rejectInvitation(body: InvitationIdDto, headers: Headers) {
+  async rejectInvitationById(invitationId: string, headers: Headers) {
     return this.betterAuth.api.rejectInvitation({
-      body,
+      body: { invitationId },
       headers,
       asResponse: true,
     });
   }
 
-  async getInvitation(query: GetInvitationQueryDto, headers: Headers) {
+  async getInvitationById(invitationId: string, headers: Headers) {
     return this.betterAuth.api.getInvitation({
-      query,
+      query: { id: invitationId },
       headers,
       asResponse: true,
     });
   }
 
-  async getInvitations(query: ListInvitationsQueryDto, headers: Headers) {
+  async getOrganizationInvitations(organizationId: string, headers: Headers) {
     return this.betterAuth.api.listInvitations({
-      query,
+      query: { organizationId },
       headers,
       asResponse: true,
     });

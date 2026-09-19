@@ -12,9 +12,6 @@ export async function hashPassword(password: string): Promise<string> {
   return hash(password, argon2Options);
 }
 
-export async function verifyPassword(data: {
-  password: string;
-  hash: string;
-}): Promise<boolean> {
+export async function verifyPassword(data: { password: string; hash: string }): Promise<boolean> {
   return verify(data.hash, data.password, argon2Options);
 }

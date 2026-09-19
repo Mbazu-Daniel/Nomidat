@@ -8,12 +8,13 @@ export default defineConfig({
     include: [
       "apps/api/src/**/test/**/*.spec.ts",
       "apps/web/src/**/test/**/*.spec.ts",
+      "packages/db/src/**/test/**/*.spec.ts",
     ],
     coverage: {
       provider: "istanbul",
       reporter: ["json"],
       reportsDirectory: "./coverage",
-      include: ["apps/api/src/**/*.ts", "apps/web/src/**/*.{ts,tsx}"],
+      include: ["apps/api/src/**/*.ts", "apps/web/src/**/*.{ts,tsx}", "packages/db/src/**/*.ts"],
       exclude: [
         "**/test/**",
         "**/*.spec.ts",

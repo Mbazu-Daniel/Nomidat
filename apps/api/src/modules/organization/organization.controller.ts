@@ -1,24 +1,24 @@
-import { Body, Controller, Get, Param, Post, Query, Req, Res } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Request, Response as ExpressResponse } from "express";
 import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-http";
 import { OrganizationService } from "./organization.service";
 import {
+  CheckOrganizationPermissionDto,
   CheckOrganizationSlugDto,
   CreateOrganizationDto,
   GetFullOrganizationQueryDto,
-  HasPermissionDto,
   OrganizationIdParamDto,
   SetActiveOrganizationDto,
   UpdateOrganizationDto,
 } from "./dto";
 
-@ApiTags("Organization")
-@Controller("organization")
+@ApiTags("Organizations")
+@Controller("organizations")
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
 
-  @Post("create")
+  @Post()
   @ApiOperation({ summary: "Create an organization" })
   @ApiResponse({ status: 200, description: "Organization created" })
   async createOrganization(
@@ -41,15 +41,15 @@ export class OrganizationController {
     return proxyAuthResponse(res, await this.organizationService.checkOrganizationSlug(body));
   }
 
-  @Get("list")
+  @Get()
   @ApiOperation({ summary: "Get organizations for the current user" })
-  async getOrganizations(
+  async getUserOrganizations(
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     return proxyAuthResponse(
       res,
-      await this.organizationService.getOrganizations(extractHeaders(req)),
+      await this.organizationService.getUserOrganizations(extractHeaders(req)),
     );
   }
 
@@ -68,20 +68,23 @@ export class OrganizationController {
 
   @Get(":organizationId")
   @ApiOperation({ summary: "Get organization metadata" })
-  async getOrganization(
+  async getOrganizationById(
     @Param() params: OrganizationIdParamDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     return proxyAuthResponse(
       res,
-      await this.organizationService.getOrganization(params.organizationId, extractHeaders(req)),
+      await this.organizationService.getOrganizationById(
+        params.organizationId,
+        extractHeaders(req),
+      ),
     );
   }
 
   @Get(":organizationId/full")
   @ApiOperation({ summary: "Get full organization details including members" })
-  async getFullOrganization(
+  async getFullOrganizationById(
     @Param() params: OrganizationIdParamDto,
     @Query() query: GetFullOrganizationQueryDto,
     @Req() req: Request,
@@ -89,7 +92,7 @@ export class OrganizationController {
   ) {
     return proxyAuthResponse(
       res,
-      await this.organizationService.getFullOrganization(
+      await this.organizationService.getFullOrganizationById(
         params.organizationId,
         query,
         extractHeaders(req),
@@ -97,9 +100,9 @@ export class OrganizationController {
     );
   }
 
-  @Post(":organizationId/update")
+  @Patch(":organizationId")
   @ApiOperation({ summary: "Update an organization" })
-  async updateOrganization(
+  async updateOrganizationById(
     @Param() params: OrganizationIdParamDto,
     @Body() body: UpdateOrganizationDto,
     @Req() req: Request,
@@ -107,7 +110,7 @@ export class OrganizationController {
   ) {
     return proxyAuthResponse(
       res,
-      await this.organizationService.updateOrganization(
+      await this.organizationService.updateOrganizationById(
         params.organizationId,
         body,
         extractHeaders(req),
@@ -115,29 +118,37 @@ export class OrganizationController {
     );
   }
 
-  @Post(":organizationId/delete")
+  @Delete(":organizationId")
   @ApiOperation({ summary: "Delete an organization" })
-  async deleteOrganization(
+  async deleteOrganizationById(
     @Param() params: OrganizationIdParamDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     return proxyAuthResponse(
       res,
-      await this.organizationService.deleteOrganization(params.organizationId, extractHeaders(req)),
+      await this.organizationService.deleteOrganizationById(
+        params.organizationId,
+        extractHeaders(req),
+      ),
     );
   }
 
-  @Post("has-permission")
+  @Post(":organizationId/has-permission")
   @ApiOperation({ summary: "Check whether the current member has permissions" })
-  async getHasPermission(
-    @Body() body: HasPermissionDto,
+  async checkOrganizationPermission(
+    @Param() params: OrganizationIdParamDto,
+    @Body() body: CheckOrganizationPermissionDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     return proxyAuthResponse(
       res,
-      await this.organizationService.getHasPermission(body, extractHeaders(req)),
+      await this.organizationService.checkOrganizationPermission(
+        params.organizationId,
+        body,
+        extractHeaders(req),
+      ),
     );
   }
 }

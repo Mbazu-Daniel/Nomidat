@@ -38,8 +38,14 @@ const AUTH_ERROR_MESSAGES: Record<string, MappedAuthError> = {
   EMAIL_NOT_VERIFIED: { status: 403, message: "Please verify your email before signing in." },
   BANNED_USER: { status: 403, message: "This account has been disabled." },
   SESSION_EXPIRED: { status: 401, message: "Your session has expired. Please sign in again." },
-  FAILED_TO_GET_SESSION: { status: 401, message: "Your session has expired. Please sign in again." },
-  INVALID_TOKEN: { status: 400, message: "This link is invalid or has expired. Please request a new one." },
+  FAILED_TO_GET_SESSION: {
+    status: 401,
+    message: "Your session has expired. Please sign in again.",
+  },
+  INVALID_TOKEN: {
+    status: 400,
+    message: "This link is invalid or has expired. Please request a new one.",
+  },
   TOKEN_EXPIRED: { status: 400, message: "This link has expired. Please request a new one." },
   FAILED_TO_CREATE_USER: { status: 500, message: FALLBACK_ERROR_MESSAGE },
   FAILED_TO_CREATE_SESSION: { status: 500, message: FALLBACK_ERROR_MESSAGE },
@@ -51,7 +57,10 @@ const AUTH_ERROR_MESSAGES: Record<string, MappedAuthError> = {
     message: "This social account is already linked to another user.",
   },
   PROVIDER_NOT_FOUND: { status: 400, message: "This sign-in method is currently unavailable." },
-  PROVIDER_NOT_CONFIGURED: { status: 400, message: "This sign-in method is currently unavailable." },
+  PROVIDER_NOT_CONFIGURED: {
+    status: 400,
+    message: "This sign-in method is currently unavailable.",
+  },
   PROVIDER_NOT_SUPPORTED: { status: 400, message: "This sign-in method is currently unavailable." },
   FAILED_TO_GET_USER_INFO: { status: 400, message: "Could not sign you in with this provider." },
   ACCOUNT_NOT_FOUND: { status: 401, message: "Could not sign you in with this provider." },
