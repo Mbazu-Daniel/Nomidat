@@ -64,7 +64,7 @@ export async function getBusinessData<T extends keyof typeof businessData>(
   organizationId: string,
   resource: T,
 ) {
-  return createApiRequest<Array<{
+  const apiResource = resource === "inventory" ? "products" : resource;\n  return createApiRequest<Array<{
     id: string;
     name?: string | null;
     customer?: string | null;
