@@ -131,6 +131,7 @@ export class ReportsService {
       salesCount: Number(salesCount[0]?.count ?? 0),
       paymentCount: Number(paymentCount[0]?.count ?? 0),
       expenseCount: Number(expenseCount[0]?.count ?? 0),
+      profitApproxKobo: await this.getProfitApprox(organizationId, range, expenseKobo),
     };
   }
 
@@ -307,8 +308,43 @@ export class ReportsService {
       productCount: Number(totals?.productCount ?? 0),
       lowStockCount: Number(totals?.lowStockCount ?? 0),
       outOfStockCount: Number(totals?.outOfStockCount ?? 0),
+      inventoryValueKobo: await this.getInventoryValue(organizationId),
       lowStock,
     };
+  }
+
+  private async getProfitApprox(
+    organizationId: string,
+    range: ReportRange,
+    expensesKobo: number,
+  ): Promise<number> {
+    const [margin] = await this.db.db
+      .select({
+        grossMarginKobo: sql<number>`coalesce(sum(${orderItem.totalKobo} - (${orderItem.quantity} * coalesce(${product.costKobo}, 0))), 0)`,
+      })
+      .from(orderItem)
+      .innerJoin(order, eq(orderItem.orderId, order.id))
+      .leftJoin(product, eq(orderItem.productId, product.id))
+      .where(
+        and(
+          eq(order.organizationId, organizationId),
+          gte(order.createdAt, range.from),
+          lt(order.createdAt, range.to),
+        ),
+      );
+
+    return Number(margin?.grossMarginKobo ?? 0) - expensesKobo;
+  }
+
+  private async getInventoryValue(organizationId: string): Promise<number> {
+    const [value] = await this.db.db
+      .select({
+        totalKobo: sql<number>`coalesce(sum(${product.stockQuantity} * ${product.costKobo}), 0)`,
+      })
+      .from(product)
+      .where(eq(product.organizationId, organizationId));
+
+    return Number(value?.totalKobo ?? 0);
   }
 
   private async getOutstandingCredit(
