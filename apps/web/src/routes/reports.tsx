@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { IconChartBar, IconPackage, IconReceipt, IconUsers, IconWallet } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { IconChartBar, IconCreditCard, IconReceipt, IconWallet } from "@tabler/icons-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
 import {
   formatNaira,
@@ -150,7 +150,7 @@ function ReportsPage() {
   );
 }
 
-function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-orange-100 bg-white p-4">
       <span className="flex size-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">{icon}</span>
