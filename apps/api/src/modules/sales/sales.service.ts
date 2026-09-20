@@ -16,7 +16,7 @@ const MAX_LIMIT = 50;
 export class SalesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
-  async createSale(organizationId: string, userId: string, input: CreateSaleDto) {
+  async createSale(organizationId: string, userId: string | null, input: CreateSaleDto) {
     if (input.items.length === 0) {
       throw new BadRequestException("At least one sale item is required.");
     }
@@ -187,11 +187,15 @@ export class SalesService {
 
   async recordPayment(
     organizationId: string,
-    userId: string,
+    userId: string | null,
     saleId: string,
     input: RecordPaymentDto,
   ) {
     return this.db.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT id FROM ${order} WHERE id = ${saleId} AND organization_id = ${organizationId} FOR UPDATE`,
+      );
+
       const sale = await this.getSaleByIdTx(tx, organizationId, saleId);
       const paidKobo = await this.getPaidAmountTx(tx, organizationId, saleId);
       const balanceKobo = sale.totalKobo - paidKobo;
