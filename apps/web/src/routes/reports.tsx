@@ -102,6 +102,7 @@ function ReportsPage() {
               <Metric icon={<IconReceipt className="size-4" />} label="Sales" value={formatNaira(summary.salesKobo / 100)} />
               <Metric icon={<IconWallet className="size-4" />} label="Collected" value={formatNaira(summary.collectedKobo / 100)} />
               <Metric icon={<IconCredit className="size-4" />} label="Outstanding" value={formatNaira(summary.outstandingCreditKobo / 100)} />
+              <Metric icon={<IconWallet className="size-4" />} label="Profit approx." value={formatNaira(summary.profitApproxKobo / 100)} />
               <Metric icon={<IconWallet className="size-4" />} label="Net cash flow" value={formatNaira(summary.netCashflowKobo / 100)} />
             </section>
 
@@ -136,6 +137,7 @@ function ReportsPage() {
                     <Row label="Products" value={String(inventory.productCount)} />
                     <Row label="Low stock" value={String(inventory.lowStockCount)} />
                     <Row label="Out of stock" value={String(inventory.outOfStockCount)} />
+                    <Row label="Inventory value" value={formatNaira(inventory.inventoryValueKobo / 100)} />
                     {inventory.lowStock.slice(0, 5).map((item) => (
                       <Row key={item.id} label={item.name} value={`${item.stockQuantity} ${item.unit}`} detail={`Reorder at ${item.lowStockThreshold}`} />
                     ))}
