@@ -13,6 +13,7 @@ import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
 import { BusinessModule } from "./modules/business/business.module";
 import { ConversationalModule } from "./modules/conversational/conversational.module";
 import { SalesModule } from "./modules/sales/sales.module";
+import { InvoicesModule } from "./modules/invoices/invoices.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { SalesModule } from "./modules/sales/sales.module";
     WhatsAppModule,
     BusinessModule,
     SalesModule,
+    InvoicesModule,
     ConversationalModule,
   ],
 })
