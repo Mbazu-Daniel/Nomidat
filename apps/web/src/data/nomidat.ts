@@ -142,6 +142,7 @@ export type ReportSummary = {
   salesCount: number;
   paymentCount: number;
   expenseCount: number;
+  profitApproxKobo: number;
 };
 
 export type SalesReportRow = {
@@ -173,6 +174,7 @@ export type InventoryReport = {
   productCount: number;
   lowStockCount: number;
   outOfStockCount: number;
+  inventoryValueKobo: number;
   lowStock: Array<{
     id: string;
     name: string;
