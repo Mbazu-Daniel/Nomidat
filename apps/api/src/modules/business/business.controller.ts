@@ -13,6 +13,16 @@ export class BusinessController {
     private readonly businessService: BusinessService,
   ) {}
 
+  @Get("summary")
+  @ApiOperation({ summary: "Get business summary for an organization" })
+  async getSummary(
+    @Param("organizationId") organizationId: string,
+    @Req() req: Request,
+  ) {
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
+    return this.businessService.getSummary(organizationId);
+  }
+
   @Get("sales")
   @ApiOperation({ summary: "Get recent sales for an organization" })
   @ApiParam({ name: "organizationId", type: "string", format: "uuid" })
