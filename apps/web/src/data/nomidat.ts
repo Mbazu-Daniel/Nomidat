@@ -129,3 +129,84 @@ export function getInvoices(organizationId: string) {
     `/organizations/${encodeURIComponent(organizationId)}/invoices`,
   );
 }
+
+export type ReportSummary = {
+  from: string;
+  to: string;
+  salesKobo: number;
+  collectedKobo: number;
+  outstandingCreditKobo: number;
+  expensesKobo: number;
+  netCashflowKobo: number;
+  salesCount: number;
+  paymentCount: number;
+  expenseCount: number;
+  profitApproxKobo: number;
+};
+
+export type SalesReportRow = {
+  date: string;
+  salesKobo: number;
+  saleCount: number;
+};
+
+export type ExpenseReportRow = {
+  category: string;
+  amountKobo: number;
+  expenseCount: number;
+};
+
+export type ProductReportRow = {
+  productId: string | null;
+  productName: string;
+  quantity: number;
+  salesKobo: number;
+};
+
+export type CustomerBalanceReportRow = {
+  customerId: string;
+  customerName: string;
+  balanceKobo: number;
+};
+
+export type InventoryReport = {
+  productCount: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  inventoryValueKobo: number;
+  lowStock: Array<{
+    id: string;
+    name: string;
+    stockQuantity: number;
+    lowStockThreshold: number;
+    unit: string;
+  }>;
+};
+
+function reportsPath(organizationId: string, resource: string) {
+  return `/organizations/${encodeURIComponent(organizationId)}/reports/${resource}`;
+}
+
+export function getReportSummary(organizationId: string) {
+  return createApiRequest<ReportSummary>(reportsPath(organizationId, "summary"));
+}
+
+export function getReportSales(organizationId: string) {
+  return createApiRequest<SalesReportRow[]>(reportsPath(organizationId, "sales"));
+}
+
+export function getReportExpenseBreakdown(organizationId: string) {
+  return createApiRequest<ExpenseReportRow[]>(reportsPath(organizationId, "expenses"));
+}
+
+export function getReportProducts(organizationId: string) {
+  return createApiRequest<ProductReportRow[]>(reportsPath(organizationId, "products"));
+}
+
+export function getReportCustomerBalances(organizationId: string) {
+  return createApiRequest<CustomerBalanceReportRow[]>(reportsPath(organizationId, "customers"));
+}
+
+export function getReportInventory(organizationId: string) {
+  return createApiRequest<InventoryReport>(reportsPath(organizationId, "inventory"));
+}
