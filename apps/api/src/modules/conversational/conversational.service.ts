@@ -411,7 +411,7 @@ Rules:
 
     const paymentText = action.paid ? "paid" : "on credit";
     const stockText = existingProduct[0]
-      ? ` Stock is now ${Math.max(0, existingProduct[0].stockQuantity - action.quantity)}.`
+      ? ` Stock is now ${Math.max(0, existingProduct[0].stockQuantity - quantity)}.`
       : " I did not change inventory because that product is not in your inventory yet.";
 
     return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.id.slice(0, 8)}.`;
