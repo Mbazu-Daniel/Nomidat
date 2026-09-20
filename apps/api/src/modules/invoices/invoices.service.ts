@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, desc, eq, sql, sum } from "@nomidat/db";
+import { and, desc, eq } from "@nomidat/db";
 import { contact, invoice, invoiceItem, order, orderItem, payment } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateInvoiceDto } from "./dto";
@@ -224,15 +224,12 @@ export class InvoicesService {
   }
 
   private async nextInvoiceNumber(
-    tx: Pick<DbHandle["db"], "select">,
-    organizationId: string,
+    _tx: Pick<DbHandle["db"], "select">,
+    _organizationId: string,
   ) {
-    const [result] = await tx
-      .select({ count: sql<number>`count(*)` })
-      .from(invoice)
-      .where(eq(invoice.organizationId, organizationId));
-
-    return `INV-${String(Number(result?.count ?? 0) + 1).padStart(5, "0")}`;
+    const stamp = Date.now().toString(36).toUpperCase();
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `INV-${stamp}-${suffix}`;
   }
 
   private async getInvoiceTx(
