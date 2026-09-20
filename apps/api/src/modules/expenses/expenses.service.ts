@@ -43,7 +43,7 @@ export class ExpensesService {
   }
 
   async create(organizationId: string, userId: string | null, input: CreateExpenseDto) {
-    const categoryId = await this.resolveCategoryId(input.categoryId);
+    const categoryId = await this.resolveCategoryId(input.categoryId, organizationId);
     const [created] = await this.db.db
       .insert(expense)
       .values({
@@ -89,18 +89,22 @@ export class ExpensesService {
     return { id: expenseId, deleted: true };
   }
 
-  async listCategories() {
-    return this.db.db.select().from(expenseCategory).orderBy(expenseCategory.name);
+  async listCategories(organizationId: string) {
+    return this.db.db
+      .select()
+      .from(expenseCategory)
+      .where(sql`(${expenseCategory.organizationId} IS NULL OR ${expenseCategory.organizationId} = ${organizationId})`)
+      .orderBy(expenseCategory.name);
   }
 
-  async createCategory(input: CreateExpenseCategoryDto) {
+  async createCategory(organizationId: string, input: CreateExpenseCategoryDto) {
     const name = input.name.trim();
     if (!name) throw new BadRequestException("Category name is required.");
 
     try {
       const [created] = await this.db.db
         .insert(expenseCategory)
-        .values({ name, description: input.description?.trim() || null, isDefault: false })
+        .values({ organizationId, name, description: input.description?.trim() || null, isDefault: false })
         .returning();
       return created;
     } catch (error) {
@@ -111,13 +115,14 @@ export class ExpensesService {
     }
   }
 
-  private async resolveCategoryId(categoryId?: string) {
+  private async resolveCategoryId(categoryId?: string, organizationId?: string) {
     if (!categoryId) return null;
+    if (!organizationId) throw new BadRequestException("Organization is required.");
 
     const [category] = await this.db.db
       .select({ id: expenseCategory.id })
       .from(expenseCategory)
-      .where(eq(expenseCategory.id, categoryId))
+.where(and(eq(expenseCategory.id, categoryId), sql`(${expenseCategory.organizationId} IS NULL OR ${expenseCategory.organizationId} = ${organizationId})`))
       .limit(1);
 
     if (!category) throw new NotFoundException("Expense category not found.");
