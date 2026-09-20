@@ -58,6 +58,36 @@ export const businessData = {
   ] satisfies Expense[],
 } as const;
 
+import { createApiRequest } from "@/lib/api";
+
+export async function getBusinessData<T extends keyof typeof businessData>(
+  organizationId: string,
+  resource: T,
+) {
+  return createApiRequest<Array<{
+    id: string;
+    name?: string | null;
+    customer?: string | null;
+    phone?: string | null;
+    kind?: string | null;
+    status?: string | null;
+    totalKobo?: number | null;
+    stockQuantity?: number | null;
+    lowStockThreshold?: number | null;
+    unit?: string | null;
+    priceKobo?: number | null;
+    description?: string | null;
+    amountKobo?: number | null;
+    category?: string | null;
+    spentAt?: string | null;
+    createdAt?: string | null;
+  }>>(`/organizations/${encodeURIComponent(organizationId)}/${resource}`);
+}
+
+export async function getOrganizations() {
+  return createApiRequest<Array<{ id: string; name: string }>>("/organizations");
+}
+
 export function formatNaira(amount: number) {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
