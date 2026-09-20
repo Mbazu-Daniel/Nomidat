@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { IconArrowUpRight, IconChartDonut, IconChevronRight, IconCreditCard, IconPackage, IconReceipt, IconSparkles, IconUsers, IconWallet } from "@tabler/icons-react";
+import { IconChartDonut, IconChevronRight, IconCreditCard, IconPackage, IconReceipt, IconSparkles, IconUsers, IconWallet } from "@tabler/icons-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { ActivityRow } from "@/components/nomidat/activity-row";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
