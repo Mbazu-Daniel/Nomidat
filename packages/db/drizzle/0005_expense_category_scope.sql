@@ -1,0 +1,2 @@
+ALTER TABLE "expense_category" ADD COLUMN "organization_id" uuid REFERENCES "organization"("id") ON DELETE CASCADE;
+CREATE INDEX "expense_category_organization_id_idx" ON "expense_category" ("organization_id");
