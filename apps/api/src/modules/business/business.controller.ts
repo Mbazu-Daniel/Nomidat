@@ -30,10 +30,10 @@ export class BusinessController {
   @ApiOperation({ summary: "Get recent customers for an organization" })
   async getCustomers(
     @Param("organizationId") organizationId: string,
-    @Headers() headers: Headers,
+    @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.businessAuthService.authorize(headers, organizationId);
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getCustomers(organizationId, limit);
   }
 
