@@ -14,6 +14,7 @@ import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
 import type { ChannelAdapter, InboundMessage } from "../channel/types";
+import { ReportsService } from "../reports/reports.service";
 
 type Intent =
   | "create_contact"
@@ -22,6 +23,11 @@ type Intent =
   | "check_balance"
   | "check_inventory"
   | "summary"
+  | "sales_report"
+  | "expense_report"
+  | "top_products"
+  | "customer_balances"
+  | "inventory_report"
   | "unknown";
 
 type ParsedAction = {
@@ -42,6 +48,7 @@ export class ConversationalService {
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
+    private readonly reports: ReportsService,
   ) {}
 
   async processInbound(
@@ -180,7 +187,7 @@ Do not translate for the user. Extract business intent and structured facts.
 
 Return ONLY JSON:
 {
-  "intent": "create_contact|record_sale|record_expense|check_balance|check_inventory|summary|unknown",
+  "intent": "create_contact|record_sale|record_expense|check_balance|check_inventory|summary|sales_report|expense_report|top_products|customer_balances|inventory_report|unknown",
   "customerName": string?,
   "customerPhone": string?,
   "productName": string?,
@@ -246,6 +253,16 @@ Rules:
         return this.checkInventory(action, organizationId);
       case "summary":
         return this.summary(organizationId);
+      case "sales_report":
+        return this.salesReport(organizationId);
+      case "expense_report":
+        return this.expenseReport(organizationId);
+      case "top_products":
+        return this.topProductsReport(organizationId);
+      case "customer_balances":
+        return this.customerBalancesReport(organizationId);
+      case "inventory_report":
+        return this.inventoryReport(organizationId);
       default:
         return "I understood the message, but I need a little more information to know what you want me to record.";
     }
@@ -442,20 +459,76 @@ Rules:
   }
 
   private async summary(organizationId: string): Promise<string> {
-    const orders = await this.db.db
-      .select({ totalKobo: order.totalKobo })
-      .from(order)
-      .where(and(eq(order.organizationId, organizationId), eq(order.status, "paid")));
+    const report = await this.reports.getSummary(
+      organizationId,
+      this.reports.getDefaultRange(),
+    );
 
-    const expenses = await this.db.db
-      .select({ amountKobo: expense.amountKobo })
-      .from(expense)
-      .where(eq(expense.organizationId, organizationId));
+    return `Last 30 days: ₦${this.formatMoney(report.salesKobo)} in sales, ₦${this.formatMoney(report.collectedKobo)} collected, ₦${this.formatMoney(report.expensesKobo)} in expenses and ₦${this.formatMoney(report.outstandingCreditKobo)} outstanding. Net cash flow is ₦${this.formatMoney(report.netCashflowKobo)}.`;
+  }
 
-    const revenue = orders.reduce((sum, row) => sum + row.totalKobo, 0);
-    const spending = expenses.reduce((sum, row) => sum + row.amountKobo, 0);
+  private async salesReport(organizationId: string): Promise<string> {
+    const range = this.reports.getDefaultRange();
+    const [summary, trend] = await Promise.all([
+      this.reports.getSummary(organizationId, range),
+      this.reports.getSalesTrend(organizationId, range),
+    ]);
+    const latest = trend.at(-1);
 
-    return `Business summary: ₦${(revenue / 100).toLocaleString("en-NG")} paid sales and ₦${(spending / 100).toLocaleString("en-NG")} recorded expenses. Outstanding credit is available by asking "who owes me?"`;
+    return `Last 30 days sales: ₦${this.formatMoney(summary.salesKobo)} across ${summary.salesCount} sales. Collected ₦${this.formatMoney(summary.collectedKobo)}. ${latest ? `Latest day: ₦${this.formatMoney(latest.salesKobo)} from ${latest.saleCount} sales.` : "No sales were recorded in this period."}`;
+  }
+
+  private async expenseReport(organizationId: string): Promise<string> {
+    const rows = await this.reports.getExpenseBreakdown(
+      organizationId,
+      this.reports.getDefaultRange(),
+    );
+
+    if (rows.length === 0) return "No expenses were recorded in the last 30 days.";
+
+    return `Last 30 days expenses: ${rows
+      .slice(0, 5)
+      .map((row) => `${row.category}: ₦${this.formatMoney(row.amountKobo)}`)
+      .join(", ")}.`;
+  }
+
+  private async topProductsReport(organizationId: string): Promise<string> {
+    const rows = await this.reports.getTopProducts(
+      organizationId,
+      this.reports.getDefaultRange(),
+      5,
+    );
+
+    if (rows.length === 0) return "No product sales were recorded in the last 30 days.";
+
+    return `Top products in the last 30 days: ${rows
+      .map((row, index) => `${index + 1}. ${row.productName} (${row.quantity} units, ₦${this.formatMoney(row.salesKobo)})`)
+      .join("; ")}.`;
+  }
+
+  private async customerBalancesReport(organizationId: string): Promise<string> {
+    const rows = await this.reports.getCustomerBalances(organizationId, 5);
+
+    if (rows.length === 0) return "No customers currently have outstanding balances.";
+
+    return `Outstanding customer balances: ${rows
+      .map((row) => `${row.customerName}: ₦${this.formatMoney(row.balanceKobo)}`)
+      .join(", ")}.`;
+  }
+
+  private async inventoryReport(organizationId: string): Promise<string> {
+    const report = await this.reports.getInventoryHealth(organizationId);
+
+    if (report.productCount === 0) return "You have no products in inventory.";
+
+    const lowStockNames = report.lowStock.slice(0, 5).map((item) => item.name).join(", ");
+    const suffix = lowStockNames ? ` Low-stock items: ${lowStockNames}.` : "";
+
+    return `Inventory: ${report.productCount} products, ${report.lowStockCount} low-stock and ${report.outOfStockCount} out of stock.${suffix}`;
+  }
+
+  private formatMoney(kobo: number): string {
+    return (kobo / 100).toLocaleString("en-NG");
   }
 
   private getOpenAiKey(): string {
