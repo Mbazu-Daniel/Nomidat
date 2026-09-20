@@ -377,7 +377,7 @@ Rules:
       });
 
       if (existingProduct[0]) {
-        const nextStock = existingProduct[0].stockQuantity - action.quantity;
+        const nextStock = existingProduct[0].stockQuantity - quantity;
         await tx
           .update(product)
           .set({ stockQuantity: nextStock })
