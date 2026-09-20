@@ -10,6 +10,7 @@ import { InvitationModule } from "./modules/invitation/invitation.module";
 import { ChannelModule } from "./modules/channel/channel.module";
 import { TelegramModule } from "./modules/telegram/telegram.module";
 import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
+import { ConversationalModule } from "./modules/conversational/conversational.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
     ChannelModule,
     TelegramModule,
     WhatsAppModule,
+    ConversationalModule,
   ],
 })
 export class AppModule {}
