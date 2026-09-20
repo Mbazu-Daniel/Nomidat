@@ -469,7 +469,7 @@ Rules:
       this.reports.getDefaultRange(),
     );
 
-    return `Last 30 days: ₦${this.formatMoney(report.salesKobo)} in sales, ₦${this.formatMoney(report.collectedKobo)} collected, ₦${this.formatMoney(report.expensesKobo)} in expenses and ₦${this.formatMoney(report.outstandingCreditKobo)} outstanding. Net cash flow is ₦${this.formatMoney(report.netCashflowKobo)}.`;
+    return `Last 30 days: ₦${this.formatMoney(report.salesKobo)} in sales, ₦${this.formatMoney(report.collectedKobo)} collected, ₦${this.formatMoney(report.expensesKobo)} in expenses and ₦${this.formatMoney(report.outstandingCreditKobo)} outstanding. Approximate profit is ₦${this.formatMoney(report.profitApproxKobo)} and net cash flow is ₦${this.formatMoney(report.netCashflowKobo)}.`;
   }
 
   private async salesReport(organizationId: string): Promise<string> {
@@ -529,7 +529,7 @@ Rules:
     const lowStockNames = report.lowStock.slice(0, 5).map((item) => item.name).join(", ");
     const suffix = lowStockNames ? ` Low-stock items: ${lowStockNames}.` : "";
 
-    return `Inventory: ${report.productCount} products, ${report.lowStockCount} low-stock and ${report.outOfStockCount} out of stock.${suffix}`;
+    return `Inventory: ${report.productCount} products worth about ₦${this.formatMoney(report.inventoryValueKobo)}, ${report.lowStockCount} low-stock and ${report.outOfStockCount} out of stock.${suffix}`;
   }
 
   private formatMoney(kobo: number): string {
