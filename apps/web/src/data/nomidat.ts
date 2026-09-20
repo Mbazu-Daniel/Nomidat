@@ -108,3 +108,22 @@ export type BusinessSummary = {
 export function getBusinessSummary(organizationId: string) {
   return createApiRequest<BusinessSummary>(`/organizations/${encodeURIComponent(organizationId)}/summary`);
 }
+
+
+export type InvoiceRow = {
+  id: string;
+  invoiceNumber: string;
+  customerId?: string | null;
+  customer?: string | null;
+  status: string;
+  totalKobo: number;
+  currency: string;
+  dueDate?: string | null;
+  createdAt: string;
+};
+
+export function getInvoices(organizationId: string) {
+  return createApiRequest<InvoiceRow[]>(
+    `/organizations/${encodeURIComponent(organizationId)}/invoices`,
+  );
+}
