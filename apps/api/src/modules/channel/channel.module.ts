@@ -7,8 +7,7 @@ import { ChannelInboundService } from "./channel-inbound.service";
 import { ChannelService } from "./channel.service";
 
 @Module({
-  imports: [ConversationalModule],
-  imports: [DbModule],
+  imports: [DbModule, ConversationalModule],
   controllers: [ChannelController],
   providers: [ChannelService, ChannelAuthService, ChannelInboundService],
   exports: [ChannelService, ChannelInboundService],
