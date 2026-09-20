@@ -14,6 +14,7 @@ import { BusinessModule } from "./modules/business/business.module";
 import { ConversationalModule } from "./modules/conversational/conversational.module";
 import { SalesModule } from "./modules/sales/sales.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
+import { ReportsModule } from "./modules/reports/reports.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { InvoicesModule } from "./modules/invoices/invoices.module";
     BusinessModule,
     SalesModule,
     InvoicesModule,
+    ReportsModule,
     ConversationalModule,
   ],
 })
