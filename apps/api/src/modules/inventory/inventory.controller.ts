@@ -17,7 +17,7 @@ export class InventoryController {
   @Post("products")
   @ApiOperation({ summary: "Create a product" })
   async createProduct(@Param("organizationId") organizationId: string, @Body() body: CreateProductDto, @Req() req: Request) {
-    const session = await this.auth.getSession(extractHeaders(req), organizationId);
+    await this.auth.authorize(extractHeaders(req), organizationId);
     return this.inventory.createProduct(organizationId, body);
   }
 
