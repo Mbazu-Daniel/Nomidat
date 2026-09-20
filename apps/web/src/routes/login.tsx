@@ -23,7 +23,7 @@ function LoginPage() {
           method: "POST",
           body: JSON.stringify({ email, password }),
         });
-        await navigate({ to: "/channels" });
+        await navigate({ to: "/" });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Sign-in failed");
       }
@@ -37,14 +37,14 @@ function LoginPage() {
         const result = await createApiRequest<{ url?: string }>("/auth/sign-in/google", {
           method: "POST",
           body: JSON.stringify({
-            callbackURL: `${window.location.origin}/channels`,
+            callbackURL: `${window.location.origin}/`,
           }),
         });
         if (result.url) {
           window.location.href = result.url;
           return;
         }
-        await navigate({ to: "/channels" });
+        await navigate({ to: "/" });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Google sign-in failed");
       }
