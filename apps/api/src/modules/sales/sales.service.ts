@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { and, desc, eq, gte, sum } from "@nomidat/db";
+import { and, desc, eq, gte, sql, sum } from "@nomidat/db";
 import { contact, order, orderItem, payment, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateSaleDto, RecordPaymentDto } from "./dto";
@@ -78,7 +78,7 @@ export class SalesService {
           const [updatedProduct] = await tx
             .update(product)
             .set({
-              stockQuantity: storedProduct.stockQuantity - item.quantity,
+              stockQuantity: sql`${product.stockQuantity} - ${item.quantity}`,
               updatedAt: new Date(),
             })
             .where(
