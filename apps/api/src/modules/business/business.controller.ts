@@ -1,4 +1,6 @@
-import { Controller, Get, Headers, Param, ParseIntPipe, Query } from "@nestjs/common";
+import { Controller, Get, Param, ParseIntPipe, Query, Req } from "@nestjs/common";
+import type { Request } from "express";
+import { extractHeaders } from "../../common/helpers/auth-http";
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { BusinessAuthService } from "./business-auth.service";
 import { BusinessService } from "./business.service";
@@ -17,10 +19,10 @@ export class BusinessController {
   @ApiQuery({ name: "limit", required: false, type: Number, maximum: 50 })
   async getSales(
     @Param("organizationId") organizationId: string,
-    @Headers() headers: Headers,
+    @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.businessAuthService.authorize(headers, organizationId);
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getSales(organizationId, limit);
   }
 
