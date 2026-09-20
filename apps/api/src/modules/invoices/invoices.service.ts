@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { and, desc, eq } from "@nomidat/db";
-import { contact, invoice, invoiceItem, order, orderItem, payment } from "@nomidat/db/schema";
+import { contact, invoice, invoiceItem, order, orderItem, payment, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateInvoiceDto } from "./dto";
 
@@ -30,6 +30,7 @@ export class InvoicesService {
 
     return this.db.db.transaction(async (tx) => {
       const customerId = await this.resolveCustomerId(tx, organizationId, input.customerId);
+      await this.validateProducts(tx, organizationId, input.items.map((item) => item.productId));
       const number = await this.nextInvoiceNumber(tx, organizationId);
 
       const [created] = await tx
@@ -83,6 +84,14 @@ export class InvoicesService {
 
       if (!sale) throw new NotFoundException("Sale not found.");
 
+      const [existingInvoice] = await tx
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(and(eq(invoice.organizationId, organizationId), eq(invoice.sourceSaleId, saleId)))
+        .limit(1);
+
+      if (existingInvoice) throw new BadRequestException("An invoice already exists for this sale.");
+
       const items = await tx
         .select({
           productId: orderItem.productId,
@@ -102,6 +111,7 @@ export class InvoicesService {
         .values({
           organizationId,
           contactId: sale.customerId,
+          sourceSaleId: saleId,
           invoiceNumber: number,
           status: "issued",
           subtotalKobo: sale.subtotalKobo,
@@ -223,6 +233,21 @@ export class InvoicesService {
     return customer.id;
   }
 
+  private async validateProducts(
+    tx: Pick<DbHandle["db"], "select">,
+    organizationId: string,
+    productIds: Array<string | undefined>,
+  ) {
+    const ids = [...new Set(productIds.filter((id): id is string => Boolean(id)))];
+    for (const productId of ids) {
+      const [row] = await tx
+        .select({ id: product.id })
+        .from(product)
+        .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
+        .limit(1);
+      if (!row) throw new NotFoundException("One or more products were not found.");
+    }
+  }
   private async nextInvoiceNumber(
     _tx: Pick<DbHandle["db"], "select">,
     _organizationId: string,
