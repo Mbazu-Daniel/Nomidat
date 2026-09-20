@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { and, desc, eq, sum } from "@nomidat/db";
+import { and, desc, eq, gte, sum } from "@nomidat/db";
 import { contact, order, orderItem, payment, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateSaleDto, RecordPaymentDto } from "./dto";
@@ -74,22 +74,27 @@ export class SalesService {
 
           if (!storedProduct) throw new NotFoundException("Product not found.");
 
-          if (storedProduct.stockQuantity < item.quantity) {
-            throw new ConflictException(
-              `Insufficient stock for ${storedProduct.name}. Available: ${storedProduct.stockQuantity}.`,
-            );
-          }
-
           productName = storedProduct.name;
-          await tx
+          const [updatedProduct] = await tx
             .update(product)
             .set({
               stockQuantity: storedProduct.stockQuantity - item.quantity,
               updatedAt: new Date(),
             })
             .where(
-              and(eq(product.id, productId), eq(product.organizationId, organizationId)),
+              and(
+                eq(product.id, productId),
+                eq(product.organizationId, organizationId),
+                gte(product.stockQuantity, item.quantity),
+              ),
+            )
+            .returning({ id: product.id });
+
+          if (!updatedProduct) {
+            throw new ConflictException(
+              "Insufficient stock for " + storedProduct.name + ". Available stock changed while recording this sale.",
             );
+          }
         }
 
         resolvedItems.push({
