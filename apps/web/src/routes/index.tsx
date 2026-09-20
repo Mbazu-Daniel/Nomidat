@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { IconArrowDownRight, IconArrowUpRight, IconBell, IconBox, IconChevronRight, IconCreditCard, IconFileInvoice, IconLayoutDashboard, IconPackage, IconPlus, IconReceipt, IconSettings, IconSparkles, IconUsers, IconWallet } from "@tabler/icons-react";
+import { IconArrowDownRight, IconArrowUpRight, IconBell, IconBox, IconChartBar, IconChevronRight, IconCreditCard, IconFileInvoice, IconLayoutDashboard, IconPackage, IconPlus, IconReceipt, IconSettings, IconSparkles, IconUsers, IconWallet } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { ActivityRow } from "@/components/nomidat/activity-row";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
@@ -16,6 +16,7 @@ const navItems = [
   { label: "Inventory", icon: IconPackage, to: "/inventory" },
   { label: "Expenses", icon: IconWallet, to: "/expenses" },
   { label: "Invoices", icon: IconFileInvoice, to: "/invoices" },
+  { label: "Reports", icon: IconChartBar, to: "/reports" },
 ];
 
 function DashboardPage() {
