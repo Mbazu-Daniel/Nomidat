@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   IconArrowDownRight,
   IconArrowUpRight,
@@ -20,6 +20,7 @@ import { ActivityRow } from "@/components/nomidat/activity-row";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
 import { StatCard } from "@/components/nomidat/stat-card";
 import { Button } from "@/components/ui/button";
+import { businessData, formatNaira } from "@/data/nomidat";
 
 export const Route = createFileRoute("/")({
   component: DashboardPage,
@@ -32,10 +33,10 @@ const organizations: OrganizationOption[] = [
 
 const navItems = [
   { label: "Overview", icon: IconLayoutDashboard },
-  { label: "Sales", icon: IconReceipt },
-  { label: "Customers", icon: IconUsers },
-  { label: "Inventory", icon: IconPackage },
-  { label: "Expenses", icon: IconWallet },
+  { label: "Sales", icon: IconReceipt, to: "/sales" },
+  { label: "Customers", icon: IconUsers, to: "/customers" },
+  { label: "Inventory", icon: IconPackage, to: "/inventory" },
+  { label: "Expenses", icon: IconWallet, to: "/expenses" },
 ];
 
 const sales = [
@@ -50,7 +51,7 @@ const sales = [
 
 function DashboardPage() {
   const [organizationId, setOrganizationId] = useState("demo");
-  const [activeNav, setActiveNav] = useState("Overview");
+  const [activeNav] = useState("Overview");
 
   const organization =
     organizations.find((item) => item.id === organizationId) ?? organizations[0];
@@ -77,24 +78,16 @@ function DashboardPage() {
           </div>
 
           <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
-            {navItems.map(({ label, icon: Icon }) => {
-              const active = activeNav === label;
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => setActiveNav(label)}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-orange-50 text-orange-700"
-                      : "text-muted-foreground hover:bg-orange-50 hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="size-4" />
-                  {label}
-                </button>
-              );
-            })}
+            {navItems.map(({ label, icon: Icon, to }) => (
+              <Link
+                key={label}
+                to={to}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${activeNav === label ? "bg-orange-50 text-orange-700" : "text-muted-foreground hover:bg-orange-50 hover:text-foreground"}`}
+              >
+                <Icon className="size-4" />
+                {label}
+              </Link>
+            ))}
           </nav>
 
           <div className="border-t border-orange-100 p-3">
@@ -149,10 +142,10 @@ function DashboardPage() {
             </div>
 
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Sales" value="₦1.84m" detail="12.4% vs last week" icon={<IconArrowUpRight className="size-4" />} />
-              <StatCard label="Outstanding credit" value="₦382,500" detail="18 customers" icon={<IconCreditCard className="size-4" />} />
-              <StatCard label="Expenses" value="₦286,400" detail="8.1% vs last week" icon={<IconArrowDownRight className="size-4" />} />
-              <StatCard label="Customers" value="248" detail="+14 this month" icon={<IconUsers className="size-4" />} />
+              <StatCard label="Sales" value={formatNaira(businessData.sales.reduce((sum, sale) => sum + sale.amount, 0))} detail="Recorded sales" icon={<IconArrowUpRight className="size-4" />} />
+              <StatCard label="Outstanding credit" value={formatNaira(businessData.customers.reduce((sum, customer) => sum + customer.outstanding, 0))} detail="Customers with balances" icon={<IconCreditCard className="size-4" />} />
+              <StatCard label="Expenses" value={formatNaira(businessData.expenses.reduce((sum, expense) => sum + expense.amount, 0))} detail="Recorded expenses" icon={<IconArrowDownRight className="size-4" />} />
+              <StatCard label="Customers" value={String(businessData.customers.length)} detail="Active customers" icon={<IconUsers className="size-4" />} />
             </section>
 
             <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.8fr)]">
