@@ -78,24 +78,6 @@ export class BusinessService {
     };
   }
 
-  async getSummary(organizationId: string) {
-    const [sales, credit, expenses, customers, products, lowStock] = await Promise.all([
-      this.db.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(eq(order.organizationId, organizationId)),
-      this.db.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(and(eq(order.organizationId, organizationId), eq(order.status, "pending"))),
-      this.db.db.select({ totalKobo: sum(expense.amountKobo) }).from(expense).where(eq(expense.organizationId, organizationId)),
-      this.db.db.select({ count: count() }).from(contact).where(eq(contact.organizationId, organizationId)),
-      this.db.db.select({ count: count() }).from(product).where(eq(product.organizationId, organizationId)),
-      this.db.db.select({ count: count() }).from(product).where(and(eq(product.organizationId, organizationId), lte(product.stockQuantity, product.lowStockThreshold))),
-    ]);
-    return {
-      salesTotalKobo: Number(sales[0]?.totalKobo ?? 0),
-      outstandingCreditKobo: Number(credit[0]?.totalKobo ?? 0),
-      expensesTotalKobo: Number(expenses[0]?.totalKobo ?? 0),
-      customerCount: Number(customers[0]?.count ?? 0),
-      productCount: Number(products[0]?.count ?? 0),
-      lowStockCount: Number(lowStock[0]?.count ?? 0),
-    };
-  }
 
   async getExpenses(organizationId: string, limit = DEFAULT_LIMIT) {
     return this.db.db
