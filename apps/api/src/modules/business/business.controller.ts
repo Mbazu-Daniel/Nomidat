@@ -41,10 +41,10 @@ export class BusinessController {
   @ApiOperation({ summary: "Get current products for an organization" })
   async getProducts(
     @Param("organizationId") organizationId: string,
-    @Headers() headers: Headers,
+    @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.businessAuthService.authorize(headers, organizationId);
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getProducts(organizationId, limit);
   }
 
@@ -52,10 +52,10 @@ export class BusinessController {
   @ApiOperation({ summary: "Get recent expenses for an organization" })
   async getExpenses(
     @Param("organizationId") organizationId: string,
-    @Headers() headers: Headers,
+    @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.businessAuthService.authorize(headers, organizationId);
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getExpenses(organizationId, limit);
   }
 }
