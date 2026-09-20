@@ -60,9 +60,11 @@ export const businessData = {
 
 import { createApiRequest } from "@/lib/api";
 
-export async function getBusinessData<T extends keyof typeof businessData>(
+export type BusinessResource = "sales" | "customers" | "inventory" | "expenses";
+
+export async function getBusinessData(
   organizationId: string,
-  resource: T,
+  resource: BusinessResource,
 ) {
   const apiResource = resource === "inventory" ? "products" : resource;
   return createApiRequest<Array<{
