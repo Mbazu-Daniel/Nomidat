@@ -10,7 +10,7 @@ import {
   IconUsers,
   IconWallet,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ActivityRow } from "@/components/nomidat/activity-row";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
 import { StatCard } from "@/components/nomidat/stat-card";
@@ -153,6 +153,6 @@ function StockView() {
 function MoreView({ onNavigate }: { onNavigate: (view: View) => void }) {
   return <section className="mt-6 space-y-3"><h1 className="text-xl font-semibold">More</h1><p className="text-sm text-muted-foreground">Business tools available from Nomidat.</p><button type="button" onClick={() => onNavigate("home")} className="flex w-full items-center justify-between rounded-2xl border border-orange-100 bg-white p-4 text-left"><span><span className="block text-sm font-medium">Expenses</span><span className="text-xs text-muted-foreground">Review business spending</span></span><IconChevronRight className="size-4 text-muted-foreground" /></button><button type="button" onClick={() => onNavigate("stock")} className="flex w-full items-center justify-between rounded-2xl border border-orange-100 bg-white p-4 text-left"><span><span className="block text-sm font-medium">Inventory</span><span className="text-xs text-muted-foreground">Check stock levels</span></span><IconChevronRight className="size-4 text-muted-foreground" /></button></section>;
 }
-function ListView({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+function ListView({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return <section className="mt-6 rounded-2xl border border-orange-100 bg-white px-4 pb-2 pt-4"><h1 className="text-xl font-semibold">{title}</h1><p className="mt-1 text-xs text-muted-foreground">{description}</p><div className="mt-2">{children}</div></section>;
 }
