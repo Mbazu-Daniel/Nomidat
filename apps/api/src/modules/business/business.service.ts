@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq, sum } from "@nomidat/db";
+import { and, count, desc, eq, lte, sum } from "@nomidat/db";
 import { contact, expense, expenseCategory, order, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 
@@ -65,7 +65,7 @@ export class BusinessService {
       this.db.db.select({ totalKobo: sum(expense.amountKobo) }).from(expense).where(eq(expense.organizationId, organizationId)),
       this.db.db.select({ count: count() }).from(contact).where(eq(contact.organizationId, organizationId)),
       this.db.db.select({ count: count() }).from(product).where(eq(product.organizationId, organizationId)),
-      this.db.db.select({ count: count() }).from(product).where(and(eq(product.organizationId, organizationId), eq(product.stockQuantity, 0))),
+      this.db.db.select({ count: count() }).from(product).where(and(eq(product.organizationId, organizationId), lte(product.stockQuantity, product.lowStockThreshold))),
     ]);
 
     return {
