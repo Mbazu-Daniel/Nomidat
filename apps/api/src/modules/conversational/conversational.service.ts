@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
-import { and, desc, eq, ilike } from "drizzle-orm";
+import { and, desc, eq, ilike } from "@nomidat/db";
 import {
   contact,
   conversation,
@@ -142,9 +142,13 @@ export class ConversationalService {
 
     const media = await adapter.getInboundMedia(inbound.mediaUrl);
     const form = new FormData();
+    const audioBuffer = media.data.buffer.slice(
+      media.data.byteOffset,
+      media.data.byteOffset + media.data.byteLength,
+    ) as ArrayBuffer;
     form.append(
       "file",
-      new Blob([media.data], { type: media.mimeType ?? inbound.mediaMimeType ?? "audio/ogg" }),
+      new Blob([audioBuffer], { type: media.mimeType ?? inbound.mediaMimeType ?? "audio/ogg" }),
       "voice.ogg",
     );
     form.append("model", this.env.OPENAI_TRANSCRIPTION_MODEL);
@@ -331,6 +335,7 @@ Rules:
     if (!action.productName) return "What product did you sell?";
     if (!action.quantity || action.quantity <= 0) return "How many units did you sell?";
     if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
+    const quantity = action.quantity;
 
     let customerId: string | null = null;
     if (action.customerName) {
@@ -358,7 +363,7 @@ Rules:
       )
       .limit(1);
 
-    const unitPriceKobo = Math.round((action.amountNaira * 100) / action.quantity);
+    const unitPriceKobo = Math.round((action.amountNaira * 100) / quantity);
     const totalKobo = Math.round(action.amountNaira * 100);
     const now = new Date();
 
@@ -383,7 +388,7 @@ Rules:
         orderId: createdOrder.id,
         productId: existingProduct[0]?.id,
         productName: action.productName,
-        quantity: action.quantity,
+        quantity: quantity,
         unitPriceKobo,
         totalKobo,
       });
@@ -409,7 +414,7 @@ Rules:
       ? ` Stock is now ${Math.max(0, existingProduct[0].stockQuantity - action.quantity)}.`
       : " I did not change inventory because that product is not in your inventory yet.";
 
-    return `Recorded ${action.quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.id.slice(0, 8)}.`;
+    return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.id.slice(0, 8)}.`;
   }
 
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
