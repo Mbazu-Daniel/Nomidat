@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq } from "@nomidat/db";
-import { contact, expense, expenseCategory, order, orderItem, product } from "@nomidat/db/schema";
+import { contact, expense, expenseCategory, order, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 
 const DEFAULT_LIMIT = 20;
