@@ -99,7 +99,7 @@ export function BusinessListPage({ section }: { section: Section }) {
                 <div key={customer.id} className="flex flex-wrap items-center gap-3 px-4 py-4">
                   <div className="flex size-10 items-center justify-center rounded-full bg-orange-50 font-semibold text-orange-700">{customer.name?.charAt(0) ?? "?"}</div>
                   <div className="min-w-0 flex-1"><p className="font-medium">{customer.name ?? "Unnamed customer"}</p><p className="text-xs text-muted-foreground">{customer.phone ?? "No phone number"}</p></div>
-                  <div className="text-right"><p className="text-sm font-semibold">—</p><p className="text-xs text-muted-foreground">Balance</p></div>
+                  <div className="text-right"><p className="text-sm font-semibold">{formatNaira((customer.outstandingKobo ?? 0) / 100)}</p><p className="text-xs text-muted-foreground">Balance</p></div>
                 </div>
               ))}
             </div>
