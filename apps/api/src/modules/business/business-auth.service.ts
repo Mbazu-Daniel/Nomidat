@@ -11,7 +11,7 @@ export class BusinessAuthService {
     @Inject(DATABASE) private readonly db: DbHandle,
   ) {}
 
-  async authorize(headers: Headers, organizationId: string): Promise<void> {
+  async getSession(headers: Headers, organizationId: string): Promise<{ userId: string }> {
     const session = await this.auth.api.getSession({ headers });
     if (!session?.user?.id) throw new UnauthorizedException("Authentication required");
 
@@ -22,5 +22,11 @@ export class BusinessAuthService {
       .limit(1);
 
     if (rows.length === 0) throw new ForbiddenException("Not a member of this organization");
+
+    return { userId: session.user.id };
+  }
+
+  async authorize(headers: Headers, organizationId: string): Promise<void> {
+    await this.getSession(headers, organizationId);
   }
 }
