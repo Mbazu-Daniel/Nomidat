@@ -25,6 +25,7 @@ import { ConversationalModule } from "./modules/conversational/conversational.mo
     ChannelModule,
     TelegramModule,
     WhatsAppModule,
+    BusinessModule,
     ConversationalModule,
   ],
 })
