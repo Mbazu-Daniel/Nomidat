@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { IconChartBar, IconCreditCardCard, IconReceipt, IconWallet } from "@tabler/icons-react";
+import { IconChartBar, IconCreditCard, IconReceipt, IconWallet } from "@tabler/icons-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
 import {
@@ -101,7 +101,7 @@ function ReportsPage() {
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric icon={<IconReceipt className="size-4" />} label="Sales" value={formatNaira(summary.salesKobo / 100)} />
               <Metric icon={<IconWallet className="size-4" />} label="Collected" value={formatNaira(summary.collectedKobo / 100)} />
-              <Metric icon={<IconCredit className="size-4" />} label="Outstanding" value={formatNaira(summary.outstandingCreditKobo / 100)} />
+              <Metric icon={<IconCreditCard className="size-4" />} label="Outstanding" value={formatNaira(summary.outstandingCreditKobo / 100)} />
               <Metric icon={<IconWallet className="size-4" />} label="Profit approx." value={formatNaira(summary.profitApproxKobo / 100)} />
               <Metric icon={<IconWallet className="size-4" />} label="Net cash flow" value={formatNaira(summary.netCashflowKobo / 100)} />
             </section>
