@@ -332,12 +332,24 @@ Rules:
       customerId = existing[0]?.id;
     }
 
+    const existingProduct = await this.db.db
+      .select({ id: product.id, name: product.name })
+      .from(product)
+      .where(
+        and(
+          eq(product.organizationId, organizationId),
+          ilike(product.name, action.productName),
+        ),
+      )
+      .limit(1);
+
     const totalKobo = Math.round(action.amountNaira * 100);
     const result = await this.salesService.createSale(organizationId, null, {
       customerId,
       items: [
         {
-          productName: action.productName,
+          productId: existingProduct[0]?.id,
+          productName: existingProduct[0]?.name ?? action.productName,
           quantity: action.quantity,
           unitPriceKobo: Math.round(totalKobo / action.quantity),
         },
