@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, count, desc, eq, lte, sum } from "@nomidat/db";
-import { contact, expense, expenseCategory, order, product } from "@nomidat/db/schema";
+import { contact, expense, expenseCategory, order, payment, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 
 const DEFAULT_LIMIT = 20;
@@ -27,7 +27,7 @@ export class BusinessService {
   }
 
   async getCustomers(organizationId: string, limit = DEFAULT_LIMIT) {
-    return this.db.db
+    const customers = await this.db.db
       .select({
         id: contact.id,
         name: contact.name,
@@ -39,6 +39,42 @@ export class BusinessService {
       .where(eq(contact.organizationId, organizationId))
       .orderBy(desc(contact.createdAt))
       .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
+
+    return Promise.all(
+      customers.map(async (customer) => {
+        const pendingSales = await this.db.db
+          .select({ id: order.id, totalKobo: order.totalKobo })
+          .from(order)
+          .where(
+            and(
+              eq(order.organizationId, organizationId),
+              eq(order.contactId, customer.id),
+              eq(order.status, "pending"),
+            ),
+          );
+
+        const outstandingKobo = await Promise.all(
+          pendingSales.map(async (sale) => {
+            const [paid] = await this.db.db
+              .select({ totalKobo: sum(payment.amountKobo) })
+              .from(payment)
+              .where(
+                and(
+                  eq(payment.organizationId, organizationId),
+                  eq(payment.orderId, sale.id),
+                ),
+              );
+
+            return Math.max(0, sale.totalKobo - Number(paid?.totalKobo ?? 0));
+          }),
+        );
+
+        return {
+          ...customer,
+          outstandingKobo: outstandingKobo.reduce((total, value) => total + value, 0),
+        };
+      }),
+    );
   }
 
   async getProducts(organizationId: string, limit = DEFAULT_LIMIT) {
@@ -59,18 +95,34 @@ export class BusinessService {
   }
 
   async getSummary(organizationId: string) {
-    const [sales, credit, expenses, customers, products, lowStock] = await Promise.all([
+    const [sales, pendingOrders, expenses, customers, products, lowStock] = await Promise.all([
       this.db.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(eq(order.organizationId, organizationId)),
-      this.db.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(and(eq(order.organizationId, organizationId), eq(order.status, "pending"))),
+      this.db.db.select({ id: order.id, totalKobo: order.totalKobo }).from(order).where(and(eq(order.organizationId, organizationId), eq(order.status, "pending"))),
       this.db.db.select({ totalKobo: sum(expense.amountKobo) }).from(expense).where(eq(expense.organizationId, organizationId)),
       this.db.db.select({ count: count() }).from(contact).where(eq(contact.organizationId, organizationId)),
       this.db.db.select({ count: count() }).from(product).where(eq(product.organizationId, organizationId)),
       this.db.db.select({ count: count() }).from(product).where(and(eq(product.organizationId, organizationId), lte(product.stockQuantity, product.lowStockThreshold))),
     ]);
 
+    const outstandingCreditKobo = await Promise.all(
+      pendingOrders.map(async (pendingOrder) => {
+        const [paid] = await this.db.db
+          .select({ totalKobo: sum(payment.amountKobo) })
+          .from(payment)
+          .where(
+            and(
+              eq(payment.organizationId, organizationId),
+              eq(payment.orderId, pendingOrder.id),
+            ),
+          );
+
+        return Math.max(0, pendingOrder.totalKobo - Number(paid?.totalKobo ?? 0));
+      }),
+    );
+
     return {
       salesTotalKobo: Number(sales[0]?.totalKobo ?? 0),
-      outstandingCreditKobo: Number(credit[0]?.totalKobo ?? 0),
+      outstandingCreditKobo: outstandingCreditKobo.reduce((total, value) => total + value, 0),
       expensesTotalKobo: Number(expenses[0]?.totalKobo ?? 0),
       customerCount: Number(customers[0]?.count ?? 0),
       productCount: Number(products[0]?.count ?? 0),
