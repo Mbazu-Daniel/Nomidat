@@ -119,6 +119,7 @@ export class SalesService {
           totalKobo,
           currency: "NGN",
           paidAt: paymentAmountKobo === totalKobo ? now : null,
+          paymentReference: input.paymentReference,
           notes: input.notes,
           createdAt: now,
           updatedAt: now,
