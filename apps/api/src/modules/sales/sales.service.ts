@@ -28,7 +28,7 @@ export class SalesService {
     const discountKobo = input.discountKobo ?? 0;
     const taxKobo = input.taxKobo ?? 0;
     const subtotalKobo = input.items.reduce(
-      (total, item) => total + item.quantity * item.unitPriceKobo,
+      (total, item) => total + (item.lineTotalKobo ?? item.quantity * item.unitPriceKobo),
       0,
     );
     const totalKobo = subtotalKobo - discountKobo + taxKobo;
@@ -67,12 +67,14 @@ export class SalesService {
               id: product.id,
               name: product.name,
               stockQuantity: product.stockQuantity,
+              isActive: product.isActive,
             })
             .from(product)
             .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
             .limit(1);
 
           if (!storedProduct) throw new NotFoundException("Product not found.");
+          if (!storedProduct.isActive) throw new ConflictException("Product is archived and cannot be sold.");
 
           productName = storedProduct.name;
           const [updatedProduct] = await tx
@@ -102,7 +104,7 @@ export class SalesService {
           productName,
           quantity: item.quantity,
           unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.quantity * item.unitPriceKobo,
+          totalKobo: item.lineTotalKobo ?? item.quantity * item.unitPriceKobo,
         });
       }
 
