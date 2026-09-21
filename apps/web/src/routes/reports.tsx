@@ -91,7 +91,15 @@ function ReportsPage() {
       <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <ReportsHeader organizations={organizations} organizationId={organizationId} onOrganizationChange={setOrganizationId} />
         {data.error ? <ErrorMessage message={data.error} /> : null}
-        <ReportsContent {...data} />
+        <ReportsContent
+          loading={data.loading}
+          summary={data.summary}
+          sales={data.sales}
+          expenses={data.expenses}
+          products={data.products}
+          customers={data.customers}
+          inventory={data.inventory}
+        />
       </div>
     </main>
   );
@@ -126,22 +134,24 @@ function ReportsHeader({
   );
 }
 
-function ReportsContent(data: ReportsData) {
-  if (data.loading) {
+function ReportsContent({
+  loading,
+  summary,
+  sales,
+  expenses,
+  products,
+  customers,
+  inventory,
+}: Omit<ReportsData, "error">) {
+  if (loading) {
     return <div className="rounded-2xl border border-orange-100 bg-white p-6 text-sm text-muted-foreground">Loading reports…</div>;
   }
-  if (!data.summary) return null;
+  if (!summary) return null;
 
   return (
     <>
-      <Metrics summary={data.summary} />
-      <ReportGrid
-        sales={data.sales}
-        expenses={data.expenses}
-        products={data.products}
-        customers={data.customers}
-        inventory={data.inventory}
-      />
+      <Metrics summary={summary} />
+      <ReportGrid sales={sales} expenses={expenses} products={products} customers={customers} inventory={inventory} />
     </>
   );
 }
@@ -158,49 +168,75 @@ function Metrics({ summary }: { summary: ReportSummary }) {
   );
 }
 
-function ReportGrid({
-  sales,
-  expenses,
-  products,
-  customers,
-  inventory,
-}: Pick<ReportsData, "sales" | "expenses" | "products" | "customers" | "inventory">) {
+type ReportGridProps = Pick<ReportsData, "sales" | "expenses" | "products" | "customers" | "inventory">;
+
+function ReportGrid({ sales, expenses, products, customers, inventory }: ReportGridProps) {
   return (
     <section className="mt-6 grid gap-6 lg:grid-cols-2">
-      <ReportCard title="Daily sales">
-        {sales.length === 0 ? <Empty label="No sales in this period." /> : sales.slice(-10).map((row) => (
-          <Row key={row.date} label={row.date} value={formatNaira(row.salesKobo / 100)} detail={`${row.saleCount} sales`} />
-        ))}
-      </ReportCard>
-      <ReportCard title="Expenses by category">
-        {expenses.length === 0 ? <Empty label="No expenses in this period." /> : expenses.slice(0, 8).map((row) => (
-          <Row key={row.category} label={row.category} value={formatNaira(row.amountKobo / 100)} detail={`${row.expenseCount} entries`} />
-        ))}
-      </ReportCard>
-      <ReportCard title="Top products">
-        {products.length === 0 ? <Empty label="No product sales in this period." /> : products.map((row) => (
-          <Row key={row.productId ?? row.productName} label={row.productName} value={formatNaira(row.salesKobo / 100)} detail={`${row.quantity} units`} />
-        ))}
-      </ReportCard>
-      <ReportCard title="Customers owing">
-        {customers.length === 0 ? <Empty label="No outstanding customer balances." /> : customers.map((row) => (
-          <Row key={row.customerId} label={row.customerName} value={formatNaira(row.balanceKobo / 100)} />
-        ))}
-      </ReportCard>
-      <ReportCard title="Inventory health">
-        {inventory ? (
-          <>
-            <Row label="Products" value={String(inventory.productCount)} />
-            <Row label="Low stock" value={String(inventory.lowStockCount)} />
-            <Row label="Out of stock" value={String(inventory.outOfStockCount)} />
-            <Row label="Inventory value" value={formatNaira(inventory.inventoryValueKobo / 100)} />
-            {inventory.lowStock.slice(0, 5).map((item) => (
-              <Row key={item.id} label={item.name} value={`${item.stockQuantity} ${item.unit}`} detail={`Reorder at ${item.lowStockThreshold}`} />
-            ))}
-          </>
-        ) : <Empty label="No inventory data." />}
-      </ReportCard>
+      <SalesCard sales={sales} />
+      <ExpensesCard expenses={expenses} />
+      <ProductsCard products={products} />
+      <CustomersCard customers={customers} />
+      <InventoryCard inventory={inventory} />
     </section>
+  );
+}
+
+function SalesCard({ sales }: Pick<ReportGridProps, "sales">) {
+  return (
+    <ReportCard title="Daily sales">
+      {sales.length === 0 ? <Empty label="No sales in this period." /> : sales.slice(-10).map((row) => (
+        <Row key={row.date} label={row.date} value={formatNaira(row.salesKobo / 100)} detail={`${row.saleCount} sales`} />
+      ))}
+    </ReportCard>
+  );
+}
+
+function ExpensesCard({ expenses }: Pick<ReportGridProps, "expenses">) {
+  return (
+    <ReportCard title="Expenses by category">
+      {expenses.length === 0 ? <Empty label="No expenses in this period." /> : expenses.slice(0, 8).map((row) => (
+        <Row key={row.category} label={row.category} value={formatNaira(row.amountKobo / 100)} detail={`${row.expenseCount} entries`} />
+      ))}
+    </ReportCard>
+  );
+}
+
+function ProductsCard({ products }: Pick<ReportGridProps, "products">) {
+  return (
+    <ReportCard title="Top products">
+      {products.length === 0 ? <Empty label="No product sales in this period." /> : products.map((row) => (
+        <Row key={row.productId ?? row.productName} label={row.productName} value={formatNaira(row.salesKobo / 100)} detail={`${row.quantity} units`} />
+      ))}
+    </ReportCard>
+  );
+}
+
+function CustomersCard({ customers }: Pick<ReportGridProps, "customers">) {
+  return (
+    <ReportCard title="Customers owing">
+      {customers.length === 0 ? <Empty label="No outstanding customer balances." /> : customers.map((row) => (
+        <Row key={row.customerId} label={row.customerName} value={formatNaira(row.balanceKobo / 100)} />
+      ))}
+    </ReportCard>
+  );
+}
+
+function InventoryCard({ inventory }: Pick<ReportGridProps, "inventory">) {
+  if (!inventory) {
+    return <ReportCard title="Inventory health"><Empty label="No inventory data." /></ReportCard>;
+  }
+
+  return (
+    <ReportCard title="Inventory health">
+      <Row label="Products" value={String(inventory.productCount)} />
+      <Row label="Low stock" value={String(inventory.lowStockCount)} />
+      <Row label="Out of stock" value={String(inventory.outOfStockCount)} />
+      <Row label="Inventory value" value={formatNaira(inventory.inventoryValueKobo / 100)} />
+      {inventory.lowStock.slice(0, 5).map((item) => (
+        <Row key={item.id} label={item.name} value={`${item.stockQuantity} ${item.unit}`} detail={`Reorder at ${item.lowStockThreshold}`} />
+      ))}
+    </ReportCard>
   );
 }
 
