@@ -21,7 +21,7 @@ export class InvoicesController {
     @Body() body: CreateInvoiceDto,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.invoices.createInvoice(organizationId, body);
   }
 
@@ -32,7 +32,7 @@ export class InvoicesController {
     @Param("saleId") saleId: string,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.invoices.createFromSale(organizationId, saleId);
   }
 
@@ -44,7 +44,7 @@ export class InvoicesController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.invoices.listInvoices(organizationId, limit);
   }
 
@@ -56,7 +56,7 @@ export class InvoicesController {
     @Param("invoiceId") invoiceId: string,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.invoices.getInvoice(organizationId, invoiceId);
   }
 
@@ -67,7 +67,10 @@ export class InvoicesController {
     @Param("saleId") saleId: string,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.invoices.getReceipt(organizationId, saleId);
+  }
+  private authorize(req: Request, organizationId: string) {
+    return this.auth.authorize(extractHeaders(req), organizationId);
   }
 }

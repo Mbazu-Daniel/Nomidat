@@ -14,6 +14,7 @@ import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
 import type { ChannelAdapter, InboundMessage } from "../channel/types";
+import { SalesService } from "../sales/sales.service";
 
 type Intent =
   | "create_contact"
@@ -42,6 +43,7 @@ export class ConversationalService {
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
+    private readonly salesService: SalesService,
   ) {}
 
   async processInbound(
@@ -320,10 +322,10 @@ Rules:
     if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
     const quantity = action.quantity;
 
-    let customerId: string | null = null;
+    let customerId: string | undefined;
     if (action.customerName) {
       const existing = await this.db.db
-        .select()
+        .select({ id: contact.id })
         .from(contact)
         .where(
           and(
@@ -332,11 +334,11 @@ Rules:
           ),
         )
         .limit(1);
-      customerId = existing[0]?.id ?? null;
+      customerId = existing[0]?.id;
     }
 
     const existingProduct = await this.db.db
-      .select()
+      .select({ id: product.id, name: product.name })
       .from(product)
       .where(
         and(
@@ -346,58 +348,28 @@ Rules:
       )
       .limit(1);
 
-    const unitPriceKobo = Math.round((action.amountNaira * 100) / quantity);
     const totalKobo = Math.round(action.amountNaira * 100);
-    const now = new Date();
-
-    const result = await this.db.db.transaction(async (tx) => {
-      const [createdOrder] = await tx
-        .insert(order)
-        .values({
-          organizationId,
-          contactId: customerId,
-          status: action.paid ? "paid" : "pending",
-          subtotalKobo: totalKobo,
-          totalKobo,
-          currency: "NGN",
-          paidAt: action.paid ? now : null,
-          notes: "Recorded through Nomidat",
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      await tx.insert(orderItem).values({
-        orderId: createdOrder.id,
-        productId: existingProduct[0]?.id,
-        productName: action.productName,
-        quantity,
-        unitPriceKobo,
-        totalKobo,
-      });
-
-      if (existingProduct[0]) {
-        const nextStock = existingProduct[0].stockQuantity - quantity;
-        await tx
-          .update(product)
-          .set({ stockQuantity: nextStock })
-          .where(
-            and(
-              eq(product.id, existingProduct[0].id),
-              eq(product.organizationId, organizationId),
-            ),
-          );
-      }
-
-      return createdOrder;
+    const result = await this.salesService.createSale(organizationId, null, {
+      customerId,
+      items: [
+        {
+          productId: existingProduct[0]?.id,
+          productName: existingProduct[0]?.name ?? action.productName,
+          quantity,
+          unitPriceKobo: Math.round(totalKobo / action.quantity),
+        },
+      ],
+      paymentAmountKobo: action.paid ? totalKobo : 0,
+      paymentMethod: "cash",
+      notes: "Recorded through Nomidat",
     });
 
     const paymentText = action.paid ? "paid" : "on credit";
-    const stockText = existingProduct[0]
-      ? ` Stock is now ${Math.max(0, existingProduct[0].stockQuantity - quantity)}.`
-      : " I did not change inventory because that product is not in your inventory yet.";
+    const balanceText = result.balanceKobo > 0
+      ? ` Outstanding: ₦${(result.balanceKobo / 100).toLocaleString("en-NG")}.`
+      : "";
 
-    return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.id.slice(0, 8)}.`;
+    return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${balanceText} Order ${result.id.slice(0, 8)}.`;
   }
 
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {

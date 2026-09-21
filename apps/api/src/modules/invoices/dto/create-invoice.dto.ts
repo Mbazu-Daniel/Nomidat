@@ -10,7 +10,7 @@ import {
   ValidateNested,
 } from "class-validator";
 
-export class CreateInvoiceItemDto {
+class CreateInvoiceItemDto {
   @IsOptional()
   @IsUUID()
   productId?: string;
