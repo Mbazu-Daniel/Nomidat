@@ -66,7 +66,13 @@ export async function getBusinessData(
   organizationId: string,
   resource: BusinessResource,
 ) {
-  const apiResource = resource === "inventory" ? "products" : resource;
+  const apiResourceByResource: Record<BusinessResource, "sales" | "customers" | "products" | "expenses"> = {
+    sales: "sales",
+    customers: "customers",
+    inventory: "products",
+    expenses: "expenses",
+  };
+  const apiResource = apiResourceByResource[resource];
   return createApiRequest<Array<{
     id: string;
     name?: string | null;
