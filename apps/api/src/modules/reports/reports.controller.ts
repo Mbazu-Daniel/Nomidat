@@ -1,5 +1,5 @@
 import { Controller, Get, Param, ParseIntPipe, Query, Req } from "@nestjs/common";
-import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
+import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { BusinessAuthService } from "../business/business-auth.service";
@@ -101,6 +101,6 @@ export class ReportsController {
   }
 
   private authorize(req: Request, organizationId: string): Promise<void> {
-    return this.authorize(req, organizationId);
+    return this.auth.authorize(extractHeaders(req), organizationId);
   }
 }
