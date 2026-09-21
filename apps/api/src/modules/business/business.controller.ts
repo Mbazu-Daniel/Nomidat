@@ -69,7 +69,7 @@ export class BusinessController {
     return this.businessService.getExpenses(organizationId, limit);
   }
 
-  private authorize(req: Request, organizationId: string) {
+  private authorize(req: Request, organizationId: string): Promise<void> {
     return this.authorize(req, organizationId);
   }
 }
