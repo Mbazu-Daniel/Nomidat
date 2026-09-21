@@ -19,6 +19,8 @@ export type ReportRange = {
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 366;
 const MAX_LIMIT = 50;
+const LOW_STOCK_COUNT = sql<number>`count(*) filter (where ${product.stockQuantity} <= ${product.lowStockThreshold})`;
+const OUT_OF_STOCK_COUNT = sql<number>`count(*) filter (where ${product.stockQuantity} <= 0)`;
 
 @Injectable()
 export class ReportsService {
@@ -282,8 +284,8 @@ export class ReportsService {
     const [row] = await this.db.db
       .select({
         productCount: count(),
-        lowStockCount: sql<number>`count(*) filter (where ${product.stockQuantity} <= ${product.lowStockThreshold})`,
-        outOfStockCount: sql<number>`count(*) filter (where ${product.stockQuantity} <= 0)`,
+        lowStockCount: LOW_STOCK_COUNT,
+        outOfStockCount: OUT_OF_STOCK_COUNT,
       })
       .from(product)
       .where(eq(product.organizationId, organizationId));
