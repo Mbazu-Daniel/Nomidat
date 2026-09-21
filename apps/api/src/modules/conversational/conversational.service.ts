@@ -15,6 +15,7 @@ import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
 import type { ChannelAdapter, InboundMessage } from "../channel/types";
 import { ReportsService } from "../reports/reports.service";
+import { SalesService } from "../sales/sales.service";
 
 type Intent =
   | "create_contact"
@@ -64,6 +65,7 @@ export class ConversationalService {
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
     private readonly reports: ReportsService,
+    private readonly salesService: SalesService,
   ) {}
 
   async processInbound(
@@ -360,58 +362,6 @@ Rules:
     return rows[0];
   }
 
-  private async insertSale(
-    action: ParsedAction,
-    organizationId: string,
-    customerId: string | null,
-    existingProduct: Awaited<ReturnType<ConversationalService["findProduct"]>>,
-    totalKobo: number,
-    unitPriceKobo: number,
-    now: Date,
-  ) {
-    return this.db.db.transaction(async (tx) => {
-      const [createdOrder] = await tx
-        .insert(order)
-        .values({
-          organizationId,
-          contactId: customerId,
-          status: action.paid ? "paid" : "pending",
-          subtotalKobo: totalKobo,
-          totalKobo,
-          currency: "NGN",
-          paidAt: action.paid ? now : null,
-          notes: "Recorded through Nomidat",
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      await tx.insert(orderItem).values({
-        orderId: createdOrder.id,
-        productId: existingProduct?.id,
-        productName: action.productName,
-        quantity: action.quantity!,
-        unitPriceKobo,
-        totalKobo,
-      });
-
-      if (existingProduct) {
-        const nextStock = existingProduct.stockQuantity - action.quantity!;
-        await tx
-          .update(product)
-          .set({ stockQuantity: nextStock })
-          .where(
-            and(
-              eq(product.id, existingProduct.id),
-              eq(product.organizationId, organizationId),
-            ),
-          );
-      }
-
-      return createdOrder;
-    });
-  }
-
   private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
     const validationError = this.validateSaleAction(action);
     if (validationError) return validationError;
@@ -421,33 +371,29 @@ Rules:
     const customerId = await this.findCustomerId(organizationId, action.customerName);
     const existingProduct = await this.findProduct(organizationId, action.productName!);
     const totalKobo = Math.round(amountNaira * 100);
-    const unitPriceKobo = Math.round(totalKobo / quantity);
-    const now = new Date();
 
-    const result = await this.insertSale(
-      action,
-      organizationId,
+    const result = await this.salesService.createSale(organizationId, null, {
       customerId,
-      existingProduct,
-      totalKobo,
-      unitPriceKobo,
-      now,
-    );
+      items: [
+        {
+          productId: existingProduct?.id,
+          productName: existingProduct?.name ?? action.productName!,
+          quantity,
+          unitPriceKobo: Math.round(totalKobo / quantity),
+          lineTotalKobo: totalKobo,
+        },
+      ],
+      paymentAmountKobo: action.paid ? totalKobo : 0,
+      paymentMethod: "cash",
+      notes: "Recorded through Nomidat",
+    });
 
-    return this.formatSaleResponse(action, result.id, existingProduct, quantity);
-  }
-
-  private formatSaleResponse(
-    action: ParsedAction,
-    orderId: string,
-    existingProduct: Awaited<ReturnType<ConversationalService["findProduct"]>>,
-    quantity: number,
-  ): string {
     const paymentText = action.paid ? "paid" : "on credit";
-    const stockText = existingProduct
-      ? ` Stock is now ${Math.max(0, existingProduct.stockQuantity - quantity)}.`
-      : " I did not change inventory because that product is not in your inventory yet.";
-    return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira!.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${orderId.slice(0, 8)}.`;
+    const balanceText = result.balanceKobo > 0
+      ? ` Outstanding: ₦${(result.balanceKobo / 100).toLocaleString("en-NG")}.`
+      : "";
+
+    return `Recorded ${quantity} × ${action.productName} for ₦${amountNaira.toLocaleString("en-NG")} ${paymentText}.${balanceText} Order ${result.id.slice(0, 8)}.`;
   }
 
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {

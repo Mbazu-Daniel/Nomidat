@@ -16,7 +16,7 @@ const MAX_LIMIT = 50;
 export class SalesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
-  async createSale(organizationId: string, userId: string, input: CreateSaleDto) {
+  async createSale(organizationId: string, userId: string | null, input: CreateSaleDto) {
     if (input.items.length === 0) {
       throw new BadRequestException("At least one sale item is required.");
     }
@@ -28,7 +28,7 @@ export class SalesService {
     const discountKobo = input.discountKobo ?? 0;
     const taxKobo = input.taxKobo ?? 0;
     const subtotalKobo = input.items.reduce(
-      (total, item) => total + item.quantity * item.unitPriceKobo,
+      (total, item) => total + (item.lineTotalKobo ?? item.quantity * item.unitPriceKobo),
       0,
     );
     const totalKobo = subtotalKobo - discountKobo + taxKobo;
@@ -67,12 +67,14 @@ export class SalesService {
               id: product.id,
               name: product.name,
               stockQuantity: product.stockQuantity,
+              isActive: product.isActive,
             })
             .from(product)
             .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
             .limit(1);
 
           if (!storedProduct) throw new NotFoundException("Product not found.");
+          if (!storedProduct.isActive) throw new ConflictException("Product is archived and cannot be sold.");
 
           productName = storedProduct.name;
           const [updatedProduct] = await tx
@@ -102,7 +104,7 @@ export class SalesService {
           productName,
           quantity: item.quantity,
           unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.quantity * item.unitPriceKobo,
+          totalKobo: item.lineTotalKobo ?? item.quantity * item.unitPriceKobo,
         });
       }
 
@@ -119,6 +121,7 @@ export class SalesService {
           totalKobo,
           currency: "NGN",
           paidAt: paymentAmountKobo === totalKobo ? now : null,
+          paymentReference: input.paymentReference,
           notes: input.notes,
           createdAt: now,
           updatedAt: now,
@@ -187,11 +190,15 @@ export class SalesService {
 
   async recordPayment(
     organizationId: string,
-    userId: string,
+    userId: string | null,
     saleId: string,
     input: RecordPaymentDto,
   ) {
     return this.db.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT id FROM ${order} WHERE id = ${saleId} AND organization_id = ${organizationId} FOR UPDATE`,
+      );
+
       const sale = await this.getSaleByIdTx(tx, organizationId, saleId);
       const paidKobo = await this.getPaidAmountTx(tx, organizationId, saleId);
       const balanceKobo = sale.totalKobo - paidKobo;

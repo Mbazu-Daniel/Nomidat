@@ -15,6 +15,8 @@ import { ConversationalModule } from "./modules/conversational/conversational.mo
 import { SalesModule } from "./modules/sales/sales.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { ReportsModule } from "./modules/reports/reports.module";
+import { InventoryModule } from "./modules/inventory/inventory.module";
+import { ExpensesModule } from "./modules/expenses/expenses.module";
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { ReportsModule } from "./modules/reports/reports.module";
     BusinessModule,
     SalesModule,
     InvoicesModule,
+    InventoryModule,
+    ExpensesModule,
     ReportsModule,
     ConversationalModule,
   ],
