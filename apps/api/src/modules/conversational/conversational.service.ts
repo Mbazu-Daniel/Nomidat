@@ -45,6 +45,21 @@ type ParsedAction = {
 
 @Injectable()
 export class ConversationalService {
+  private readonly actionHandlers: Record<Intent, ActionHandler> = {
+    create_contact: (action, organizationId) => this.createContact(action, organizationId),
+    record_sale: (action, organizationId) => this.recordSale(action, organizationId),
+    record_expense: (action, organizationId) => this.recordExpense(action, organizationId),
+    check_balance: (action, organizationId) => this.checkBalance(action, organizationId),
+    check_inventory: (action, organizationId) => this.checkInventory(action, organizationId),
+    summary: (_action, organizationId) => this.summary(organizationId),
+    sales_report: (_action, organizationId) => this.salesReport(organizationId),
+    expense_report: (_action, organizationId) => this.expenseReport(organizationId),
+    top_products: (_action, organizationId) => this.topProductsReport(organizationId),
+    customer_balances: (_action, organizationId) => this.customerBalancesReport(organizationId),
+    inventory_report: (_action, organizationId) => this.inventoryReport(organizationId),
+    unknown: async () => "I understood the message, but I need a little more information to know what you want me to record.",
+  };
+
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
@@ -244,32 +259,7 @@ Rules:
   }
 
   private async executeAction(action: ParsedAction, organizationId: string): Promise<string> {
-    switch (action.intent) {
-      case "create_contact":
-        return this.createContact(action, organizationId);
-      case "record_expense":
-        return this.recordExpense(action, organizationId);
-      case "record_sale":
-        return this.recordSale(action, organizationId);
-      case "check_balance":
-        return this.checkBalance(action, organizationId);
-      case "check_inventory":
-        return this.checkInventory(action, organizationId);
-      case "summary":
-        return this.summary(organizationId);
-      case "sales_report":
-        return this.salesReport(organizationId);
-      case "expense_report":
-        return this.expenseReport(organizationId);
-      case "top_products":
-        return this.topProductsReport(organizationId);
-      case "customer_balances":
-        return this.customerBalancesReport(organizationId);
-      case "inventory_report":
-        return this.inventoryReport(organizationId);
-      default:
-        return "I understood the message, but I need a little more information to know what you want me to record.";
-    }
+    return this.actionHandlers[action.intent](action, organizationId);
   }
 
   private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
@@ -331,43 +321,55 @@ Rules:
     return `Recorded ₦${(created.amountKobo / 100).toLocaleString("en-NG")} expense.`;
   }
 
-  private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
+  private validateSaleAction(action: ParsedAction): string | null {
     if (!action.productName) return "What product did you sell?";
     if (!action.quantity || action.quantity <= 0) return "How many units did you sell?";
     if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
-    const quantity = action.quantity;
+    return null;
+  }
 
-    let customerId: string | null = null;
-    if (action.customerName) {
-      const existing = await this.db.db
-        .select()
-        .from(contact)
-        .where(
-          and(
-            eq(contact.organizationId, organizationId),
-            ilike(contact.name, action.customerName),
-          ),
-        )
-        .limit(1);
-      customerId = existing[0]?.id ?? null;
-    }
+  private async findCustomerId(
+    organizationId: string,
+    customerName?: string,
+  ): Promise<string | null> {
+    if (!customerName) return null;
+    const rows = await this.db.db
+      .select()
+      .from(contact)
+      .where(
+        and(
+          eq(contact.organizationId, organizationId),
+          ilike(contact.name, customerName),
+        ),
+      )
+      .limit(1);
+    return rows[0]?.id ?? null;
+  }
 
-    const existingProduct = await this.db.db
+  private async findProduct(organizationId: string, productName: string) {
+    const rows = await this.db.db
       .select()
       .from(product)
       .where(
         and(
           eq(product.organizationId, organizationId),
-          ilike(product.name, action.productName),
+          ilike(product.name, productName),
         ),
       )
       .limit(1);
+    return rows[0];
+  }
 
-    const unitPriceKobo = Math.round((action.amountNaira * 100) / quantity);
-    const totalKobo = Math.round(action.amountNaira * 100);
-    const now = new Date();
-
-    const result = await this.db.db.transaction(async (tx) => {
+  private async insertSale(
+    action: ParsedAction,
+    organizationId: string,
+    customerId: string | null,
+    existingProduct: Awaited<ReturnType<ConversationalService["findProduct"]>>,
+    totalKobo: number,
+    unitPriceKobo: number,
+    now: Date,
+  ) {
+    return this.db.db.transaction(async (tx) => {
       const [createdOrder] = await tx
         .insert(order)
         .values({
@@ -386,21 +388,21 @@ Rules:
 
       await tx.insert(orderItem).values({
         orderId: createdOrder.id,
-        productId: existingProduct[0]?.id,
+        productId: existingProduct?.id,
         productName: action.productName,
-        quantity: quantity,
+        quantity: action.quantity!,
         unitPriceKobo,
         totalKobo,
       });
 
-      if (existingProduct[0]) {
-        const nextStock = existingProduct[0].stockQuantity - quantity;
+      if (existingProduct) {
+        const nextStock = existingProduct.stockQuantity - action.quantity!;
         await tx
           .update(product)
           .set({ stockQuantity: nextStock })
           .where(
             and(
-              eq(product.id, existingProduct[0].id),
+              eq(product.id, existingProduct.id),
               eq(product.organizationId, organizationId),
             ),
           );
@@ -408,13 +410,44 @@ Rules:
 
       return createdOrder;
     });
+  }
 
+  private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
+    const validationError = this.validateSaleAction(action);
+    if (validationError) return validationError;
+
+    const quantity = action.quantity!;
+    const amountNaira = action.amountNaira!;
+    const customerId = await this.findCustomerId(organizationId, action.customerName);
+    const existingProduct = await this.findProduct(organizationId, action.productName!);
+    const totalKobo = Math.round(amountNaira * 100);
+    const unitPriceKobo = Math.round(totalKobo / quantity);
+    const now = new Date();
+
+    const result = await this.insertSale(
+      action,
+      organizationId,
+      customerId,
+      existingProduct,
+      totalKobo,
+      unitPriceKobo,
+      now,
+    );
+
+    return this.formatSaleResponse(action, result.id, existingProduct, quantity);
+  }
+
+  private formatSaleResponse(
+    action: ParsedAction,
+    orderId: string,
+    existingProduct: Awaited<ReturnType<ConversationalService["findProduct"]>>,
+    quantity: number,
+  ): string {
     const paymentText = action.paid ? "paid" : "on credit";
-    const stockText = existingProduct[0]
-      ? ` Stock is now ${Math.max(0, existingProduct[0].stockQuantity - quantity)}.`
+    const stockText = existingProduct
+      ? ` Stock is now ${Math.max(0, existingProduct.stockQuantity - quantity)}.`
       : " I did not change inventory because that product is not in your inventory yet.";
-
-    return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.id.slice(0, 8)}.`;
+    return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira!.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${orderId.slice(0, 8)}.`;
   }
 
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
