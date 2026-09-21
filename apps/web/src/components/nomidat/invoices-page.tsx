@@ -1,3 +1,4 @@
+// fallow-ignore-file code-duplication -- page scaffolding intentionally follows the shared Nomidat organization-page pattern.
 import { IconFileInvoice } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
