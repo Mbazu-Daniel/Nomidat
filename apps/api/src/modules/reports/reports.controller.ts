@@ -21,10 +21,12 @@ export class ReportsController {
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {
-    await this.authorize(req, organizationId);
-    return this.reports.getSummary(
+    return this.authorizedRange(
+      req,
       organizationId,
-      this.reports.parseRange(from, to),
+      from,
+      to,
+      (range) => this.reports.getSummary(organizationId, range),
     );
   }
 
@@ -38,10 +40,12 @@ export class ReportsController {
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {
-    await this.authorize(req, organizationId);
-    return this.reports.getSalesTrend(
+    return this.authorizedRange(
+      req,
       organizationId,
-      this.reports.parseRange(from, to),
+      from,
+      to,
+      (range) => this.reports.getSalesTrend(organizationId, range),
     );
   }
 
@@ -53,10 +57,12 @@ export class ReportsController {
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {
-    await this.authorize(req, organizationId);
-    return this.reports.getExpenseBreakdown(
+    return this.authorizedRange(
+      req,
       organizationId,
-      this.reports.parseRange(from, to),
+      from,
+      to,
+      (range) => this.reports.getExpenseBreakdown(organizationId, range),
     );
   }
 
@@ -70,11 +76,12 @@ export class ReportsController {
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {
-    await this.authorize(req, organizationId);
-    return this.reports.getTopProducts(
+    return this.authorizedRange(
+      req,
       organizationId,
-      this.reports.parseRange(from, to),
-      limit,
+      from,
+      to,
+      (range) => this.reports.getTopProducts(organizationId, range, limit),
     );
   }
 
@@ -86,8 +93,11 @@ export class ReportsController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.authorize(req, organizationId);
-    return this.reports.getCustomerBalances(organizationId, limit);
+    return this.authorized(
+      req,
+      organizationId,
+      () => this.reports.getCustomerBalances(organizationId, limit),
+    );
   }
 
   @Get("inventory")
@@ -96,11 +106,34 @@ export class ReportsController {
     @Param("organizationId") organizationId: string,
     @Req() req: Request,
   ) {
-    await this.authorize(req, organizationId);
-    return this.reports.getInventoryHealth(organizationId);
+    return this.authorized(
+      req,
+      organizationId,
+      () => this.reports.getInventoryHealth(organizationId),
+    );
   }
 
   private authorize(req: Request, organizationId: string): Promise<void> {
     return this.auth.authorize(extractHeaders(req), organizationId);
+  }
+
+  private async authorized<T>(
+    req: Request,
+    organizationId: string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    await this.authorize(req, organizationId);
+    return action();
+  }
+
+  private async authorizedRange<T>(
+    req: Request,
+    organizationId: string,
+    from: string | undefined,
+    to: string | undefined,
+    action: (range: ReturnType<ReportsService["parseRange"]>) => Promise<T>,
+  ): Promise<T> {
+    await this.authorize(req, organizationId);
+    return action(this.reports.parseRange(from, to));
   }
 }
