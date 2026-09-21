@@ -19,7 +19,7 @@ export class BusinessController {
     @Param("organizationId") organizationId: string,
     @Req() req: Request,
   ) {
-    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.businessService.getSummary(organizationId);
   }
 
@@ -67,5 +67,8 @@ export class BusinessController {
   ) {
     await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getExpenses(organizationId, limit);
+  }
+  private authorize(req: Request, organizationId: string) {
+    return this.businessAuthService.authorize(extractHeaders(req), organizationId);
   }
 }
