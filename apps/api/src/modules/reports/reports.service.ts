@@ -49,89 +49,69 @@ export class ReportsService {
   }
 
   async getSummary(organizationId: string, range: ReportRange) {
-    const [sales, payments, expenses, salesCount, paymentCount, expenseCount] =
-      await Promise.all([
-        this.db.db
-          .select({ totalKobo: sum(order.totalKobo) })
-          .from(order)
-          .where(
-            and(
-              eq(order.organizationId, organizationId),
-              gte(order.createdAt, range.from),
-              lt(order.createdAt, range.to),
-            ),
-          ),
-        this.db.db
-          .select({ totalKobo: sum(payment.amountKobo) })
-          .from(payment)
-          .where(
-            and(
-              eq(payment.organizationId, organizationId),
-              gte(payment.paidAt, range.from),
-              lt(payment.paidAt, range.to),
-            ),
-          ),
-        this.db.db
-          .select({ totalKobo: sum(expense.amountKobo) })
-          .from(expense)
-          .where(
-            and(
-              eq(expense.organizationId, organizationId),
-              gte(expense.spentAt, range.from),
-              lt(expense.spentAt, range.to),
-            ),
-          ),
-        this.db.db
-          .select({ count: count() })
-          .from(order)
-          .where(
-            and(
-              eq(order.organizationId, organizationId),
-              gte(order.createdAt, range.from),
-              lt(order.createdAt, range.to),
-            ),
-          ),
-        this.db.db
-          .select({ count: count() })
-          .from(payment)
-          .where(
-            and(
-              eq(payment.organizationId, organizationId),
-              gte(payment.paidAt, range.from),
-              lt(payment.paidAt, range.to),
-            ),
-          ),
-        this.db.db
-          .select({ count: count() })
-          .from(expense)
-          .where(
-            and(
-              eq(expense.organizationId, organizationId),
-              gte(expense.spentAt, range.from),
-              lt(expense.spentAt, range.to),
-            ),
-          ),
-      ]);
-
-    const outstandingCreditKobo = await this.getOutstandingCredit(
-      organizationId,
-      range.to,
-    );
-    const collectedKobo = Number(payments[0]?.totalKobo ?? 0);
-    const expenseKobo = Number(expenses[0]?.totalKobo ?? 0);
+    const [sales, payments, expenses, outstandingCreditKobo] = await Promise.all([
+      this.getOrderMetrics(organizationId, range),
+      this.getPaymentMetrics(organizationId, range),
+      this.getExpenseMetrics(organizationId, range),
+      this.getOutstandingCredit(organizationId, range.to),
+    ]);
 
     return {
       from: range.from,
       to: range.to,
-      salesKobo: Number(sales[0]?.totalKobo ?? 0),
-      collectedKobo,
+      salesKobo: sales.totalKobo,
+      collectedKobo: payments.totalKobo,
       outstandingCreditKobo,
-      expensesKobo: expenseKobo,
-      netCashflowKobo: collectedKobo - expenseKobo,
-      salesCount: Number(salesCount[0]?.count ?? 0),
-      paymentCount: Number(paymentCount[0]?.count ?? 0),
-      expenseCount: Number(expenseCount[0]?.count ?? 0),
-      profitApproxKobo: await this.getProfitApprox(organizationId, range, expenseKobo),
+      expensesKobo: expenses.totalKobo,
+      netCashflowKobo: payments.totalKobo - expenses.totalKobo,
+      salesCount: sales.count,
+      paymentCount: payments.count,
+      expenseCount: expenses.count,
+      profitApproxKobo: await this.getProfitApprox(organizationId, range, expenses.totalKobo),
+    };
+  }
+
+  private async getOrderMetrics(organizationId: string, range: ReportRange) {
+    const [row] = await this.db.db
+      .select({ totalKobo: sum(order.totalKobo), count: count() })
+      .from(order)
+      .where(this.rangeCondition(order.createdAt, order.organizationId, organizationId, range));
+    return this.toMetrics(row);
+  }
+
+  private async getPaymentMetrics(organizationId: string, range: ReportRange) {
+    const [row] = await this.db.db
+      .select({ totalKobo: sum(payment.amountKobo), count: count() })
+      .from(payment)
+      .where(this.rangeCondition(payment.paidAt, payment.organizationId, organizationId, range));
+    return this.toMetrics(row);
+  }
+
+  private async getExpenseMetrics(organizationId: string, range: ReportRange) {
+    const [row] = await this.db.db
+      .select({ totalKobo: sum(expense.amountKobo), count: count() })
+      .from(expense)
+      .where(this.rangeCondition(expense.spentAt, expense.organizationId, organizationId, range));
+    return this.toMetrics(row);
+  }
+
+  private rangeCondition(
+    timestamp: typeof order.createdAt,
+    organizationColumn: typeof order.organizationId,
+    organizationId: string,
+    range: ReportRange,
+  ) {
+    return and(
+      eq(organizationColumn, organizationId),
+      gte(timestamp, range.from),
+      lt(timestamp, range.to),
+    );
+  }
+
+  private toMetrics(row: { totalKobo?: number | null; count?: number | null } | undefined) {
+    return {
+      totalKobo: Number(row?.totalKobo ?? 0),
+      count: Number(row?.count ?? 0),
     };
   }
 
@@ -247,28 +227,8 @@ export class ReportsService {
     >();
 
     for (const sale of pendingSales) {
-      const [paid] = await this.db.db
-        .select({ totalKobo: sum(payment.amountKobo) })
-        .from(payment)
-        .where(
-          and(
-            eq(payment.organizationId, organizationId),
-            eq(payment.orderId, sale.saleId),
-          ),
-        );
-
-      const balanceKobo = Math.max(
-        0,
-        sale.totalKobo - Number(paid?.totalKobo ?? 0),
-      );
-      if (balanceKobo === 0) continue;
-
-      const current = balances.get(sale.customerId);
-      balances.set(sale.customerId, {
-        customerId: sale.customerId,
-        customerName: sale.customerName,
-        balanceKobo: (current?.balanceKobo ?? 0) + balanceKobo,
-      });
+      const balanceKobo = await this.getSaleBalance(organizationId, sale.saleId, sale.totalKobo);
+      this.addCustomerBalance(balances, sale, balanceKobo);
     }
 
     return [...balances.values()]
@@ -276,8 +236,43 @@ export class ReportsService {
       .slice(0, safeLimit);
   }
 
+  private async getSaleBalance(organizationId: string, saleId: string, totalKobo: number) {
+    const [paid] = await this.db.db
+      .select({ totalKobo: sum(payment.amountKobo) })
+      .from(payment)
+      .where(and(eq(payment.organizationId, organizationId), eq(payment.orderId, saleId)));
+    return Math.max(0, totalKobo - Number(paid?.totalKobo ?? 0));
+  }
+
+  private addCustomerBalance(
+    balances: Map<string, { customerId: string; customerName: string; balanceKobo: number }>,
+    sale: { customerId: string; customerName: string },
+    balanceKobo: number,
+  ) {
+    if (balanceKobo === 0) return;
+    const current = balances.get(sale.customerId);
+    balances.set(sale.customerId, {
+      customerId: sale.customerId,
+      customerName: sale.customerName,
+      balanceKobo: (current?.balanceKobo ?? 0) + balanceKobo,
+    });
+  }
+
   async getInventoryHealth(organizationId: string) {
-    const [totals] = await this.db.db
+    const [totals, lowStock, inventoryValueKobo] = await Promise.all([
+      this.getInventoryTotals(organizationId),
+      this.getLowStockProducts(organizationId),
+      this.getInventoryValue(organizationId),
+    ]);
+    return {
+      ...totals,
+      inventoryValueKobo,
+      lowStock,
+    };
+  }
+
+  private async getInventoryTotals(organizationId: string) {
+    const [row] = await this.db.db
       .select({
         productCount: count(),
         lowStockCount: sql<number>`count(*) filter (where ${product.stockQuantity} <= ${product.lowStockThreshold})`,
@@ -285,8 +280,15 @@ export class ReportsService {
       })
       .from(product)
       .where(eq(product.organizationId, organizationId));
+    return {
+      productCount: Number(row?.productCount ?? 0),
+      lowStockCount: Number(row?.lowStockCount ?? 0),
+      outOfStockCount: Number(row?.outOfStockCount ?? 0),
+    };
+  }
 
-    const lowStock = await this.db.db
+  private async getLowStockProducts(organizationId: string) {
+    return this.db.db
       .select({
         id: product.id,
         name: product.name,
@@ -295,22 +297,9 @@ export class ReportsService {
         unit: product.unit,
       })
       .from(product)
-      .where(
-        and(
-          eq(product.organizationId, organizationId),
-          sql`${product.stockQuantity} <= ${product.lowStockThreshold}`,
-        ),
-      )
+      .where(and(eq(product.organizationId, organizationId), sql`${product.stockQuantity} <= ${product.lowStockThreshold}`))
       .orderBy(product.stockQuantity)
       .limit(MAX_LIMIT);
-
-    return {
-      productCount: Number(totals?.productCount ?? 0),
-      lowStockCount: Number(totals?.lowStockCount ?? 0),
-      outOfStockCount: Number(totals?.outOfStockCount ?? 0),
-      inventoryValueKobo: await this.getInventoryValue(organizationId),
-      lowStock,
-    };
   }
 
   private async getProfitApprox(
