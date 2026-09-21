@@ -6,7 +6,6 @@ import {
   expense,
   expenseCategory,
   order,
-  orderItem,
   product,
   message,
 } from "@nomidat/db/schema";
@@ -30,6 +29,8 @@ type Intent =
   | "customer_balances"
   | "inventory_report"
   | "unknown";
+
+type ActionHandler = (action: ParsedAction, organizationId: string) => Promise<string>;
 
 type ParsedAction = {
   intent: Intent;
@@ -373,7 +374,7 @@ Rules:
     const totalKobo = Math.round(amountNaira * 100);
 
     const result = await this.salesService.createSale(organizationId, null, {
-      customerId,
+      customerId: customerId ?? undefined,
       items: [
         {
           productId: existingProduct?.id,
