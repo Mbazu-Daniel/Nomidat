@@ -1,3 +1,4 @@
+// fallow-ignore-file code-duplication -- controller route signatures intentionally repeat organization/range parameters
 import { Controller, Get, Param, ParseIntPipe, Query, Req } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
