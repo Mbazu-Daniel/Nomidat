@@ -35,17 +35,18 @@ export class ReportsService {
     const fallback = this.getDefaultRange();
     const fromDate = from ? this.parseDate(from, "from") : fallback.from;
     const toDate = to ? this.parseDate(to, "to") : fallback.to;
+    this.validateRange(fromDate, toDate);
+    return { from: fromDate, to: toDate };
+  }
 
-    if (fromDate >= toDate) {
+  private validateRange(from: Date, to: Date) {
+    if (from >= to) {
       throw new BadRequestException("Report 'from' must be before 'to'.");
     }
-
-    const days = (toDate.getTime() - fromDate.getTime()) / 86_400_000;
+    const days = (to.getTime() - from.getTime()) / 86_400_000;
     if (days > MAX_DAYS) {
       throw new BadRequestException(`Report range cannot exceed ${MAX_DAYS} days.`);
     }
-
-    return { from: fromDate, to: toDate };
   }
 
   async getSummary(organizationId: string, range: ReportRange) {
