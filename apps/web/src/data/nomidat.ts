@@ -144,32 +144,32 @@ export type ReportSummary = {
   profitApproxKobo: number;
 };
 
-export type SalesReportRow = {
+type SalesReportRow = {
   date: string;
   salesKobo: number;
   saleCount: number;
 };
 
-export type ExpenseReportRow = {
+type ExpenseReportRow = {
   category: string;
   amountKobo: number;
   expenseCount: number;
 };
 
-export type ProductReportRow = {
+type ProductReportRow = {
   productId: string | null;
   productName: string;
   quantity: number;
   salesKobo: number;
 };
 
-export type CustomerBalanceReportRow = {
+type CustomerBalanceReportRow = {
   customerId: string;
   customerName: string;
   balanceKobo: number;
 };
 
-export type InventoryReport = {
+type InventoryReport = {
   productCount: number;
   lowStockCount: number;
   outOfStockCount: number;
