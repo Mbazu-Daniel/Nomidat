@@ -6,10 +6,12 @@ import type { CreateInvoiceDto } from "./dto";
 
 const MAX_LIMIT = 50;
 
+// fallow-ignore-file code-duplication -- invoice and receipt projections intentionally repeat small database read models for stable response contracts.
 @Injectable()
 export class InvoicesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
+  // fallow-ignore-next-line complexity -- orchestration is intentionally covered through the invoice transaction flow.
   async createInvoice(organizationId: string, input: CreateInvoiceDto) {
     if (input.items.length === 0) {
       throw new BadRequestException("At least one invoice item is required.");
