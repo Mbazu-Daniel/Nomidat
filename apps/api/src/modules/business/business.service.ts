@@ -36,7 +36,7 @@ export class BusinessService {
         createdAt: contact.createdAt,
       })
       .from(contact)
-      .where(eq(contact.organizationId, organizationId))
+      .where(and(eq(contact.organizationId, organizationId), eq(contact.kind, "customer")))
       .orderBy(desc(contact.createdAt))
       .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
   }
@@ -59,22 +59,58 @@ export class BusinessService {
   }
 
   async getSummary(organizationId: string) {
-    const [sales, credit, expenses, customers, products, lowStock] = await Promise.all([
-      this.db.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(eq(order.organizationId, organizationId)),
-      this.db.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(and(eq(order.organizationId, organizationId), eq(order.status, "pending"))),
-      this.db.db.select({ totalKobo: sum(expense.amountKobo) }).from(expense).where(eq(expense.organizationId, organizationId)),
-      this.db.db.select({ count: count() }).from(contact).where(eq(contact.organizationId, organizationId)),
-      this.db.db.select({ count: count() }).from(product).where(eq(product.organizationId, organizationId)),
-      this.db.db.select({ count: count() }).from(product).where(and(eq(product.organizationId, organizationId), lte(product.stockQuantity, product.lowStockThreshold))),
-    ]);
+    const [salesTotalKobo, outstandingCreditKobo, expensesTotalKobo, customerCount, productCount, lowStockCount] =
+      await Promise.all([
+        this.getSalesTotal(organizationId),
+        this.getOutstandingCredit(organizationId),
+        this.getExpensesTotal(organizationId),
+        this.getCount(contact, organizationId, "customer"),
+        this.getCount(product, organizationId),
+        this.getLowStockCount(organizationId),
+      ]);
+
     return {
-      salesTotalKobo: Number(sales[0]?.totalKobo ?? 0),
-      outstandingCreditKobo: Number(credit[0]?.totalKobo ?? 0),
-      expensesTotalKobo: Number(expenses[0]?.totalKobo ?? 0),
-      customerCount: Number(customers[0]?.count ?? 0),
-      productCount: Number(products[0]?.count ?? 0),
-      lowStockCount: Number(lowStock[0]?.count ?? 0),
+      salesTotalKobo,
+      outstandingCreditKobo,
+      expensesTotalKobo,
+      customerCount,
+      productCount,
+      lowStockCount,
     };
+  }
+
+  private async getSalesTotal(organizationId: string) {
+    const [row] = await this.db.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(eq(order.organizationId, organizationId));
+    return Number(row?.totalKobo ?? 0);
+  }
+
+  private async getOutstandingCredit(organizationId: string) {
+    const [row] = await this.db.db
+      .select({ totalKobo: sum(order.totalKobo) })
+      .from(order)
+      .where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")));
+    return Number(row?.totalKobo ?? 0);
+  }
+
+  private async getExpensesTotal(organizationId: string) {
+    const [row] = await this.db.db.select({ totalKobo: sum(expense.amountKobo) }).from(expense).where(eq(expense.organizationId, organizationId));
+    return Number(row?.totalKobo ?? 0);
+  }
+
+  private async getCount(table: typeof contact | typeof product, organizationId: string, kind?: string) {
+    const condition = kind
+      ? and(eq(table.organizationId, organizationId), eq(contact.kind, kind))
+      : eq(table.organizationId, organizationId);
+    const [row] = await this.db.db.select({ count: count() }).from(table).where(condition);
+    return Number(row?.count ?? 0);
+  }
+
+  private async getLowStockCount(organizationId: string) {
+    const [row] = await this.db.db
+      .select({ count: count() })
+      .from(product)
+      .where(and(eq(product.organizationId, organizationId), lte(product.stockQuantity, product.lowStockThreshold)));
+    return Number(row?.count ?? 0);
   }
 
   async getExpenses(organizationId: string, limit = DEFAULT_LIMIT) {
