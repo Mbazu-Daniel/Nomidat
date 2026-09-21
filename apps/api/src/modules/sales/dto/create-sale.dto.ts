@@ -25,6 +25,11 @@ export class CreateSaleItemDto {
   @IsInt()
   @Min(0)
   unitPriceKobo!: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  lineTotalKobo?: number;
 }
 
 export class CreateSaleDto {
