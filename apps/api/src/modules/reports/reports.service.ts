@@ -11,6 +11,8 @@ import {
 } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 
+// fallow-ignore-file code-duplication -- report queries intentionally share organization/range predicates and result shaping
+
 export type ReportRange = {
   from: Date;
   to: Date;
@@ -119,9 +121,13 @@ export class ReportsService {
     row: { totalKobo?: string | number | null; count?: number | null } | undefined,
   ) {
     return {
-      totalKobo: Number(row?.totalKobo ?? 0),
-      count: Number(row?.count ?? 0),
+      totalKobo: this.toNumber(row?.totalKobo),
+      count: this.toNumber(row?.count),
     };
+  }
+
+  private toNumber(value: string | number | null | undefined): number {
+    return value === null || value === undefined ? 0 : Number(value);
   }
 
   async getSalesTrend(organizationId: string, range: ReportRange) {
@@ -290,9 +296,9 @@ export class ReportsService {
       .from(product)
       .where(eq(product.organizationId, organizationId));
     return {
-      productCount: Number(row?.productCount ?? 0),
-      lowStockCount: Number(row?.lowStockCount ?? 0),
-      outOfStockCount: Number(row?.outOfStockCount ?? 0),
+      productCount: this.toNumber(row?.productCount),
+      lowStockCount: this.toNumber(row?.lowStockCount),
+      outOfStockCount: this.toNumber(row?.outOfStockCount),
     };
   }
 
