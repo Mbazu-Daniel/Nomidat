@@ -13,6 +13,8 @@ import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
 import { BusinessModule } from "./modules/business/business.module";
 import { ConversationalModule } from "./modules/conversational/conversational.module";
 import { SalesModule } from "./modules/sales/sales.module";
+import { InventoryModule } from "./modules/inventory/inventory.module";
+import { ExpensesModule } from "./modules/expenses/expenses.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
 
 @Module({
@@ -30,6 +32,8 @@ import { InvoicesModule } from "./modules/invoices/invoices.module";
     WhatsAppModule,
     BusinessModule,
     SalesModule,
+    InventoryModule,
+    ExpensesModule,
     InvoicesModule,
     ConversationalModule,
   ],
