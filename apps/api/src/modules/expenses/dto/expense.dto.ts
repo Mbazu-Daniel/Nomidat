@@ -1,10 +1,6 @@
 import { IsDateString, IsInt, IsOptional, IsString, IsUUID, Min } from "class-validator";
 
-export class CreateExpenseDto {
-  @IsInt()
-  @Min(1)
-  amountKobo!: number;
-
+export abstract class ExpenseFieldsDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
@@ -26,29 +22,15 @@ export class CreateExpenseDto {
   receiptUrl?: string;
 }
 
-export class UpdateExpenseDto {
+export class CreateExpenseDto extends ExpenseFieldsDto {
+  @IsInt()
+  @Min(1)
+  amountKobo!: number;
+}
+
+export class UpdateExpenseDto extends ExpenseFieldsDto {
   @IsOptional()
   @IsInt()
   @Min(1)
   amountKobo?: number;
-
-  @IsOptional()
-  @IsUUID()
-  categoryId?: string;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @IsOptional()
-  @IsDateString()
-  spentAt?: string;
-
-  @IsOptional()
-  @IsString()
-  paymentMethod?: string;
-
-  @IsOptional()
-  @IsString()
-  receiptUrl?: string;
 }
