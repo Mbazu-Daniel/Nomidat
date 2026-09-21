@@ -97,19 +97,25 @@ export class ReportsService {
   }
 
   private rangeCondition(
-    timestamp: typeof order.createdAt,
-    organizationColumn: typeof order.organizationId,
+    timestamp:
+      | typeof order.createdAt
+      | typeof payment.paidAt
+      | typeof expense.spentAt,
+    organizationColumn:
+      | typeof order.organizationId
+      | typeof payment.organizationId
+      | typeof expense.organizationId,
     organizationId: string,
     range: ReportRange,
   ) {
-    return and(
-      eq(organizationColumn, organizationId),
-      gte(timestamp, range.from),
-      lt(timestamp, range.to),
-    );
+    return sql`${organizationColumn} = ${organizationId}
+      and ${timestamp} >= ${range.from}
+      and ${timestamp} < ${range.to}`;
   }
 
-  private toMetrics(row: { totalKobo?: number | null; count?: number | null } | undefined) {
+  private toMetrics(
+    row: { totalKobo?: string | number | null; count?: number | null } | undefined,
+  ) {
     return {
       totalKobo: Number(row?.totalKobo ?? 0),
       count: Number(row?.count ?? 0),
