@@ -21,7 +21,7 @@ export class ReportsController {
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.reports.getSummary(
       organizationId,
       this.reports.parseRange(from, to),
@@ -98,5 +98,9 @@ export class ReportsController {
   ) {
     await this.auth.authorize(extractHeaders(req), organizationId);
     return this.reports.getInventoryHealth(organizationId);
+  }
+
+  private authorize(req: Request, organizationId: string): Promise<void> {
+    return this.auth.authorize(extractHeaders(req), organizationId);
   }
 }
