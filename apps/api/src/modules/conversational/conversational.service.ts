@@ -325,10 +325,17 @@ Rules:
   }
 
   private validateSaleAction(action: ParsedAction): string | null {
-    if (!action.productName) return "What product did you sell?";
-    if (!action.quantity || action.quantity <= 0) return "How many units did you sell?";
-    if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
-    return null;
+    const missing = [
+      [!action.productName, "What product did you sell?"],
+      [!this.isPositiveNumber(action.quantity), "How many units did you sell?"],
+      [!this.isPositiveNumber(action.amountNaira), "What was the total selling amount?"],
+    ] as const;
+
+    return missing.find(([invalid]) => invalid)?.[1] ?? null;
+  }
+
+  private isPositiveNumber(value: number | undefined): value is number {
+    return typeof value === "number" && value > 0;
   }
 
   private async findCustomerId(
@@ -369,26 +376,46 @@ Rules:
 
     const quantity = action.quantity!;
     const amountNaira = action.amountNaira!;
+    const result = await this.salesService.createSale(
+      organizationId,
+      null,
+      await this.buildSaleInput(action, organizationId, quantity, amountNaira),
+    );
+
+    return this.formatSaleResponse(action, quantity, amountNaira, result);
+  }
+
+  private async buildSaleInput(
+    action: ParsedAction,
+    organizationId: string,
+    quantity: number,
+    amountNaira: number,
+  ) {
     const customerId = await this.findCustomerId(organizationId, action.customerName);
     const existingProduct = await this.findProduct(organizationId, action.productName!);
     const totalKobo = Math.round(amountNaira * 100);
 
-    const result = await this.salesService.createSale(organizationId, null, {
+    return {
       customerId: customerId ?? undefined,
-      items: [
-        {
-          productId: existingProduct?.id,
-          productName: existingProduct?.name ?? action.productName!,
-          quantity,
-          unitPriceKobo: Math.round(totalKobo / quantity),
-          lineTotalKobo: totalKobo,
-        },
-      ],
+      items: [{
+        productId: existingProduct?.id,
+        productName: existingProduct?.name ?? action.productName!,
+        quantity,
+        unitPriceKobo: Math.floor(totalKobo / quantity),
+        lineTotalKobo: totalKobo,
+      }],
       paymentAmountKobo: action.paid ? totalKobo : 0,
-      paymentMethod: "cash",
+      paymentMethod: "cash" as const,
       notes: "Recorded through Nomidat",
-    });
+    };
+  }
 
+  private formatSaleResponse(
+    action: ParsedAction,
+    quantity: number,
+    amountNaira: number,
+    result: { id: string; balanceKobo: number },
+  ): string {
     const paymentText = action.paid ? "paid" : "on credit";
     const balanceText = result.balanceKobo > 0
       ? ` Outstanding: ₦${(result.balanceKobo / 100).toLocaleString("en-NG")}.`
