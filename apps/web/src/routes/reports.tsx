@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { IconChartBar, IconCreditCard, IconReceipt, IconWallet } from "@tabler/icons-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
 import {
   formatNaira,
@@ -185,9 +185,9 @@ function ReportGrid({ sales, expenses, products, customers, inventory }: ReportG
 function SalesCard({ sales }: Pick<ReportGridProps, "sales">) {
   return (
     <ReportCard title="Daily sales">
-      {sales.length === 0 ? <Empty label="No sales in this period." /> : sales.slice(-10).map((row) => (
-        <Row key={row.date} label={row.date} value={formatNaira(row.salesKobo / 100)} detail={`${row.saleCount} sales`} />
-      ))}
+      <ReportRows rows={sales.slice(-10)} emptyLabel="No sales in this period." getKey={(row) => row.date} renderRow={(row) => (
+        <Row label={row.date} value={formatNaira(row.salesKobo / 100)} detail={`${row.saleCount} sales`} />
+      )} />
     </ReportCard>
   );
 }
@@ -195,9 +195,9 @@ function SalesCard({ sales }: Pick<ReportGridProps, "sales">) {
 function ExpensesCard({ expenses }: Pick<ReportGridProps, "expenses">) {
   return (
     <ReportCard title="Expenses by category">
-      {expenses.length === 0 ? <Empty label="No expenses in this period." /> : expenses.slice(0, 8).map((row) => (
-        <Row key={row.category} label={row.category} value={formatNaira(row.amountKobo / 100)} detail={`${row.expenseCount} entries`} />
-      ))}
+      <ReportRows rows={expenses.slice(0, 8)} emptyLabel="No expenses in this period." getKey={(row) => row.category} renderRow={(row) => (
+        <Row label={row.category} value={formatNaira(row.amountKobo / 100)} detail={`${row.expenseCount} entries`} />
+      )} />
     </ReportCard>
   );
 }
@@ -205,9 +205,9 @@ function ExpensesCard({ expenses }: Pick<ReportGridProps, "expenses">) {
 function ProductsCard({ products }: Pick<ReportGridProps, "products">) {
   return (
     <ReportCard title="Top products">
-      {products.length === 0 ? <Empty label="No product sales in this period." /> : products.map((row) => (
-        <Row key={row.productId ?? row.productName} label={row.productName} value={formatNaira(row.salesKobo / 100)} detail={`${row.quantity} units`} />
-      ))}
+      <ReportRows rows={products} emptyLabel="No product sales in this period." getKey={(row) => row.productId ?? row.productName} renderRow={(row) => (
+        <Row label={row.productName} value={formatNaira(row.salesKobo / 100)} detail={`${row.quantity} units`} />
+      )} />
     </ReportCard>
   );
 }
@@ -215,11 +215,21 @@ function ProductsCard({ products }: Pick<ReportGridProps, "products">) {
 function CustomersCard({ customers }: Pick<ReportGridProps, "customers">) {
   return (
     <ReportCard title="Customers owing">
-      {customers.length === 0 ? <Empty label="No outstanding customer balances." /> : customers.map((row) => (
-        <Row key={row.customerId} label={row.customerName} value={formatNaira(row.balanceKobo / 100)} />
-      ))}
+      <ReportRows rows={customers} emptyLabel="No outstanding customer balances." getKey={(row) => row.customerId} renderRow={(row) => (
+        <Row label={row.customerName} value={formatNaira(row.balanceKobo / 100)} />
+      )} />
     </ReportCard>
   );
+}
+
+function ReportRows<T>({ rows, emptyLabel, getKey, renderRow }: {
+  rows: T[];
+  emptyLabel: string;
+  getKey: (row: T) => string;
+  renderRow: (row: T) => ReactNode;
+}) {
+  if (rows.length === 0) return <Empty label={emptyLabel} />;
+  return rows.map((row) => <Fragment key={getKey(row)}>{renderRow(row)}</Fragment>);
 }
 
 function InventoryCard({ inventory }: Pick<ReportGridProps, "inventory">) {
