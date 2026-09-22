@@ -289,7 +289,7 @@ export class PaystackService {
   }
 
   private async getPaymentLinkForTransaction(
-    tx: DbHandle,
+    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
     reference: string,
   ) {
     const [link] = await tx
@@ -311,7 +311,7 @@ export class PaystackService {
   }
 
   private async getPaymentByReference(
-    tx: DbHandle,
+    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
     organizationId: string,
     reference: string,
   ) {
@@ -330,7 +330,7 @@ export class PaystackService {
   }
 
   private async getOrderForPayment(
-    tx: DbHandle,
+    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
     organizationId: string,
     orderId: string,
   ) {
@@ -345,7 +345,7 @@ export class PaystackService {
   }
 
   private async getOrderPaidAmount(
-    tx: DbHandle,
+    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
     organizationId: string,
     orderId: string,
   ) {
