@@ -16,6 +16,7 @@ import type { ApiEnv } from "../../common/config/env";
 import type { ChannelAdapter, InboundMessage } from "../channel/types";
 import { inboundUpdate } from "@nomidat/db/schema";
 import { z } from "zod";
+import { SalesService } from "../sales/sales.service";
 
 type Intent =
   | "create_contact"
@@ -65,6 +66,7 @@ export class ConversationalService {
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
+    private readonly salesService: SalesService,
   ) {}
 
   async processInbound(
@@ -353,29 +355,19 @@ Rules:
     if (validationError) return validationError;
     const quantity = action.quantity!;
     const amountNaira = action.amountNaira!;
-    const customerId = await this.findCustomerId(organizationId, action.customerName);
-    const existingProduct = await this.findProduct(organizationId, action.productName!);
+    const [customerId, existingProduct] = await Promise.all([
+      this.findCustomerId(organizationId, action.customerName),
+      this.findProduct(organizationId, action.productName!),
+    ]);
     const totalKobo = Math.round(amountNaira * 100);
-    const result = await this.db.db.transaction(async (tx) => {
-      let stockQuantity: number | null = null;
-      if (existingProduct) {
-        const updated = await tx.update(product).set({ stockQuantity: sql`${product.stockQuantity} - ${quantity}` }).where(and(
-          eq(product.id, existingProduct.id), eq(product.organizationId, organizationId), sql`${product.stockQuantity} >= ${quantity}`,
-        )).returning({ stockQuantity: product.stockQuantity });
-        if (!updated[0]) throw new BadRequestException(`Not enough ${existingProduct.name} in stock.`);
-        stockQuantity = updated[0].stockQuantity;
-      }
-      const [createdOrder] = await tx.insert(order).values({
-        organizationId, contactId: customerId, status: action.paid ? "paid" : "pending", subtotalKobo: totalKobo, totalKobo,
-        currency: "NGN", paidAt: action.paid ? new Date() : null, notes: "Recorded through Nomidat",
-      }).returning();
-      await tx.insert(orderItem).values({ orderId: createdOrder.id, productId: existingProduct?.id, productName: action.productName!,
-        quantity, unitPriceKobo: Math.round(totalKobo / quantity), totalKobo });
-      return { orderId: createdOrder.id, stockQuantity };
+    const result = await this.salesService.createSale(organizationId, null, {
+      customerId: customerId ?? undefined,
+      items: [{ productId: existingProduct?.id, productName: existingProduct?.name ?? action.productName!, quantity,
+        unitPriceKobo: Math.floor(totalKobo / quantity), lineTotalKobo: totalKobo }],
+      paymentAmountKobo: action.paid ? totalKobo : 0, paymentMethod: "cash", notes: "Recorded through Nomidat",
     });
-    const paymentText = action.paid ? "paid" : "on credit";
-    const stockText = result.stockQuantity === null ? " I did not change inventory because that product is not in your inventory yet." : ` Stock is now ${result.stockQuantity}.`;
-    return `Recorded ${quantity} × ${action.productName} for ₦${amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.orderId.slice(0, 8)}.`;
+    const balanceText = result.balanceKobo > 0 ? " Outstanding: ₦" + (result.balanceKobo / 100).toLocaleString("en-NG") + "." : "";
+    return "Recorded " + quantity + " × " + action.productName + " for ₦" + amountNaira.toLocaleString("en-NG") + " " + (action.paid ? "paid" : "on credit") + "." + balanceText + " Order " + result.id.slice(0, 8) + ".";
   }
 
   private validateSaleAction(action: ParsedAction): string | null {
@@ -387,13 +379,13 @@ Rules:
 
   private async findCustomerId(organizationId: string, name?: string): Promise<string | null> {
     if (!name) return null;
-    const rows = await this.db.db.select({ id: contact.id }).from(contact).where(and(eq(contact.organizationId, organizationId), ilike(contact.name, name))).limit(1);
-    return rows[0]?.id ?? null;
+    const [customer] = await this.db.db.select({ id: contact.id }).from(contact).where(and(eq(contact.organizationId, organizationId), ilike(contact.name, name))).limit(1);
+    return customer?.id ?? null;
   }
 
   private async findProduct(organizationId: string, name: string) {
-    const rows = await this.db.db.select().from(product).where(and(eq(product.organizationId, organizationId), ilike(product.name, name))).limit(1);
-    return rows[0] ?? null;
+    const [item] = await this.db.db.select({ id: product.id, name: product.name }).from(product).where(and(eq(product.organizationId, organizationId), ilike(product.name, name))).limit(1);
+    return item;
   }
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "Which customer should I check?";
