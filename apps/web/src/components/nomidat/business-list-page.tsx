@@ -134,32 +134,46 @@ function PageStatus({
 }) {
   return (
     <>
-      {error ? <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</div> : null}
-      {!organizationId && !error ? (
-        <div className="rounded-2xl border border-orange-100 bg-white p-6 text-sm text-muted-foreground">
-          No business found. Create a business to get started.
-        </div>
-      ) : null}
-      {loading ? (
-        <div className="mt-6 rounded-2xl border border-orange-100 bg-white p-6 text-sm text-muted-foreground">
-          Loading {title.toLowerCase()}…
-        </div>
-      ) : null}
+      <ErrorMessage error={error} />
+      <NoBusinessMessage visible={!organizationId && !error} />
+      <LoadingMessage visible={loading} title={title} />
     </>
   );
 }
 
+function ErrorMessage({ error }: { error: string | null }) {
+  if (!error) return null;
+  return <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</div>;
+}
+
+function NoBusinessMessage({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <div className="rounded-2xl border border-orange-100 bg-white p-6 text-sm text-muted-foreground">
+      No business found. Create a business to get started.
+    </div>
+  );
+}
+
+function LoadingMessage({ visible, title }: { visible: boolean; title: string }) {
+  if (!visible) return null;
+  return (
+    <div className="mt-6 rounded-2xl border border-orange-100 bg-white p-6 text-sm text-muted-foreground">
+      Loading {title.toLowerCase()}…
+    </div>
+  );
+}
+
+const sectionComponents: Record<Section, ({ rows }: { rows: Rows }) => JSX.Element> = {
+  sales: SalesSection,
+  customers: CustomersSection,
+  inventory: InventorySection,
+  expenses: ExpensesSection,
+};
+
 function SectionContent({ section, rows }: { section: Section; rows: Rows }) {
-  switch (section) {
-    case "sales":
-      return <SalesSection rows={rows} />;
-    case "customers":
-      return <CustomersSection rows={rows} />;
-    case "inventory":
-      return <InventorySection rows={rows} />;
-    case "expenses":
-      return <ExpensesSection rows={rows} />;
-  }
+  const Component = sectionComponents[section];
+  return <Component rows={rows} />;
 }
 
 function SalesSection({ rows }: { rows: Rows }) {
@@ -173,20 +187,24 @@ function SalesSection({ rows }: { rows: Rows }) {
         {rows.length === 0 ? (
           <EmptyState label="No sales recorded yet." action="Record sale" />
         ) : (
-          rows.map((sale) => (
-            <div key={sale.id} className="flex flex-wrap items-center gap-3 px-4 py-4">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{sale.customer ?? "Walk-in customer"}</p>
-                <p className="text-xs text-muted-foreground">
-                  {sale.status ?? "Sale"} · {sale.createdAt ? new Date(sale.createdAt).toLocaleString() : "Recent"}
-                </p>
-              </div>
-              <span className="text-sm font-semibold">{formatNaira((sale.totalKobo ?? 0) / 100)}</span>
-              <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700">{sale.status ?? "Recorded"}</span>
-            </div>
-          ))
+          rows.map((sale) => <SalesRow key={sale.id} sale={sale} />)
         )}
       </div>
+    </div>
+  );
+}
+
+function SalesRow({ sale }: { sale: Rows[number] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 px-4 py-4">
+      <div className="min-w-0 flex-1">
+        <p className="font-medium">{sale.customer ?? "Walk-in customer"}</p>
+        <p className="text-xs text-muted-foreground">
+          {sale.status ?? "Sale"} · {sale.createdAt ? new Date(sale.createdAt).toLocaleString() : "Recent"}
+        </p>
+      </div>
+      <span className="text-sm font-semibold">{formatNaira((sale.totalKobo ?? 0) / 100)}</span>
+      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700">{sale.status ?? "Recorded"}</span>
     </div>
   );
 }
@@ -199,22 +217,26 @@ function CustomersSection({ rows }: { rows: Rows }) {
         {rows.length === 0 ? (
           <EmptyState label="No customers recorded yet." action="Add customer" />
         ) : (
-          rows.map((customer) => (
-            <div key={customer.id} className="flex flex-wrap items-center gap-3 px-4 py-4">
-              <div className="flex size-10 items-center justify-center rounded-full bg-orange-50 font-semibold text-orange-700">
-                {customer.name?.charAt(0) ?? "?"}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{customer.name ?? "Unnamed customer"}</p>
-                <p className="text-xs text-muted-foreground">{customer.phone ?? "No phone number"}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold">{formatNaira((customer.outstandingKobo ?? 0) / 100)}</p>
-                <p className="text-xs text-muted-foreground">Balance</p>
-              </div>
-            </div>
-          ))
+          rows.map((customer) => <CustomerRow key={customer.id} customer={customer} />)
         )}
+      </div>
+    </div>
+  );
+}
+
+function CustomerRow({ customer }: { customer: Rows[number] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 px-4 py-4">
+      <div className="flex size-10 items-center justify-center rounded-full bg-orange-50 font-semibold text-orange-700">
+        {customer.name?.charAt(0) ?? "?"}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium">{customer.name ?? "Unnamed customer"}</p>
+        <p className="text-xs text-muted-foreground">{customer.phone ?? "No phone number"}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-sm font-semibold">{formatNaira((customer.outstandingKobo ?? 0) / 100)}</p>
+        <p className="text-xs text-muted-foreground">Balance</p>
       </div>
     </div>
   );
@@ -262,22 +284,26 @@ function ExpensesSection({ rows }: { rows: Rows }) {
         {rows.length === 0 ? (
           <EmptyState label="No expenses recorded yet." action="Record expense" />
         ) : (
-          rows.map((expense) => (
-            <div key={expense.id} className="flex items-center gap-3 px-4 py-4">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                <IconWallet className="size-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{expense.description ?? "Expense"}</p>
-                <p className="text-xs text-muted-foreground">
-                  {expense.category ?? "Uncategorised"} · {expense.spentAt ? new Date(expense.spentAt).toLocaleString() : "Recent"}
-                </p>
-              </div>
-              <span className="text-sm font-semibold">{formatNaira((expense.amountKobo ?? 0) / 100)}</span>
-            </div>
-          ))
+          rows.map((expense) => <ExpenseRow key={expense.id} expense={expense} />)
         )}
       </div>
+    </div>
+  );
+}
+
+function ExpenseRow({ expense }: { expense: Rows[number] }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-4">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+        <IconWallet className="size-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium">{expense.description ?? "Expense"}</p>
+        <p className="text-xs text-muted-foreground">
+          {expense.category ?? "Uncategorised"} · {expense.spentAt ? new Date(expense.spentAt).toLocaleString() : "Recent"}
+        </p>
+      </div>
+      <span className="text-sm font-semibold">{formatNaira((expense.amountKobo ?? 0) / 100)}</span>
     </div>
   );
 }
