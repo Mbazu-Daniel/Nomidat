@@ -71,8 +71,8 @@ export class BusinessService {
         this.getSalesTotal(organizationId),
         this.getPendingOrders(organizationId),
         this.getExpenseTotal(organizationId),
-        this.getCount(contact, organizationId),
-        this.getCount(product, organizationId),
+        this.getContactCount(organizationId),
+        this.getProductCount(organizationId),
         this.getLowStockCount(organizationId),
       ]);
 
@@ -112,11 +112,18 @@ export class BusinessService {
       .where(eq(expense.organizationId, organizationId));
   }
 
-  private getCount(table: typeof contact | typeof product, organizationId: string) {
+  private getContactCount(organizationId: string) {
     return this.db.db
       .select({ count: count() })
-      .from(table)
-      .where(eq(table.organizationId, organizationId));
+      .from(contact)
+      .where(eq(contact.organizationId, organizationId));
+  }
+
+  private getProductCount(organizationId: string) {
+    return this.db.db
+      .select({ count: count() })
+      .from(product)
+      .where(eq(product.organizationId, organizationId));
   }
 
   private getLowStockCount(organizationId: string) {
