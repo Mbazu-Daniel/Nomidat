@@ -34,6 +34,23 @@ export class TelegramClient implements ChannelAdapter {
     });
   }
 
+  async getInboundMedia(mediaUrl: string): Promise<{ data: Uint8Array; mimeType?: string }> {
+    const fileResponse = await this.createTelegramApiCall("getFile", { file_id: mediaUrl }) as {
+      ok?: boolean;
+      result?: { file_path?: string };
+    };
+    const filePath = fileResponse.result?.file_path;
+    if (!filePath) throw new ServiceUnavailableException("Telegram voice file could not be resolved.");
+
+    const response = await fetch(`https://api.telegram.org/file/bot${this.getToken()}/${filePath}`);
+    if (!response.ok) throw new ServiceUnavailableException("Telegram voice file could not be downloaded.");
+
+    return {
+      data: new Uint8Array(await response.arrayBuffer()),
+      mimeType: response.headers.get("content-type") ?? undefined,
+    };
+  }
+
   getIsValidWebhookSecret(secretHeader: string | undefined): boolean {
     const expected = this.env.TELEGRAM_WEBHOOK_SECRET;
     if (!expected) return true;

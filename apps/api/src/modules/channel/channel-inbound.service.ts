@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ChannelService } from "./channel.service";
+import { ConversationalService } from "../conversational/conversational.service";
 import { ChannelProvider } from "./types";
 import type { ChannelAdapter, InboundMessage, OutboundMessage } from "./types";
 
@@ -8,7 +9,10 @@ const UNLINKED_HINT =
 
 @Injectable()
 export class ChannelInboundService {
-  constructor(private readonly channelService: ChannelService) {}
+  constructor(
+    private readonly channelService: ChannelService,
+    private readonly conversationalService: ConversationalService,
+  ) {}
 
   async createInboundReply(
     message: InboundMessage,
@@ -24,11 +28,22 @@ export class ChannelInboundService {
 
       if (resolved.linked) {
         await adapter.createOutboundMessage(
-          this.createTextOutbound(message, "Linked. You can message this business from here."),
+          this.createTextOutbound(
+            message,
+            "Linked. Send me a text or voice note describing what you want to record.",
+          ),
         );
+        return { organizationId: resolved.identity.organizationId };
       }
 
-      // ponytail: AI orchestrator not wired yet — ack only when already linked
+      const reply = await this.conversationalService.processInbound(
+        message,
+        resolved.identity.organizationId,
+        resolved.identity.id,
+        adapter,
+      );
+      await adapter.createOutboundMessage(this.createTextOutbound(message, reply));
+
       return { organizationId: resolved.identity.organizationId };
     } catch (error) {
       const text = error instanceof Error ? error.message : "Could not process that message.";

@@ -30,6 +30,9 @@ const apiEnvSchema = z.object({
   WHATSAPP_VERIFY_TOKEN: z.string().optional(),
   WHATSAPP_APP_SECRET: z.string().optional(),
   WHATSAPP_TEMPLATE_NAME: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default("gpt-5-mini"),
+  OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-4o-mini-transcribe"),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
