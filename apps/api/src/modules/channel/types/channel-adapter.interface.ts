@@ -5,4 +5,5 @@ import type { ChannelProvider } from "./channel-provider.enum";
 export interface ChannelAdapter {
   readonly provider: ChannelProvider;
   createOutboundMessage(message: OutboundMessage): Promise<void>;
+  getInboundMedia?(mediaUrl: string): Promise<{ data: Uint8Array; mimeType?: string }>;
 }

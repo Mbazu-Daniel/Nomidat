@@ -19,9 +19,10 @@ export class BusinessController {
     @Param("organizationId") organizationId: string,
     @Req() req: Request,
   ) {
-    await this.authorize(req, organizationId);
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getSummary(organizationId);
   }
+
 
   @Get("sales")
   @ApiOperation({ summary: "Get recent sales for an organization" })
@@ -32,7 +33,7 @@ export class BusinessController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.authorize(req, organizationId);
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getSales(organizationId, limit);
   }
 
@@ -43,7 +44,7 @@ export class BusinessController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.authorize(req, organizationId);
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getCustomers(organizationId, limit);
   }
 
@@ -54,7 +55,7 @@ export class BusinessController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.authorize(req, organizationId);
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getProducts(organizationId, limit);
   }
 
@@ -65,11 +66,7 @@ export class BusinessController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.authorize(req, organizationId);
+    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getExpenses(organizationId, limit);
-  }
-
-  private authorize(req: Request, organizationId: string): Promise<void> {
-    return this.authorize(req, organizationId);
   }
 }

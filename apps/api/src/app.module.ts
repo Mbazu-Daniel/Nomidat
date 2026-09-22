@@ -11,6 +11,12 @@ import { ChannelModule } from "./modules/channel/channel.module";
 import { TelegramModule } from "./modules/telegram/telegram.module";
 import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
 import { BusinessModule } from "./modules/business/business.module";
+import { ConversationalModule } from "./modules/conversational/conversational.module";
+import { SalesModule } from "./modules/sales/sales.module";
+import { InvoicesModule } from "./modules/invoices/invoices.module";
+import { ReportsModule } from "./modules/reports/reports.module";
+import { InventoryModule } from "./modules/inventory/inventory.module";
+import { ExpensesModule } from "./modules/expenses/expenses.module";
 
 @Module({
   imports: [
@@ -26,6 +32,12 @@ import { BusinessModule } from "./modules/business/business.module";
     TelegramModule,
     WhatsAppModule,
     BusinessModule,
+    SalesModule,
+    InvoicesModule,
+    InventoryModule,
+    ExpensesModule,
+    ReportsModule,
+    ConversationalModule,
   ],
 })
 export class AppModule {}
