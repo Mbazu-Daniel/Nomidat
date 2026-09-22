@@ -332,32 +332,54 @@ Rules:
   }
 
   private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
-    if (!action.productName) return "What product did you sell?";
-    if (!action.quantity || action.quantity <= 0) return "How many units did you sell?";
-    if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
+    const validationError = this.validateSaleAction(action);
+    if (validationError) return validationError;
 
-    const quantity = action.quantity;
+    const quantity = action.quantity!;
+    const amountNaira = action.amountNaira!;
     const customerId = await this.findCustomerId(organizationId, action.customerName);
-    const existingProduct = await this.findProduct(organizationId, action.productName);
-    const totalKobo = Math.round(action.amountNaira * 100);
+    const existingProduct = await this.findProduct(organizationId, action.productName!);
+    const totalKobo = Math.round(amountNaira * 100);
     const unitPriceKobo = Math.round(totalKobo / quantity);
     const result = await this.persistConversationalSale(
       organizationId,
       customerId,
       existingProduct,
       quantity,
-      action.productName,
+      action.productName!,
       unitPriceKobo,
       totalKobo,
       Boolean(action.paid),
     );
 
+    return this.formatSaleResponse(
+      action,
+      quantity,
+      amountNaira,
+      existingProduct,
+      result.id,
+    );
+  }
+
+  private validateSaleAction(action: ParsedAction): string | null {
+    if (!action.productName) return "What product did you sell?";
+    if (!action.quantity || action.quantity <= 0) return "How many units did you sell?";
+    if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
+    return null;
+  }
+
+  private formatSaleResponse(
+    action: ParsedAction,
+    quantity: number,
+    amountNaira: number,
+    existingProduct: { stockQuantity: number } | null,
+    orderId: string,
+  ): string {
     const paymentText = action.paid ? "paid" : "on credit";
     const stockText = existingProduct
       ? ` Stock is now ${Math.max(0, existingProduct.stockQuantity - quantity)}.`
       : " I did not change inventory because that product is not in your inventory yet.";
-
-    return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.id.slice(0, 8)}.`;
+    return `Recorded ${quantity} × ${action.productName} for ₦${amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${orderId.slice(0, 8)}.`;
   }
 
   private async findCustomerId(organizationId: string, customerName?: string) {
