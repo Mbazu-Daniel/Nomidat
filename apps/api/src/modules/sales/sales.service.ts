@@ -42,7 +42,11 @@ export class SalesService {
       .orderBy(desc(order.createdAt))
       .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
 
-    return Promise.all(rows.map((sale) => this.withPaidAmount(organizationId, sale)));
+    const result = [];
+    for (const sale of rows) {
+      result.push(await this.withPaidAmount(organizationId, sale));
+    }
+    return result;
   }
 
   private async withPaidAmount<T extends { id: string }>(organizationId: string, sale: T) {
@@ -260,21 +264,35 @@ export class SalesService {
     item: CreateSaleDto["items"][number],
     orderId: string,
   ) {
-    if (!item.productId) {
-      return {
-        orderId,
-        productId: null,
-        productName: item.productName ?? "Item",
-        quantity: item.quantity,
-        unitPriceKobo: item.unitPriceKobo,
-        totalKobo: item.quantity * item.unitPriceKobo,
-      };
-    }
+    if (!item.productId) return this.buildUnlinkedSaleItem(item, orderId);
 
+    return this.resolveProductSaleItem(tx, organizationId, item, orderId);
+  }
+
+  private buildUnlinkedSaleItem(
+    item: CreateSaleDto["items"][number],
+    orderId: string,
+  ) {
+    return {
+      orderId,
+      productId: null,
+      productName: item.productName ?? "Item",
+      quantity: item.quantity,
+      unitPriceKobo: item.unitPriceKobo,
+      totalKobo: item.quantity * item.unitPriceKobo,
+    };
+  }
+
+  private async resolveProductSaleItem(
+    tx: Pick<DbHandle["db"], "select" | "update">,
+    organizationId: string,
+    item: CreateSaleDto["items"][number],
+    orderId: string,
+  ) {
     const [storedProduct] = await tx
       .select({ id: product.id, name: product.name })
       .from(product)
-      .where(and(eq(product.id, item.productId), eq(product.organizationId, organizationId)))
+      .where(and(eq(product.id, item.productId!), eq(product.organizationId, organizationId)))
       .limit(1);
 
     if (!storedProduct) throw new NotFoundException("Product not found.");
@@ -286,7 +304,7 @@ export class SalesService {
         updatedAt: new Date(),
       })
       .where(and(
-        eq(product.id, item.productId),
+        eq(product.id, item.productId!),
         eq(product.organizationId, organizationId),
         gte(product.stockQuantity, item.quantity),
       ))
