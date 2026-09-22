@@ -156,7 +156,7 @@ export class SalesService {
   private async createSaleTransaction(
     tx: Pick<DbHandle["db"], "select" | "insert" | "update">,
     organizationId: string,
-    userId: string,
+    userId: string | null,
     input: CreateSaleDto,
   ) {
     const totals = this.getSaleTotals(input);
