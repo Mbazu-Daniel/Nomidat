@@ -147,6 +147,12 @@ export class ConversationalService {
     if (!id) return;
     await this.db.db.update(inboundUpdate).set({ response, completedAt: new Date() }).where(eq(inboundUpdate.id, id));
   }
+
+  private async releaseInboundUpdate(id: string): Promise<void> {
+    if (!id) return;
+    await this.db.db.delete(inboundUpdate).where(eq(inboundUpdate.id, id));
+  }
+
   private async getOrCreateConversation(
     organizationId: string,
     channelIdentityId: string,
@@ -447,7 +453,7 @@ Rules:
     const revenue = orders.reduce((sum, row) => sum + row.totalKobo, 0);
     const spending = expenses.reduce((sum, row) => sum + row.amountKobo, 0);
 
-    return `Business summary: ₦${(revenue / 100).toLocaleString("en-NG")} paid sales and ₦${(spending / 100).toLocaleString("en-NG")} recorded expenses. Outstanding credit is available by asking "who owes me?"`;
+    return `Business summary: ₦${(revenue / 100).toLocaleString("en-NG")} paid sales and ₦${(spending / 100).toLocaleString("en-NG")} recorded expenses. Outstanding credit is available by asking "who owes me?".`;
   }
 
   private getOpenAiKey(): string {
