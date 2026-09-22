@@ -206,7 +206,7 @@ export class InvoicesService {
       productName?: string | null;
       quantity: number;
       unitPriceKobo: number;
-      totalKobo: number;
+      totalKobo?: number;
     }>,
   ) {
     return items.map((item) => ({
@@ -215,7 +215,7 @@ export class InvoicesService {
       description: item.description ?? item.productName ?? "Item",
       quantity: item.quantity,
       unitPriceKobo: item.unitPriceKobo,
-      totalKobo: item.totalKobo,
+      totalKobo: item.totalKobo ?? item.quantity * item.unitPriceKobo,
     }));
   }
 
