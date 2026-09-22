@@ -62,12 +62,12 @@ export class InventoryService {
         organizationId,
         name,
         sku,
-        description: input.description?.trim() || null,
+        description: input.description,
         priceKobo: input.priceKobo,
         costKobo: input.costKobo ?? 0,
         stockQuantity: input.stockQuantity ?? 0,
         lowStockThreshold: input.lowStockThreshold ?? 5,
-        unit: input.unit?.trim() || "pcs",
+        unit: input.unit ?? "pcs",
       })
       .returning();
 
@@ -82,13 +82,13 @@ export class InventoryService {
     const [updated] = await this.db.db
       .update(product)
       .set({
-        name: input.name?.trim() ?? existing.name,
+        name: input.name ?? existing.name,
         sku,
-        description: input.description?.trim() ?? existing.description,
+        description: input.description ?? existing.description,
         priceKobo: input.priceKobo ?? existing.priceKobo,
         costKobo: input.costKobo ?? existing.costKobo,
         lowStockThreshold: input.lowStockThreshold ?? existing.lowStockThreshold,
-        unit: input.unit?.trim() ?? existing.unit,
+        unit: input.unit ?? existing.unit,
         updatedAt: new Date(),
       })
       .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
