@@ -51,7 +51,7 @@ export class InventoryService {
 
   async createProduct(organizationId: string, input: CreateProductDto) {
     const sku = input.sku;
-    if (sku) await this.ensureSkuAvailable(organizationId, sku);
+    await this.ensureSkuAvailable(organizationId, sku);
 
     const [created] = await this.db.db
       .insert(product)
@@ -74,7 +74,7 @@ export class InventoryService {
   async updateProduct(organizationId: string, productId: string, input: UpdateProductDto) {
     const existing = await this.getProduct(organizationId, productId);
     const sku = input.sku === undefined ? existing.sku : input.sku.trim() || null;
-    if (sku && sku !== existing.sku) await this.ensureSkuAvailable(organizationId, sku, productId);
+    await this.ensureSkuChangeAvailable(organizationId, sku, existing.sku, productId);
 
     const [updated] = await this.db.db
       .update(product)
@@ -116,56 +116,74 @@ export class InventoryService {
       throw new BadRequestException("Stock adjustment cannot be zero.");
     }
 
-    return this.db.db.transaction(async (tx) => {
-      const [current] = await tx
-        .select({ id: product.id, name: product.name, stockQuantity: product.stockQuantity })
-        .from(product)
-        .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
-        .for("update")
-        .limit(1);
-
-      if (!current) throw new NotFoundException("Product not found.");
-
-      const nextStock = current.stockQuantity + input.quantity;
-      if (nextStock < 0) {
-        throw new ConflictException(
-          `Stock cannot go below zero for ${current.name}. Available stock: ${current.stockQuantity}.`,
-        );
-      }
-
-      const [updated] = await tx
-        .update(product)
-        .set({ stockQuantity: sql`${product.stockQuantity} + ${input.quantity}`, updatedAt: new Date() })
-        .where(
-          and(
-            eq(product.id, productId),
-            eq(product.organizationId, organizationId),
-            gte(product.stockQuantity, -input.quantity),
-          ),
-        )
-        .returning();
-
-      if (!updated) throw new ConflictException("Stock changed while applying the adjustment.");
-
-      return { ...updated, adjustmentQuantity: input.quantity, reason: input.reason };
-    });
+    return this.db.db.transaction((tx) =>
+      this.applyStockAdjustment(tx, organizationId, productId, input),
+    );
   }
 
-  private async ensureSkuAvailable(organizationId: string, sku: string, productId?: string) {
+  private async applyStockAdjustment(
+    tx: Pick<DbHandle["db"], "select" | "update">,
+    organizationId: string,
+    productId: string,
+    input: AdjustStockDto,
+  ) {
+    const [current] = await tx
+      .select({ id: product.id, name: product.name, stockQuantity: product.stockQuantity })
+      .from(product)
+      .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
+      .for("update")
+      .limit(1);
+
+    if (!current) throw new NotFoundException("Product not found.");
+
+    const nextStock = current.stockQuantity + input.quantity;
+    if (nextStock < 0) {
+      throw new ConflictException(
+        `Stock cannot go below zero for ${current.name}. Available stock: ${current.stockQuantity}.`,
+      );
+    }
+
+    const [updated] = await tx
+      .update(product)
+      .set({
+        stockQuantity: sql`${product.stockQuantity} + ${input.quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(product.id, productId),
+          eq(product.organizationId, organizationId),
+          gte(product.stockQuantity, -input.quantity),
+        ),
+      )
+      .returning();
+
+    if (!updated) throw new ConflictException("Stock changed while applying the adjustment.");
+
+    return { ...updated, adjustmentQuantity: input.quantity, reason: input.reason };
+  }
+
+  private async ensureSkuAvailable(organizationId: string, sku?: string | null, productId?: string) {
+    if (!sku) return;
+
     const [existing] = await this.db.db
       .select({ id: product.id })
       .from(product)
-      .where(
-        productId
-          ? and(
-              eq(product.organizationId, organizationId),
-              eq(product.sku, sku),
-              sql`${product.id} <> ${productId}`,
-            )
-          : and(eq(product.organizationId, organizationId), eq(product.sku, sku)),
-      )
+      .where(and(eq(product.organizationId, organizationId), eq(product.sku, sku)))
       .limit(1);
 
-    if (existing) throw new ConflictException("A product with this SKU already exists.");
+    if (existing && existing.id !== productId) {
+      throw new ConflictException("A product with this SKU already exists.");
+    }
+  }
+
+  private ensureSkuChangeAvailable(
+    organizationId: string,
+    sku: string | null,
+    existingSku: string | null,
+    productId: string,
+  ) {
+    if (sku === existingSku) return;
+    return this.ensureSkuAvailable(organizationId, sku, productId);
   }
 }
