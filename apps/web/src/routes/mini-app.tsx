@@ -28,7 +28,6 @@ function MiniAppPage() {
   const [products, setProducts] = useState<BusinessRow>([]);
   const [expenses, setExpenses] = useState<BusinessRow>([]);
   const [view, setView] = useState<View>("home");
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +54,7 @@ function MiniAppPage() {
   }, []);
 
   useEffect(() => {
-    if (!organizationId) { setLoading(false); setSummary(null); setSales([]); setCustomers([]); setProducts([]); setExpenses([]); return; }
+    if (!organizationId) { setSummary(null); setSales([]); setCustomers([]); setProducts([]); setExpenses([]); return; }
     let cancelled = false;
     void loadMiniAppData(view, organizationId).then((data) => {
       if (cancelled) return;
@@ -91,8 +90,8 @@ function MiniAppPage() {
 }
 function EmptyMessage({ label }: { label: string }) { return <p className="py-8 text-center text-sm text-muted-foreground">{label}</p>; }
 
-type ListViewProps = { title: string; description: string; children: React.ReactNode };
-type RowProps = { icon: React.ReactNode; title: string; detail: string; value?: string };
+type ListViewProps = { title: string; description: string; children: ReactNode };
+type RowProps = { icon: ReactNode; title: string; detail: string; value?: string };
 
 function ListView({ title, description, children }: ListViewProps) {
   return (
