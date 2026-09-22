@@ -16,7 +16,7 @@ const MAX_LIMIT = 50;
 export class SalesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
-  async createSale(organizationId: string, userId: string, input: CreateSaleDto) {
+  async createSale(organizationId: string, userId: string | null, input: CreateSaleDto) {
     this.validateSaleInput(input);
     return this.db.db.transaction((tx) =>
       this.createSaleTransaction(tx, organizationId, userId, input),
