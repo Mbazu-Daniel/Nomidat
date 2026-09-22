@@ -230,26 +230,9 @@ export class PaystackService {
       throw new BadRequestException("Payment link is not attached to a sale.");
     }
 
-    const existingPayment = await this.getPaymentByReference(
-      tx,
-      currentLink.organizationId,
-      reference,
-    );
     const now = transaction.paid_at ? new Date(transaction.paid_at) : new Date();
 
-    if (!existingPayment) {
-      await tx.insert(payment).values({
-        organizationId: currentLink.organizationId,
-        orderId: currentLink.orderId,
-        contactId: currentLink.contactId,
-        amountKobo: currentLink.amountKobo,
-        currency: currentLink.currency,
-        method: PAYSTACK_PAYMENT_METHOD,
-        reference,
-        notes: `Paystack transaction ${transaction.id}`,
-        paidAt: now,
-      });
-    }
+    await this.ensurePaymentRecorded(tx, currentLink, reference, transaction, now);
 
     const sale = await this.getOrderForPayment(
       tx,
@@ -270,6 +253,33 @@ export class PaystackService {
       reference,
       now,
     );
+  }
+
+  private async ensurePaymentRecorded(
+    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
+    link: Awaited<ReturnType<PaystackService["getPaymentLink"]>>,
+    reference: string,
+    transaction: PaystackTransaction,
+    paidAt: Date,
+  ) {
+    const existingPayment = await this.getPaymentByReference(
+      tx,
+      link.organizationId,
+      reference,
+    );
+    if (existingPayment) return;
+
+    await tx.insert(payment).values({
+      organizationId: link.organizationId,
+      orderId: link.orderId!,
+      contactId: link.contactId,
+      amountKobo: link.amountKobo,
+      currency: link.currency,
+      method: PAYSTACK_PAYMENT_METHOD,
+      reference,
+      notes: `Paystack transaction ${transaction.id}`,
+      paidAt,
+    });
   }
 
   private async updatePaidOrder(
