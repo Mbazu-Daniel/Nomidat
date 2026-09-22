@@ -130,7 +130,7 @@ export class InvoicesService {
           description: item.productName,
           quantity: item.quantity,
           unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.totalKobo,
+          totalKobo: item.totalKobo ?? item.quantity * item.unitPriceKobo,
         })),
       );
 
