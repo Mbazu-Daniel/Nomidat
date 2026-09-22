@@ -16,6 +16,7 @@ const MAX_LIMIT = 50;
 export class InventoryService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
+  /** Lists inventory strictly within the requested organization. */
   async listProducts(organizationId: string, limit = 20) {
     return this.db
       .select({
