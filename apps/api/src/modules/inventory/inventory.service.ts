@@ -17,7 +17,7 @@ export class InventoryService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
   async listProducts(organizationId: string, limit = 20) {
-    return this.db.db
+    return this.db
       .select({
         id: product.id,
         name: product.name,
@@ -39,7 +39,7 @@ export class InventoryService {
   }
 
   async getProduct(organizationId: string, productId: string) {
-    const [item] = await this.db.db
+    const [item] = await this.db
       .select()
       .from(product)
       .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
@@ -53,7 +53,7 @@ export class InventoryService {
     const sku = input.sku;
     await this.ensureSkuAvailable(organizationId, sku);
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(product)
       .values({
         organizationId,
@@ -76,7 +76,7 @@ export class InventoryService {
     const sku = input.sku === undefined ? existing.sku : input.sku.trim() || null;
     await this.ensureSkuChangeAvailable(organizationId, sku, existing.sku, productId);
 
-    const [updated] = await this.db.db
+    const [updated] = await this.db
       .update(product)
       .set({
         name: input.name ?? existing.name,
@@ -98,7 +98,7 @@ export class InventoryService {
   async archiveProduct(organizationId: string, productId: string) {
     await this.getProduct(organizationId, productId);
 
-    const [updated] = await this.db.db
+    const [updated] = await this.db
       .update(product)
       .set({ isActive: false, updatedAt: new Date() })
       .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
@@ -116,13 +116,13 @@ export class InventoryService {
       throw new BadRequestException("Stock adjustment cannot be zero.");
     }
 
-    return this.db.db.transaction((tx) =>
+    return this.db.transaction((tx) =>
       this.applyStockAdjustment(tx, organizationId, productId, input),
     );
   }
 
   private async applyStockAdjustment(
-    tx: Pick<DbHandle["db"], "select" | "update">,
+    tx: Pick<DbHandle, "select" | "update">,
     organizationId: string,
     productId: string,
     input: AdjustStockDto,
@@ -166,7 +166,7 @@ export class InventoryService {
   private async ensureSkuAvailable(organizationId: string, sku?: string | null, productId?: string) {
     if (!sku) return;
 
-    const [existing] = await this.db.db
+    const [existing] = await this.db
       .select({ id: product.id })
       .from(product)
       .where(and(eq(product.organizationId, organizationId), eq(product.sku, sku)))
