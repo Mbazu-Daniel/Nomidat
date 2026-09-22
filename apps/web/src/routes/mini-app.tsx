@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { IconChartDonut, IconChevronRight, IconPackage, IconReceipt, IconSparkles, IconUsers, IconWallet } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { MiniAppHome } from "@/components/nomidat/mini-app-home";
 import { loadMiniAppData } from "@/components/nomidat/mini-app-loader";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
@@ -28,6 +28,7 @@ function MiniAppPage() {
   const [products, setProducts] = useState<BusinessRow>([]);
   const [expenses, setExpenses] = useState<BusinessRow>([]);
   const [view, setView] = useState<View>("home");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,3 +90,54 @@ function MiniAppPage() {
   );
 }
 function EmptyMessage({ label }: { label: string }) { return <p className="py-8 text-center text-sm text-muted-foreground">{label}</p>; }
+
+type ListViewProps = { title: string; description: string; children: React.ReactNode };
+type RowProps = { icon: React.ReactNode; title: string; detail: string; value?: string };
+
+function ListView({ title, description, children }: ListViewProps) {
+  return (
+    <section className="mt-6 overflow-hidden rounded-2xl border border-orange-100 bg-white">
+      <div className="border-b border-orange-100 p-4">
+        <h1 className="text-lg font-semibold">{title}</h1>
+        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+      </div>
+      <div className="divide-y divide-orange-100">{children}</div>
+    </section>
+  );
+}
+
+function Row({ icon, title, detail, value }: RowProps) {
+  return (
+    <div className="flex items-center gap-3 p-4">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{title}</p>
+        <p className="mt-1 truncate text-xs text-muted-foreground">{detail}</p>
+      </div>
+      {value ? <p className="shrink-0 text-sm font-semibold">{value}</p> : null}
+    </div>
+  );
+}
+
+function MoreView({ onNavigate }: { onNavigate: (view: View) => void }) {
+  return (
+    <section className="mt-6 overflow-hidden rounded-2xl border border-orange-100 bg-white">
+      <div className="border-b border-orange-100 p-4">
+        <h1 className="text-lg font-semibold">More</h1>
+        <p className="mt-1 text-xs text-muted-foreground">Other Nomidat business tools.</p>
+      </div>
+      <div className="divide-y divide-orange-100">
+        <button type="button" onClick={() => onNavigate("stock")} className="flex w-full items-center gap-3 p-4 text-left">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600"><IconPackage className="size-5" /></span>
+          <span className="flex-1"><span className="block text-sm font-medium">Inventory</span><span className="mt-1 block text-xs text-muted-foreground">View current stock levels</span></span>
+          <IconChevronRight className="size-4 text-muted-foreground" />
+        </button>
+        <button type="button" onClick={() => onNavigate("expenses")} className="flex w-full items-center gap-3 p-4 text-left">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600"><IconWallet className="size-5" /></span>
+          <span className="flex-1"><span className="block text-sm font-medium">Expenses</span><span className="mt-1 block text-xs text-muted-foreground">View recent business spending</span></span>
+          <IconChevronRight className="size-4 text-muted-foreground" />
+        </button>
+      </div>
+    </section>
+  );
+}
