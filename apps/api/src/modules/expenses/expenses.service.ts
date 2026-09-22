@@ -43,12 +43,11 @@ export class ExpensesService {
   }
 
   async create(organizationId: string, userId: string | null, input: CreateExpenseDto) {
-    const categoryId = await this.resolveCategoryId(input.categoryId);
     const [created] = await this.db.db
       .insert(expense)
       .values({
         organizationId,
-        categoryId,
+        categoryId: await this.resolveCategoryId(input.categoryId),
         amountKobo: input.amountKobo,
         description: input.description?.trim() || null,
         spentAt: input.spentAt ? new Date(input.spentAt) : new Date(),
@@ -63,18 +62,25 @@ export class ExpensesService {
 
   async update(organizationId: string, expenseId: string, input: UpdateExpenseDto) {
     const existing = await this.get(organizationId, expenseId);
-    const categoryId = input.categoryId === undefined ? existing.categoryId : await this.resolveCategoryId(input.categoryId);
+    const categoryId = input.categoryId === undefined
+      ? existing.categoryId
+      : await this.resolveCategoryId(input.categoryId);
 
     const [updated] = await this.db.db
       .update(expense)
       .set({
         categoryId,
         amountKobo: input.amountKobo ?? existing.amountKobo,
-        description: input.description === undefined ? existing.description : input.description.trim() || null,
+        description: input.description === undefined
+          ? existing.description
+          : input.description.trim() || null,
         spentAt: input.spentAt ? new Date(input.spentAt) : existing.spentAt,
-        paymentMethod:
-          input.paymentMethod === undefined ? existing.paymentMethod : input.paymentMethod.trim() || existing.paymentMethod,
-        receiptUrl: input.receiptUrl === undefined ? existing.receiptUrl : input.receiptUrl.trim() || null,
+        paymentMethod: input.paymentMethod === undefined
+          ? existing.paymentMethod
+          : input.paymentMethod.trim() || existing.paymentMethod,
+        receiptUrl: input.receiptUrl === undefined
+          ? existing.receiptUrl
+          : input.receiptUrl.trim() || null,
         updatedAt: new Date(),
       })
       .where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)))
