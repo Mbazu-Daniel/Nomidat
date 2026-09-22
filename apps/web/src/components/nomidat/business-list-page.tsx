@@ -198,16 +198,17 @@ function SalesRow({ sale }: { sale: Rows[number] }) {
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-4">
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{sale.customer ?? "Walk-in customer"}</p>
+        <p className="font-medium">{display(sale.customer, "Walk-in customer")}</p>
         <p className="text-xs text-muted-foreground">
-          {sale.status ?? "Sale"} · {sale.createdAt ? new Date(sale.createdAt).toLocaleString() : "Recent"}
+          {display(sale.status, "Sale")} · {formatDate(sale.createdAt)}
         </p>
       </div>
-      <span className="text-sm font-semibold">{formatNaira((sale.totalKobo ?? 0) / 100)}</span>
-      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700">{sale.status ?? "Recorded"}</span>
+      <span className="text-sm font-semibold">{formatMoney(sale.totalKobo)}</span>
+      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700">{display(sale.status, "Recorded")}</span>
     </div>
   );
 }
+
 
 function CustomersSection({ rows }: { rows: Rows }) {
   return (
@@ -228,19 +229,20 @@ function CustomerRow({ customer }: { customer: Rows[number] }) {
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-4">
       <div className="flex size-10 items-center justify-center rounded-full bg-orange-50 font-semibold text-orange-700">
-        {customer.name?.charAt(0) ?? "?"}
+        {display(customer.name, "?").charAt(0)}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{customer.name ?? "Unnamed customer"}</p>
-        <p className="text-xs text-muted-foreground">{customer.phone ?? "No phone number"}</p>
+        <p className="font-medium">{display(customer.name, "Unnamed customer")}</p>
+        <p className="text-xs text-muted-foreground">{display(customer.phone, "No phone number")}</p>
       </div>
       <div className="text-right">
-        <p className="text-sm font-semibold">{formatNaira((customer.outstandingKobo ?? 0) / 100)}</p>
+        <p className="text-sm font-semibold">{formatMoney(customer.outstandingKobo)}</p>
         <p className="text-xs text-muted-foreground">Balance</p>
       </div>
     </div>
   );
 }
+
 
 function InventorySection({ rows }: { rows: Rows }) {
   return (
@@ -262,34 +264,24 @@ function InventoryCard({ item }: { item: Rows[number] }) {
         <span className="flex size-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
           <IconBox className="size-4" />
         </span>
-        <span className={low ? "rounded-full bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-800" : "rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800"}>
-          {low ? "Low stock" : "Healthy"}
-        </span>
+        <StockStatus low={low} />
       </div>
-      <p className="mt-5 font-medium">{item.name}</p>
+      <p className="mt-5 font-medium">{display(item.name, "Unnamed product")}</p>
       <p className="mt-1 text-2xl font-semibold">{item.stockQuantity ?? 0}</p>
-      <p className="text-xs text-muted-foreground">{item.unit ?? "units"} · reorder at {item.lowStockThreshold ?? 0}</p>
+      <p className="text-xs text-muted-foreground">
+        {display(item.unit, "units")} · reorder at {item.lowStockThreshold ?? 0}
+      </p>
     </div>
   );
 }
 
-function ExpensesSection({ rows }: { rows: Rows }) {
-  return (
-    <div className="mt-6 overflow-hidden rounded-2xl border border-orange-100 bg-white">
-      <div className="grid grid-cols-2 gap-3 border-b border-orange-100 p-4">
-        <Metric label="Recent total" value={formatNaira(rows.reduce((sum, row) => sum + (row.amountKobo ?? 0), 0) / 100)} />
-        <Metric label="Entries" value={String(rows.length)} />
-      </div>
-      <div className="divide-y divide-orange-100">
-        {rows.length === 0 ? (
-          <EmptyState label="No expenses recorded yet." action="Record expense" />
-        ) : (
-          rows.map((expense) => <ExpenseRow key={expense.id} expense={expense} />)
-        )}
-      </div>
-    </div>
-  );
+function StockStatus({ low }: { low: boolean }) {
+  if (low) {
+    return <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-medium text-amber-800">Low stock</span>;
+  }
+  return <span className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800">Healthy</span>;
 }
+
 
 function ExpenseRow({ expense }: { expense: Rows[number] }) {
   return (
@@ -298,14 +290,27 @@ function ExpenseRow({ expense }: { expense: Rows[number] }) {
         <IconWallet className="size-5" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{expense.description ?? "Expense"}</p>
+        <p className="font-medium">{display(expense.description, "Expense")}</p>
         <p className="text-xs text-muted-foreground">
-          {expense.category ?? "Uncategorised"} · {expense.spentAt ? new Date(expense.spentAt).toLocaleString() : "Recent"}
+          {display(expense.category, "Uncategorised")} · {formatDate(expense.spentAt)}
         </p>
       </div>
-      <span className="text-sm font-semibold">{formatNaira((expense.amountKobo ?? 0) / 100)}</span>
+      <span className="text-sm font-semibold">{formatMoney(expense.amountKobo)}</span>
     </div>
   );
+}
+
+
+function display(value: string | null | undefined, fallback: string) {
+  return value ?? fallback;
+}
+
+function formatDate(value: string | null | undefined) {
+  return value ? new Date(value).toLocaleString() : "Recent";
+}
+
+function formatMoney(value: number | null | undefined) {
+  return formatNaira((value ?? 0) / 100);
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
