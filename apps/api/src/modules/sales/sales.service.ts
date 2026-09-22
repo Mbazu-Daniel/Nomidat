@@ -16,145 +16,11 @@ const MAX_LIMIT = 50;
 export class SalesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
-  async createSale(organizationId: string, userId: string | null, input: CreateSaleDto) {
-    if (input.items.length === 0) {
-      throw new BadRequestException("At least one sale item is required.");
-    }
-
-    if (input.items.some((item) => !item.productId && !item.productName)) {
-      throw new BadRequestException("Each sale item needs a productId or productName.");
-    }
-
-    const discountKobo = input.discountKobo ?? 0;
-    const taxKobo = input.taxKobo ?? 0;
-    const subtotalKobo = input.items.reduce(
-      (total, item) => total + (item.lineTotalKobo ?? item.quantity * item.unitPriceKobo),
-      0,
+  async createSale(organizationId: string, userId: string, input: CreateSaleDto) {
+    this.validateSaleInput(input);
+    return this.db.db.transaction((tx) =>
+      this.createSaleTransaction(tx, organizationId, userId, input),
     );
-    const totalKobo = subtotalKobo - discountKobo + taxKobo;
-
-    if (totalKobo <= 0) {
-      throw new BadRequestException("Sale total must be greater than zero.");
-    }
-
-    const paymentAmountKobo = input.paymentAmountKobo ?? 0;
-    if (paymentAmountKobo > totalKobo) {
-      throw new BadRequestException("Payment cannot exceed the sale total.");
-    }
-
-    return this.db.db.transaction(async (tx) => {
-      const customerId = await this.resolveCustomerId(
-        tx,
-        organizationId,
-        input.customerId,
-      );
-
-      const resolvedItems: Array<{
-        productId: string | null;
-        productName: string;
-        quantity: number;
-        unitPriceKobo: number;
-        totalKobo: number;
-      }> = [];
-
-      for (const item of input.items) {
-        let productId = item.productId ?? null;
-        let productName = item.productName ?? "Item";
-
-        if (productId) {
-          const [storedProduct] = await tx
-            .select({
-              id: product.id,
-              name: product.name,
-              stockQuantity: product.stockQuantity,
-              isActive: product.isActive,
-            })
-            .from(product)
-            .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
-            .limit(1);
-
-          if (!storedProduct) throw new NotFoundException("Product not found.");
-          if (!storedProduct.isActive) throw new ConflictException("Product is archived and cannot be sold.");
-
-          productName = storedProduct.name;
-          const [updatedProduct] = await tx
-            .update(product)
-            .set({
-              stockQuantity: sql`${product.stockQuantity} - ${item.quantity}`,
-              updatedAt: new Date(),
-            })
-            .where(
-              and(
-                eq(product.id, productId),
-                eq(product.organizationId, organizationId),
-                gte(product.stockQuantity, item.quantity),
-              ),
-            )
-            .returning({ id: product.id });
-
-          if (!updatedProduct) {
-            throw new ConflictException(
-              "Insufficient stock for " + storedProduct.name + ". Available stock changed while recording this sale.",
-            );
-          }
-        }
-
-        resolvedItems.push({
-          productId,
-          productName,
-          quantity: item.quantity,
-          unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.lineTotalKobo ?? item.quantity * item.unitPriceKobo,
-        });
-      }
-
-      const now = new Date();
-      const [createdOrder] = await tx
-        .insert(order)
-        .values({
-          organizationId,
-          contactId: customerId,
-          status: paymentAmountKobo === totalKobo ? "paid" : "pending",
-          subtotalKobo,
-          discountKobo,
-          taxKobo,
-          totalKobo,
-          currency: "NGN",
-          paidAt: paymentAmountKobo === totalKobo ? now : null,
-          paymentReference: input.paymentReference,
-          notes: input.notes,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      await tx.insert(orderItem).values(
-        resolvedItems.map((item) => ({
-          orderId: createdOrder.id,
-          productId: item.productId,
-          productName: item.productName,
-          quantity: item.quantity,
-          unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.totalKobo,
-        })),
-      );
-
-      if (paymentAmountKobo > 0) {
-        await tx.insert(payment).values({
-          organizationId,
-          orderId: createdOrder.id,
-          contactId: customerId,
-          amountKobo: paymentAmountKobo,
-          currency: "NGN",
-          method: input.paymentMethod ?? "cash",
-          reference: input.paymentReference,
-          createdByUserId: userId,
-          paidAt: now,
-        });
-      }
-
-      return this.getSaleByIdTx(tx, organizationId, createdOrder.id);
-    });
   }
 
   async listSales(organizationId: string, limit = 20) {
@@ -176,12 +42,11 @@ export class SalesService {
       .orderBy(desc(order.createdAt))
       .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
 
-    return Promise.all(
-      rows.map(async (sale) => ({
-        ...sale,
-        paidKobo: await this.getPaidAmount(organizationId, sale.id),
-      })),
-    );
+    return Promise.all(rows.map((sale) => this.withPaidAmount(organizationId, sale)));
+  }
+
+  private async withPaidAmount<T extends { id: string }>(organizationId: string, sale: T) {
+    return { ...sale, paidKobo: await this.getPaidAmount(organizationId, sale.id) };
   }
 
   async getSale(organizationId: string, saleId: string) {
@@ -190,15 +55,11 @@ export class SalesService {
 
   async recordPayment(
     organizationId: string,
-    userId: string | null,
+    userId: string,
     saleId: string,
     input: RecordPaymentDto,
   ) {
     return this.db.db.transaction(async (tx) => {
-      await tx.execute(
-        sql`SELECT id FROM ${order} WHERE id = ${saleId} AND organization_id = ${organizationId} FOR UPDATE`,
-      );
-
       const sale = await this.getSaleByIdTx(tx, organizationId, saleId);
       const paidKobo = await this.getPaidAmountTx(tx, organizationId, saleId);
       const balanceKobo = sale.totalKobo - paidKobo;
@@ -253,29 +114,197 @@ export class SalesService {
     const pendingSales = await this.db.db
       .select({ id: order.id, totalKobo: order.totalKobo, createdAt: order.createdAt })
       .from(order)
-      .where(
-        and(
-          eq(order.organizationId, organizationId),
-          eq(order.contactId, customerId),
-          eq(order.status, "pending"),
-        ),
-      )
+      .where(and(
+        eq(order.organizationId, organizationId),
+        eq(order.contactId, customerId),
+        eq(order.status, "pending"),
+      ))
       .orderBy(desc(order.createdAt));
 
-    const balances = await Promise.all(
-      pendingSales.map(async (sale) => ({
-        ...sale,
-        paidKobo: await this.getPaidAmount(organizationId, sale.id),
-      })),
-    );
+    const balances = await this.getSaleBalances(organizationId, pendingSales);
 
     return {
       customer,
-      outstandingKobo: Math.max(
+      outstandingKobo: balances.reduce(
+        (total, sale) => total + Math.max(0, sale.totalKobo - sale.paidKobo),
         0,
-        balances.reduce((total, sale) => total + sale.totalKobo - sale.paidKobo, 0),
       ),
       pendingSales: balances,
+    };
+  }
+
+  private validateSaleInput(input: CreateSaleDto) {
+    this.validateSaleItems(input.items);
+    const totals = this.getSaleTotals(input);
+    if (totals.totalKobo <= 0) {
+      throw new BadRequestException("Sale total must be greater than zero.");
+    }
+    if (totals.paymentAmountKobo > totals.totalKobo) {
+      throw new BadRequestException("Payment cannot exceed the sale total.");
+    }
+  }
+
+  private validateSaleItems(items: CreateSaleDto["items"]) {
+    if (items.length === 0) {
+      throw new BadRequestException("At least one sale item is required.");
+    }
+    if (items.some((item) => !item.productId && !item.productName)) {
+      throw new BadRequestException("Each sale item needs a productId or productName.");
+    }
+  }
+
+  private async createSaleTransaction(
+    tx: Pick<DbHandle["db"], "select" | "insert" | "update">,
+    organizationId: string,
+    userId: string,
+    input: CreateSaleDto,
+  ) {
+    const totals = this.getSaleTotals(input);
+    const customerId = await this.resolveCustomerId(tx, organizationId, input.customerId);
+    const now = new Date();
+
+    const [createdOrder] = await tx
+      .insert(order)
+      .values({
+        organizationId,
+        contactId: customerId,
+        status: totals.paymentAmountKobo === totals.totalKobo ? "paid" : "pending",
+        subtotalKobo: totals.subtotalKobo,
+        discountKobo: totals.discountKobo,
+        taxKobo: totals.taxKobo,
+        totalKobo: totals.totalKobo,
+        currency: "NGN",
+        paidAt: totals.paymentAmountKobo === totals.totalKobo ? now : null,
+        notes: input.notes,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    const resolvedItems = await this.resolveSaleItems(tx, organizationId, input.items, createdOrder.id);
+    await tx.insert(orderItem).values(resolvedItems);
+
+    await this.createInitialPayment(
+      tx,
+      organizationId,
+      userId,
+      createdOrder.id,
+      customerId,
+      totals.paymentAmountKobo,
+      input,
+      now,
+    );
+
+    return this.getSaleByIdTx(tx, organizationId, createdOrder.id);
+  }
+
+  private async createInitialPayment(
+    tx: Pick<DbHandle["db"], "insert">,
+    organizationId: string,
+    userId: string,
+    orderId: string,
+    customerId: string | null,
+    amountKobo: number,
+    input: CreateSaleDto,
+    paidAt: Date,
+  ) {
+    if (amountKobo === 0) return;
+
+    await tx.insert(payment).values({
+      organizationId,
+      orderId,
+      contactId: customerId,
+      amountKobo,
+      currency: "NGN",
+      method: input.paymentMethod ?? "cash",
+      reference: input.paymentReference,
+      createdByUserId: userId,
+      paidAt,
+    });
+  }
+
+  private getSaleTotals(input: CreateSaleDto) {
+    const discountKobo = input.discountKobo ?? 0;
+    const taxKobo = input.taxKobo ?? 0;
+    const subtotalKobo = input.items.reduce(
+      (total, item) => total + item.quantity * item.unitPriceKobo,
+      0,
+    );
+    return {
+      discountKobo,
+      taxKobo,
+      subtotalKobo,
+      totalKobo: subtotalKobo - discountKobo + taxKobo,
+      paymentAmountKobo: input.paymentAmountKobo ?? 0,
+    };
+  }
+
+  private async resolveSaleItems(
+    tx: Pick<DbHandle["db"], "select" | "update">,
+    organizationId: string,
+    items: CreateSaleDto["items"],
+    orderId: string,
+  ) {
+    const resolvedItems = [];
+    for (const item of items) {
+      resolvedItems.push(
+        await this.resolveSaleItem(tx, organizationId, item, orderId),
+      );
+    }
+    return resolvedItems;
+  }
+
+  private async resolveSaleItem(
+    tx: Pick<DbHandle["db"], "select" | "update">,
+    organizationId: string,
+    item: CreateSaleDto["items"][number],
+    orderId: string,
+  ) {
+    if (!item.productId) {
+      return {
+        orderId,
+        productId: null,
+        productName: item.productName ?? "Item",
+        quantity: item.quantity,
+        unitPriceKobo: item.unitPriceKobo,
+        totalKobo: item.quantity * item.unitPriceKobo,
+      };
+    }
+
+    const [storedProduct] = await tx
+      .select({ id: product.id, name: product.name })
+      .from(product)
+      .where(and(eq(product.id, item.productId), eq(product.organizationId, organizationId)))
+      .limit(1);
+
+    if (!storedProduct) throw new NotFoundException("Product not found.");
+
+    const [updatedProduct] = await tx
+      .update(product)
+      .set({
+        stockQuantity: sql`${product.stockQuantity} - ${item.quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(product.id, item.productId),
+        eq(product.organizationId, organizationId),
+        gte(product.stockQuantity, item.quantity),
+      ))
+      .returning({ id: product.id });
+
+    if (!updatedProduct) {
+      throw new ConflictException(
+        `Insufficient stock for ${storedProduct.name}. Available stock changed while recording this sale.`,
+      );
+    }
+
+    return {
+      orderId,
+      productId: storedProduct.id,
+      productName: storedProduct.name,
+      quantity: item.quantity,
+      unitPriceKobo: item.unitPriceKobo,
+      totalKobo: item.quantity * item.unitPriceKobo,
     };
   }
 
@@ -346,9 +375,7 @@ export class SalesService {
         paidAt: payment.paidAt,
       })
       .from(payment)
-      .where(
-        and(eq(payment.orderId, saleId), eq(payment.organizationId, organizationId)),
-      )
+      .where(and(eq(payment.orderId, saleId), eq(payment.organizationId, organizationId)))
       .orderBy(desc(payment.paidAt));
 
     const paidKobo = payments.reduce((total, item) => total + item.amountKobo, 0);
@@ -360,6 +387,18 @@ export class SalesService {
       paidKobo,
       balanceKobo: Math.max(0, sale.totalKobo - paidKobo),
     };
+  }
+
+  private async getSaleBalances(
+    organizationId: string,
+    sales: Array<{ id: string; totalKobo: number; createdAt: Date }>,
+  ) {
+    return Promise.all(
+      sales.map(async (sale) => ({
+        ...sale,
+        paidKobo: await this.getPaidAmount(organizationId, sale.id),
+      })),
+    );
   }
 
   private async getPaidAmount(organizationId: string, saleId: string) {
