@@ -54,7 +54,7 @@ function MiniAppPage() {
       view={business.view}
       onViewChange={business.setView}
       data={business.data}
-      message={business.data.message}
+      message={session.message || business.data.message}
     />
   );
 }
