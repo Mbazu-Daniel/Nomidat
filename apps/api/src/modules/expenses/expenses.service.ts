@@ -49,10 +49,10 @@ export class ExpensesService {
         organizationId,
         categoryId: await this.resolveCategoryId(input.categoryId),
         amountKobo: input.amountKobo,
-        description: input.description?.trim() || null,
+        description: input.description,
         spentAt: input.spentAt ? new Date(input.spentAt) : new Date(),
-        paymentMethod: input.paymentMethod?.trim() || "cash",
-        receiptUrl: input.receiptUrl?.trim() || null,
+        paymentMethod: input.paymentMethod ?? "cash",
+        receiptUrl: input.receiptUrl,
         createdByUserId: userId,
       })
       .returning();
@@ -71,10 +71,10 @@ export class ExpensesService {
       .set({
         categoryId,
         amountKobo: input.amountKobo ?? existing.amountKobo,
-        description: input.description?.trim() || existing.description,
+        description: input.description ?? existing.description,
         spentAt: input.spentAt ? new Date(input.spentAt) : existing.spentAt,
-        paymentMethod: input.paymentMethod?.trim() || existing.paymentMethod,
-        receiptUrl: input.receiptUrl?.trim() || existing.receiptUrl,
+        paymentMethod: input.paymentMethod ?? existing.paymentMethod,
+        receiptUrl: input.receiptUrl ?? existing.receiptUrl,
         updatedAt: new Date(),
       })
       .where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)))
@@ -82,6 +82,7 @@ export class ExpensesService {
 
     return updated;
   }
+
 
   async remove(organizationId: string, expenseId: string) {
     await this.get(organizationId, expenseId);
@@ -94,13 +95,20 @@ export class ExpensesService {
   }
 
   async createCategory(input: CreateExpenseCategoryDto) {
-    const name = input.name.trim();
-    if (!name) throw new BadRequestException("Category name is required.");
+    return this.insertCategory(this.requireCategoryName(input.name), input.description);
+  }
 
+  private requireCategoryName(name: string) {
+    const normalized = name.trim();
+    if (!normalized) throw new BadRequestException("Category name is required.");
+    return normalized;
+  }
+
+  private async insertCategory(name: string, description?: string) {
     try {
       const [created] = await this.db.db
         .insert(expenseCategory)
-        .values({ name, description: input.description?.trim() || null, isDefault: false })
+        .values({ name, description: description?.trim() || null, isDefault: false })
         .returning();
       return created;
     } catch (error) {
