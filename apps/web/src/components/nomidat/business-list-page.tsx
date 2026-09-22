@@ -1,4 +1,4 @@
-import { IconArrowUpRight, IconBox, IconReceipt, IconUsers, IconWallet } from "@tabler/icons-react";
+import { IconBox, IconReceipt, IconUsers, IconWallet } from "@tabler/icons-react";
 import { businessData, formatNaira } from "@/data/nomidat";
 
 const sections = {

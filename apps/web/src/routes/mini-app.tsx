@@ -94,7 +94,7 @@ function MiniAppPage() {
             ["Sales", "sales", IconReceipt],
             ["Customers", "customers", IconUsers],
             ["More", "more", IconPackage],
-          ] as const}.map(([label, target, Icon]) => (
+          ] as const).map(([label, target, Icon]) => (
             <button key={label} type="button" onClick={() => setView(target)} className={`flex min-w-16 flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] ${view === target ? "bg-orange-50 text-orange-700" : "text-muted-foreground"}`}>
               <Icon className="size-4" />{label}
             </button>
@@ -127,7 +127,7 @@ function HomeView({ onNavigate }: { onNavigate: (view: View) => void }) {
             ["Expense", "more", IconWallet],
             ["Customer", "customers", IconUsers],
             ["Stock", "stock", IconPackage],
-          ] as const}.map(([label, target, Icon]) => (
+          ] as const).map(([label, target, Icon]) => (
             <button key={label} type="button" onClick={() => onNavigate(target)} className="flex flex-col items-center gap-2 rounded-2xl border border-orange-100 bg-white p-3 shadow-sm active:scale-[0.98]"><span className="flex size-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600"><Icon className="size-5" /></span><span className="text-[11px] font-medium">{label}</span></button>
           ))}
         </div>
