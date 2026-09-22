@@ -107,14 +107,21 @@ function applyOrganizations(
   setOrganizations: Dispatch<SetStateAction<OrganizationOption[]>>,
   setOrganizationId: Dispatch<SetStateAction<string>>,
 ) {
-  if (cancelled || !items) return;
+  if (cancelled) return;
+  if (!items) return;
   const options = items.map(toOrganizationOption);
   setOrganizations(options);
-  setOrganizationId(options[0]?.id ?? "");
+  setOrganizationId(getFirstOrganizationId(options));
 }
 
 function toOrganizationOption(organization: OrganizationOption): OrganizationOption {
   return { id: organization.id, name: organization.name };
+}
+
+function getFirstOrganizationId(options: OrganizationOption[]): string {
+  const first = options[0];
+  if (!first) return "";
+  return first.id;
 }
 
 function handleOrganizationLoadError(cancelled: boolean, setMessage: Dispatch<SetStateAction<string>>) {
