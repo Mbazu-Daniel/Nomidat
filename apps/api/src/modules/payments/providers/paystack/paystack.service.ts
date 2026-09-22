@@ -387,14 +387,6 @@ export class PaystackService {
     }
   }
 
-  private assertOrganization(
-    actualOrganizationId: string,
-    expectedOrganizationId: string,
-  ) {
-    if (actualOrganizationId !== expectedOrganizationId) {
-      throw new BadRequestException("Payment not found.");
-    }
-  }
 
   private verifyWebhookSignature(
     signature: string | undefined,
