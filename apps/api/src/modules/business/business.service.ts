@@ -77,13 +77,18 @@ export class BusinessService {
       ]);
 
     return {
-      salesTotalKobo: Number(sales[0]?.totalKobo ?? 0),
+      salesTotalKobo: this.firstNumber(sales),
       outstandingCreditKobo: await this.getOutstandingForOrders(organizationId, pendingOrders),
-      expensesTotalKobo: Number(expenses[0]?.totalKobo ?? 0),
-      customerCount: Number(customerCount[0]?.count ?? 0),
-      productCount: Number(productCount[0]?.count ?? 0),
-      lowStockCount: Number(lowStockCount[0]?.count ?? 0),
+      expensesTotalKobo: this.firstNumber(expenses),
+      customerCount: this.firstNumber(customerCount),
+      productCount: this.firstNumber(productCount),
+      lowStockCount: this.firstNumber(lowStockCount),
     };
+  }
+
+  private firstNumber(rows: Array<{ totalKobo?: number | null; count?: number | null }>) {
+    const value = rows[0]?.totalKobo ?? rows[0]?.count ?? 0;
+    return Number(value);
   }
 
   private getSalesTotal(organizationId: string) {
