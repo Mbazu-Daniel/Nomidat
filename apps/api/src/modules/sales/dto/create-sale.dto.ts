@@ -9,7 +9,7 @@ import {
   ValidateNested,
 } from "class-validator";
 
-class CreateSaleItemDto {
+export class CreateSaleItemDto {
   @IsOptional()
   @IsUUID()
   productId?: string;
@@ -25,6 +25,11 @@ class CreateSaleItemDto {
   @IsInt()
   @Min(0)
   unitPriceKobo!: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  lineTotalKobo?: number;
 }
 
 export class CreateSaleDto {
