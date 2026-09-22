@@ -1,5 +1,5 @@
 import { IconBox, IconReceipt, IconUsers, IconWallet } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
 import { formatNaira, getBusinessData, getOrganizations } from "@/data/nomidat";
 
@@ -164,7 +164,7 @@ function LoadingMessage({ visible, title }: { visible: boolean; title: string })
   );
 }
 
-const sectionComponents: Record<Section, ({ rows }: { rows: Rows }) => JSX.Element> = {
+const sectionComponents: Record<Section, ({ rows }: { rows: Rows }) => ReactNode> = {
   sales: SalesSection,
   customers: CustomersSection,
   inventory: InventorySection,
