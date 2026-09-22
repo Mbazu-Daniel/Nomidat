@@ -4,7 +4,8 @@ import {
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
-import { createHmac, timingSafeEqual } from "node:crypto";\nimport { z } from "zod";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { z } from "zod";
 import { and, eq, sum } from "@nomidat/db";
 import { generateId } from "@nomidat/db";
 import { order, payment, paymentLink } from "@nomidat/db/schema";
@@ -21,6 +22,16 @@ import type {
 } from "./paystack.interface";
 
 const PAYSTACK_PAYMENT_METHOD = "paystack";
+
+const paystackTransactionSchema = z.object({
+  id: z.number().int().positive(),
+  status: z.string().min(1),
+  reference: z.string().min(1),
+  amount: z.number().int().positive(),
+  currency: z.string().min(1),
+  paid_at: z.string().nullable(),
+  channel: z.string().nullable(),
+});
 
 @Injectable()
 export class PaystackService {
@@ -410,24 +421,16 @@ export class PaystackService {
   private isChargeSuccessEvent(
     event: unknown,
   ): event is PaystackChargeSuccessEvent {
-    if (!event || typeof event !== "object") return false;
-
-    const value = event as { event?: unknown; data?: unknown };
-    if (value.event !== "charge.success" || !value.data) return false;
-    if (typeof value.data !== "object") return false;
-
-    const data = value.data as Partial<PaystackTransaction>;
-    return this.isValidTransaction(data);
+    if (!this.isRecord(event) || event.event !== "charge.success") return false;
+    return this.isValidTransaction(event.data);
   }
 
-  private isValidTransaction(data: Partial<PaystackTransaction>) {
-    return (
-      typeof data.reference === "string" &&
-      typeof data.amount === "number" &&
-      typeof data.currency === "string" &&
-      typeof data.status === "string" &&
-      typeof data.id === "number"
-    );
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+  }
+
+  private isValidTransaction(data: unknown): data is PaystackTransaction {
+    return paystackTransactionSchema.safeParse(data).success;
   }
 
   private async request<T>(path: string, init: RequestInit) {
