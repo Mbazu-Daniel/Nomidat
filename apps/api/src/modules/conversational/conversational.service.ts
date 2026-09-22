@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { z } from "zod";
 import { and, desc, eq, ilike } from "@nomidat/db";
 import {
   contact,
@@ -31,6 +32,35 @@ type Intent =
   | "unknown";
 
 type ActionHandler = (action: ParsedAction, organizationId: string) => Promise<string>;
+
+const parsedActionSchema = z.object({
+  intent: z.enum([
+    "create_contact",
+    "record_sale",
+    "record_expense",
+    "check_balance",
+    "check_inventory",
+    "summary",
+    "sales_report",
+    "expense_report",
+    "top_products",
+    "customer_balances",
+    "inventory_report",
+    "unknown",
+  ]),
+  customerName: z.string().optional(),
+  customerPhone: z.string().optional(),
+  productName: z.string().optional(),
+  quantity: z.number().finite().positive().optional(),
+  amountNaira: z.number().finite().positive().optional(),
+  paid: z.boolean().optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine((value) => {
+    const parsed = new Date(`${value}T12:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  }, "date must be a valid YYYY-MM-DD date"),
+}).strict();
 
 type ParsedAction = {
   intent: Intent;
@@ -304,11 +334,19 @@ export class ConversationalService {
       "Transcribe faithfully. The speaker may use Nigerian English, Nigerian Pidgin, Yoruba, Igbo, Hausa, or a mixture. Preserve names, numbers, currencies and business terms.",
     );
 
-    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
-      body: form,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    let response: Response;
+    try {
+      response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
+        body: form,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       throw new ServiceUnavailableException("Voice transcription failed.");
@@ -359,19 +397,27 @@ Rules:
 - "summary" means a general business summary.
 `;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.getOpenAiKey()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: this.env.OPENAI_MODEL,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [{ role: "system", content: system }, ...messages],
-      }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    let response: Response;
+    try {
+      response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.getOpenAiKey()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: this.env.OPENAI_MODEL,
+          temperature: 0,
+          response_format: { type: "json_object" },
+          messages: [{ role: "system", content: system }, ...messages],
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       throw new ServiceUnavailableException("AI processing failed.");
@@ -385,19 +431,12 @@ Rules:
 
     try {
       const parsed: unknown = JSON.parse(raw);
-      if (!this.isParsedAction(parsed)) {
-        return { intent: "unknown" };
-      }
-      return parsed;
+      const result = parsedActionSchema.safeParse(parsed);
+      if (!result.success) return { intent: "unknown" };
+      return result.data;
     } catch {
       throw new ServiceUnavailableException("AI returned an invalid action.");
     }
-  }
-
-  private isParsedAction(value: unknown): value is ParsedAction {
-    if (!value || typeof value !== "object") return false;
-    const intent = (value as { intent?: unknown }).intent;
-    return typeof intent === "string" && intent in this.actionHandlers;
   }
 
   private async executeAction(action: ParsedAction, organizationId: string): Promise<string> {

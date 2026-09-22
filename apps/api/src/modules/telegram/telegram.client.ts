@@ -42,7 +42,16 @@ export class TelegramClient implements ChannelAdapter {
     const filePath = fileResponse.result?.file_path;
     if (!filePath) throw new ServiceUnavailableException("Telegram voice file could not be resolved.");
 
-    const response = await fetch(`https://api.telegram.org/file/bot${this.getToken()}/${filePath}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    let response: Response;
+    try {
+      response = await fetch(`https://api.telegram.org/file/bot${this.getToken()}/${filePath}`, {
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) throw new ServiceUnavailableException("Telegram voice file could not be downloaded.");
 
     return {
