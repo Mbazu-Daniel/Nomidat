@@ -35,6 +35,8 @@ const parsedActionSchema = z.object({
   date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine((value) => !Number.isNaN(Date.parse(value + "T12:00:00")), "Invalid date").optional(),
 }).strict();
 
+type ActionHandler = (action: ParsedAction, organizationId: string) => Promise<string>;
+
 type ParsedAction = {
   intent: Intent;
   customerName?: string;
@@ -50,6 +52,16 @@ type ParsedAction = {
 
 @Injectable()
 export class ConversationalService {
+  private readonly actionHandlers: Record<Intent, ActionHandler> = {
+    create_contact: (action, id) => this.createContact(action, id),
+    record_sale: (action, id) => this.recordSale(action, id),
+    record_expense: (action, id) => this.recordExpense(action, id),
+    check_balance: (action, id) => this.checkBalance(action, id),
+    check_inventory: (action, id) => this.checkInventory(action, id),
+    summary: (_action, id) => this.summary(id),
+    unknown: async () => "I understood the message, but I need a little more information to know what you want me to record.",
+  };
+
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
@@ -61,7 +73,11 @@ export class ConversationalService {
     channelIdentityId: string,
     adapter: ChannelAdapter,
   ): Promise<string> {
-    const conversationRow = await this.getOrCreateConversation(
+    const guard = await this.beginInboundUpdate(inbound, organizationId);
+    if (guard.status === "completed") return guard.response;
+    if (guard.status === "processing") return "This message is already being processed.";
+    try {
+      const conversationRow = await this.getOrCreateConversation(
       organizationId,
       channelIdentityId,
     );
@@ -89,7 +105,7 @@ export class ConversationalService {
       .limit(12);
 
     const action = await this.understand(history.reverse());
-    const reply = await this.executeAction(action, organizationId);\n\n    await this.completeInboundUpdate(idempotency.id, reply);
+    const reply = await this.executeAction(action, organizationId);
 
     await this.db.db.insert(message).values({
       conversationId: conversationRow.id,
@@ -104,7 +120,12 @@ export class ConversationalService {
       .set({ lastMessageAt: new Date(), updatedAt: new Date() })
       .where(eq(conversation.id, conversationRow.id));
 
-    return reply;
+    await this.completeInboundUpdate(guard.id, reply);
+      return reply;
+    } catch (error) {
+      await this.releaseInboundUpdate(guard.id);
+      throw error;
+    }
   }
 
   private async beginInboundUpdate(inbound: InboundMessage, organizationId: string): Promise<{ status: "new"; id: string } | { status: "completed"; response: string } | { status: "processing" }> {
@@ -234,7 +255,8 @@ Rules:
         Authorization: `Bearer ${this.getOpenAiKey()}`,
         "Content-Type": "application/json",
       },
-      signal: AbortSignal.timeout(15_000),\n      body: JSON.stringify({
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({
         model: this.env.OPENAI_MODEL,
         temperature: 0,
         response_format: { type: "json_object" },
@@ -253,32 +275,15 @@ Rules:
     if (!raw) throw new ServiceUnavailableException("AI returned no result.");
 
     try {
-      const parsed = parsedActionSchema.safeParse(JSON.parse(raw));\n      if (!parsed.success) throw new ServiceUnavailableException("AI returned an invalid action.");\n      return parsed.data;
+      const parsed = parsedActionSchema.safeParse(JSON.parse(raw));
+      if (!parsed.success) throw new ServiceUnavailableException("AI returned an invalid action.");
+      return parsed.data;
     } catch {
       throw new ServiceUnavailableException("AI returned an invalid action.");
     }
   }
 
-  private async executeAction(action: ParsedAction, organizationId: string): Promise<string> {
-    switch (action.intent) {
-      case "create_contact":
-        return this.createContact(action, organizationId);
-      case "record_expense":
-        return this.recordExpense(action, organizationId);
-      case "record_sale":
-        return this.recordSale(action, organizationId);
-      case "check_balance":
-        return this.checkBalance(action, organizationId);
-      case "check_inventory":
-        return this.checkInventory(action, organizationId);
-      case "summary":
-        return this.summary(organizationId);
-      default:
-        return "I understood the message, but I need a little more information to know what you want me to record.";
-    }
-  }
-
-  private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
+  private executeAction(action: ParsedAction, organizationId: string): Promise<string> {\n    return this.actionHandlers[action.intent](action, organizationId);\n  }\n\n  private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "What is the customer's name?";
 
     const existing = await this.db.db
