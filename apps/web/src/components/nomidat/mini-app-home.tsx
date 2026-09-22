@@ -1,7 +1,7 @@
 import { IconPackage, IconReceipt, IconUsers, IconWallet } from "@tabler/icons-react";
 import { ActivityRow } from "@/components/nomidat/activity-row";
 import { StatCard } from "@/components/nomidat/stat-card";
-import { formatNaira, type getBusinessData, type BusinessSummary } from "@/data/nomidat";
+import { formatNaira, getBusinessData, type BusinessSummary } from "@/data/nomidat";
 
 type Row = Awaited<ReturnType<typeof getBusinessData>>;
 type View = "home" | "sales" | "customers" | "stock" | "expenses" | "more";
