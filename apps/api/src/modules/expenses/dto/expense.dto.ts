@@ -1,6 +1,6 @@
 import { IsDateString, IsInt, IsOptional, IsString, IsUUID, Min } from "class-validator";
 
-export abstract class ExpenseFieldsDto {
+abstract class ExpenseFieldsDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
