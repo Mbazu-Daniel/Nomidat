@@ -125,7 +125,6 @@ export class PaystackService {
       orderId,
     );
 
-    if (!sale) throw new BadRequestException("Sale not found.");
     if (sale.status === "paid") {
       throw new BadRequestException("Sale is already paid.");
     }
@@ -220,10 +219,7 @@ export class PaystackService {
     const currentLink = await this.getPaymentLinkForTransaction(tx, reference);
     if (currentLink.status === "paid") return;
 
-    if (!currentLink.orderId) {
-      throw new BadRequestException("Payment link is not attached to a sale.");
-    }
-
+    const orderId = this.requireOrderId(currentLink.orderId);
     const now = transaction.paid_at ? new Date(transaction.paid_at) : new Date();
 
     await this.ensurePaymentRecorded(tx, currentLink, reference, transaction, now);
@@ -231,12 +227,12 @@ export class PaystackService {
     const sale = await this.getOrderForPayment(
       tx,
       currentLink.organizationId,
-      currentLink.orderId,
+      orderId,
     );
     const paidKobo = await this.getOrderPaidAmount(
       tx,
       currentLink.organizationId,
-      currentLink.orderId,
+      orderId,
     );
 
     await this.updatePaidOrder(
@@ -335,6 +331,13 @@ export class PaystackService {
     return link;
   }
 
+  private requireOrderId(orderId: string | null) {
+    if (!orderId) {
+      throw new BadRequestException("Payment link is not attached to a sale.");
+    }
+    return orderId;
+  }
+
   private async getPaymentByReference(
     tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
     organizationId: string,
@@ -361,7 +364,6 @@ export class PaystackService {
   ) {
     const sale = await this.findOrder(tx, organizationId, orderId);
 
-    if (!sale) throw new BadRequestException("Sale not found.");
     return { totalKobo: sale.totalKobo };
   }
 
@@ -382,6 +384,7 @@ export class PaystackService {
       .where(and(eq(order.id, orderId), eq(order.organizationId, organizationId)))
       .limit(1);
 
+    if (!sale) throw new BadRequestException("Sale not found.");
     return sale;
   }
 
