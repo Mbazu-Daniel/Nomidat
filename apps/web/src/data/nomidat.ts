@@ -75,6 +75,9 @@ export async function getBusinessData(
     kind?: string | null;
     status?: string | null;
     totalKobo?: number | null;
+    paidKobo?: number | null;
+    balanceKobo?: number | null;
+    outstandingKobo?: number | null;
     stockQuantity?: number | null;
     lowStockThreshold?: number | null;
     unit?: string | null;
