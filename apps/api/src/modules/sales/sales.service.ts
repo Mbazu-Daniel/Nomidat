@@ -165,7 +165,7 @@ export class SalesService {
   ) {
     const totals = this.getSaleTotals(input);
     const customerId = await this.resolveCustomerId(tx, organizationId, input.customerId);
-    const resolvedItems = await this.resolveSaleItems(tx, organizationId, input.items);
+    const resolvedItems = await this.resolveSaleItems(tx, organizationId, input.items, createdOrder.id);
     const now = new Date();
 
     const [createdOrder] = await tx
@@ -225,6 +225,7 @@ export class SalesService {
     tx: Pick<DbHandle["db"], "select" | "update">,
     organizationId: string,
     items: CreateSaleDto["items"],
+    orderId: string,
   ) {
     const resolvedItems: Array<{
       productId: string | null;
@@ -273,6 +274,7 @@ export class SalesService {
       }
 
       resolvedItems.push({
+        orderId,
         productId,
         productName,
         quantity: item.quantity,
