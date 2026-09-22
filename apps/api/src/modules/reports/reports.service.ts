@@ -77,7 +77,7 @@ export class ReportsService {
   }
 
   private async getOrderMetrics(organizationId: string, range: ReportRange) {
-    const [row] = await this.db.db
+    const [row] = await this.db
       .select({ totalKobo: sum(order.totalKobo), count: count() })
       .from(order)
       .where(this.rangeCondition(order.createdAt, order.organizationId, organizationId, range));
@@ -85,7 +85,7 @@ export class ReportsService {
   }
 
   private async getPaymentMetrics(organizationId: string, range: ReportRange) {
-    const [row] = await this.db.db
+    const [row] = await this.db
       .select({ totalKobo: sum(payment.amountKobo), count: count() })
       .from(payment)
       .where(this.rangeCondition(payment.paidAt, payment.organizationId, organizationId, range));
@@ -93,7 +93,7 @@ export class ReportsService {
   }
 
   private async getExpenseMetrics(organizationId: string, range: ReportRange) {
-    const [row] = await this.db.db
+    const [row] = await this.db
       .select({ totalKobo: sum(expense.amountKobo), count: count() })
       .from(expense)
       .where(this.rangeCondition(expense.spentAt, expense.organizationId, organizationId, range));
@@ -132,7 +132,7 @@ export class ReportsService {
 
   async getSalesTrend(organizationId: string, range: ReportRange) {
     const day = sql<string>`to_char(date_trunc('day', ${order.createdAt}), 'YYYY-MM-DD')`;
-    const rows = await this.db.db
+    const rows = await this.db
       .select({
         date: day,
         salesKobo: sum(order.totalKobo),
@@ -157,7 +157,7 @@ export class ReportsService {
   }
 
   async getExpenseBreakdown(organizationId: string, range: ReportRange) {
-    const rows = await this.db.db
+    const rows = await this.db
       .select({
         category: expenseCategory.name,
         amountKobo: sum(expense.amountKobo),
@@ -188,7 +188,7 @@ export class ReportsService {
     limit = 10,
   ) {
     const safeLimit = Math.min(Math.max(limit, 1), 20);
-    const rows = await this.db.db
+    const rows = await this.db
       .select({
         productId: orderItem.productId,
         productName: orderItem.productName,
@@ -218,7 +218,7 @@ export class ReportsService {
 
   async getCustomerBalances(organizationId: string, limit = 20) {
     const safeLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
-    const pendingSales = await this.db.db
+    const pendingSales = await this.db
       .select({
         saleId: order.id,
         customerId: contact.id,
@@ -252,7 +252,7 @@ export class ReportsService {
   }
 
   private async getSaleBalance(organizationId: string, saleId: string, totalKobo: number) {
-    const [paid] = await this.db.db
+    const [paid] = await this.db
       .select({ totalKobo: sum(payment.amountKobo) })
       .from(payment)
       .where(and(eq(payment.organizationId, organizationId), eq(payment.orderId, saleId)));
@@ -287,7 +287,7 @@ export class ReportsService {
   }
 
   private async getInventoryTotals(organizationId: string) {
-    const [row] = await this.db.db
+    const [row] = await this.db
       .select({
         productCount: count(),
         lowStockCount: LOW_STOCK_COUNT,
@@ -303,7 +303,7 @@ export class ReportsService {
   }
 
   private async getLowStockProducts(organizationId: string) {
-    return this.db.db
+    return this.db
       .select({
         id: product.id,
         name: product.name,
@@ -322,7 +322,7 @@ export class ReportsService {
     range: ReportRange,
     expensesKobo: number,
   ): Promise<number> {
-    const [margin] = await this.db.db
+    const [margin] = await this.db
       .select({
         grossMarginKobo: sql<number>`coalesce(sum(${orderItem.totalKobo} - (${orderItem.quantity} * coalesce(${product.costKobo}, 0))), 0)`,
       })
@@ -341,7 +341,7 @@ export class ReportsService {
   }
 
   private async getInventoryValue(organizationId: string): Promise<number> {
-    const [value] = await this.db.db
+    const [value] = await this.db
       .select({
         totalKobo: sql<number>`coalesce(sum(${product.stockQuantity} * ${product.costKobo}), 0)`,
       })
@@ -355,7 +355,7 @@ export class ReportsService {
     organizationId: string,
     asOf: Date,
   ): Promise<number> {
-    const pendingSales = await this.db.db
+    const pendingSales = await this.db
       .select({
         id: order.id,
         totalKobo: order.totalKobo,
@@ -371,7 +371,7 @@ export class ReportsService {
 
     let outstandingKobo = 0;
     for (const sale of pendingSales) {
-      const [paid] = await this.db.db
+      const [paid] = await this.db
         .select({ totalKobo: sum(payment.amountKobo) })
         .from(payment)
         .where(

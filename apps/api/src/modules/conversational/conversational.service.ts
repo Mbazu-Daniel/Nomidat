@@ -94,13 +94,13 @@ export class ConversationalService {
       return reply;
     }
 
-    await this.db.db.insert(message).values({
+    await this.db.insert(message).values({
       conversationId: conversationRow.id,
       role: "user",
       content,
     });
 
-    const history = await this.db.db
+    const history = await this.db
       .select({ role: message.role, content: message.content })
       .from(message)
       .where(eq(message.conversationId, conversationRow.id))
@@ -110,7 +110,7 @@ export class ConversationalService {
     const action = await this.understand(history.reverse());
     const reply = await this.executeAction(action, organizationId);
 
-    await this.db.db.insert(message).values({
+    await this.db.insert(message).values({
       conversationId: conversationRow.id,
       role: "assistant",
       content: reply,
@@ -118,7 +118,7 @@ export class ConversationalService {
       toolArgs: action,
     });
 
-    await this.db.db
+    await this.db
       .update(conversation)
       .set({ lastMessageAt: new Date(), updatedAt: new Date() })
       .where(eq(conversation.id, conversationRow.id));
@@ -133,9 +133,9 @@ export class ConversationalService {
 
   private async beginInboundUpdate(inbound: InboundMessage, organizationId: string): Promise<{ status: "new"; id: string } | { status: "completed"; response: string } | { status: "processing" }> {
     if (!inbound.rawUpdateId) return { status: "new", id: "" };
-    const [created] = await this.db.db.insert(inboundUpdate).values({ organizationId, provider: inbound.provider, rawUpdateId: inbound.rawUpdateId }).onConflictDoNothing().returning({ id: inboundUpdate.id });
+    const [created] = await this.db.insert(inboundUpdate).values({ organizationId, provider: inbound.provider, rawUpdateId: inbound.rawUpdateId }).onConflictDoNothing().returning({ id: inboundUpdate.id });
     if (created) return { status: "new", id: created.id };
-    const existing = await this.db.db.select({ id: inboundUpdate.id, response: inboundUpdate.response }).from(inboundUpdate).where(and(
+    const existing = await this.db.select({ id: inboundUpdate.id, response: inboundUpdate.response }).from(inboundUpdate).where(and(
       eq(inboundUpdate.organizationId, organizationId), eq(inboundUpdate.provider, inbound.provider), eq(inboundUpdate.rawUpdateId, inbound.rawUpdateId),
     )).limit(1);
     if (existing[0]?.response !== null && existing[0]?.response !== undefined) return { status: "completed", response: existing[0].response };
@@ -144,19 +144,19 @@ export class ConversationalService {
 
   private async completeInboundUpdate(id: string, response: string): Promise<void> {
     if (!id) return;
-    await this.db.db.update(inboundUpdate).set({ response, completedAt: new Date() }).where(eq(inboundUpdate.id, id));
+    await this.db.update(inboundUpdate).set({ response, completedAt: new Date() }).where(eq(inboundUpdate.id, id));
   }
 
   private async releaseInboundUpdate(id: string): Promise<void> {
     if (!id) return;
-    await this.db.db.delete(inboundUpdate).where(eq(inboundUpdate.id, id));
+    await this.db.delete(inboundUpdate).where(eq(inboundUpdate.id, id));
   }
 
   private async getOrCreateConversation(
     organizationId: string,
     channelIdentityId: string,
   ) {
-    const existing = await this.db.db
+    const existing = await this.db
       .select()
       .from(conversation)
       .where(
@@ -169,7 +169,7 @@ export class ConversationalService {
 
     if (existing[0]) return existing[0];
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(conversation)
       .values({
         organizationId,
@@ -299,7 +299,7 @@ Rules:
   private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "What is the customer's name?";
 
-    const existing = await this.db.db
+    const existing = await this.db
       .select()
       .from(contact)
       .where(
@@ -312,7 +312,7 @@ Rules:
 
     if (existing[0]) return `${existing[0].name} is already in your contacts.`;
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(contact)
       .values({
         organizationId,
@@ -331,7 +331,7 @@ Rules:
       return "How much was the expense?";
     }
 
-    const categories = await this.db.db
+    const categories = await this.db
       .select()
       .from(expenseCategory)
       .where(eq(expenseCategory.isDefault, true));
@@ -340,7 +340,7 @@ Rules:
       ? categories.find((item) => item.name.toLowerCase() === action.category?.toLowerCase())
       : categories.find((item) => item.name.toLowerCase().includes("other"));
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(expense)
       .values({
         organizationId,
@@ -384,18 +384,18 @@ Rules:
 
   private async findCustomerId(organizationId: string, name?: string): Promise<string | null> {
     if (!name) return null;
-    const [customer] = await this.db.db.select({ id: contact.id }).from(contact).where(and(eq(contact.organizationId, organizationId), ilike(contact.name, name))).limit(1);
+    const [customer] = await this.db.select({ id: contact.id }).from(contact).where(and(eq(contact.organizationId, organizationId), ilike(contact.name, name))).limit(1);
     return customer?.id ?? null;
   }
 
   private async findProduct(organizationId: string, name: string) {
-    const [item] = await this.db.db.select({ id: product.id, name: product.name }).from(product).where(and(eq(product.organizationId, organizationId), ilike(product.name, name))).limit(1);
+    const [item] = await this.db.select({ id: product.id, name: product.name }).from(product).where(and(eq(product.organizationId, organizationId), ilike(product.name, name))).limit(1);
     return item;
   }
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "Which customer should I check?";
 
-    const customers = await this.db.db
+    const customers = await this.db
       .select()
       .from(contact)
       .where(
@@ -406,7 +406,7 @@ Rules:
     const customer = customers[0];
     if (!customer) return `I couldn't find ${action.customerName} in your customers.`;
 
-    const rows = await this.db.db
+    const rows = await this.db
       .select({ totalKobo: order.totalKobo })
       .from(order)
       .where(
@@ -424,7 +424,7 @@ Rules:
   private async checkInventory(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.productName) return "Which product should I check?";
 
-    const rows = await this.db.db
+    const rows = await this.db
       .select()
       .from(product)
       .where(
@@ -439,12 +439,12 @@ Rules:
   }
 
   private async summary(organizationId: string): Promise<string> {
-    const orders = await this.db.db
+    const orders = await this.db
       .select({ totalKobo: order.totalKobo })
       .from(order)
       .where(and(eq(order.organizationId, organizationId), eq(order.status, "paid")));
 
-    const expenses = await this.db.db
+    const expenses = await this.db
       .select({ amountKobo: expense.amountKobo })
       .from(expense)
       .where(eq(expense.organizationId, organizationId));
