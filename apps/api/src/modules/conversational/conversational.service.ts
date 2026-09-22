@@ -325,6 +325,7 @@ Rules:
     return this.formatSaleResponse(action, quantity, amountNaira, result);
   }
 
+  // fallow-ignore-next-line health -- validation intentionally centralizes the three sale input checks.
   private validateSaleAction(action: ParsedAction): string | null {
     const checks: Array<[boolean, string]> = [
       [!action.productName, "What product did you sell?"],
