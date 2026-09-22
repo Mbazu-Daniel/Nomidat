@@ -14,6 +14,7 @@ import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
 import type { ChannelAdapter, InboundMessage } from "../channel/types";
+import { SalesService } from "../sales/sales.service";
 
 type Intent =
   | "create_contact"
@@ -42,6 +43,7 @@ export class ConversationalService {
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
+    private readonly salesService: SalesService,
   ) {}
 
   async processInbound(
@@ -129,11 +131,34 @@ export class ConversationalService {
     inbound: InboundMessage,
     adapter: ChannelAdapter,
   ): Promise<string> {
+    const media = await this.getVoiceMedia(inbound, adapter);
+    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
+      body: this.buildTranscriptionForm(inbound, media),
+    });
+
+    if (!response.ok) throw new ServiceUnavailableException("Voice transcription failed.");
+
+    const body = (await response.json()) as { text?: string };
+    if (!body.text?.trim()) {
+      throw new BadRequestException("No speech was detected in that voice note.");
+    }
+
+    return body.text.trim();
+  }
+
+  private async getVoiceMedia(inbound: InboundMessage, adapter: ChannelAdapter) {
     if (!inbound.mediaUrl || !adapter.getInboundMedia) {
       throw new BadRequestException("Voice messages are not supported by this channel yet.");
     }
+    return adapter.getInboundMedia(inbound.mediaUrl);
+  }
 
-    const media = await adapter.getInboundMedia(inbound.mediaUrl);
+  private buildTranscriptionForm(
+    inbound: InboundMessage,
+    media: Awaited<ReturnType<NonNullable<ChannelAdapter["getInboundMedia"]>>>,
+  ) {
     const form = new FormData();
     const audioBuffer = media.data.buffer.slice(
       media.data.byteOffset,
@@ -149,23 +174,7 @@ export class ConversationalService {
       "prompt",
       "Transcribe faithfully. The speaker may use Nigerian English, Nigerian Pidgin, Yoruba, Igbo, Hausa, or a mixture. Preserve names, numbers, currencies and business terms.",
     );
-
-    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
-      body: form,
-    });
-
-    if (!response.ok) {
-      throw new ServiceUnavailableException("Voice transcription failed.");
-    }
-
-    const body = (await response.json()) as { text?: string };
-    if (!body.text?.trim()) {
-      throw new BadRequestException("No speech was detected in that voice note.");
-    }
-
-    return body.text.trim();
+    return form;
   }
 
   private async understand(
@@ -315,89 +324,75 @@ Rules:
   }
 
   private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
-    if (!action.productName) return "What product did you sell?";
-    if (!action.quantity || action.quantity <= 0) return "How many units did you sell?";
-    if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
-    const quantity = action.quantity;
+    const validationError = this.validateSaleAction(action);
+    if (validationError) return validationError;
 
-    let customerId: string | null = null;
-    if (action.customerName) {
-      const existing = await this.db.db
-        .select()
-        .from(contact)
-        .where(
-          and(
-            eq(contact.organizationId, organizationId),
-            ilike(contact.name, action.customerName),
-          ),
-        )
-        .limit(1);
-      customerId = existing[0]?.id ?? null;
-    }
+    const quantity = action.quantity!;
+    const amountNaira = action.amountNaira!;
+    const totalKobo = Math.round(amountNaira * 100);
+    const customerId = await this.findCustomerId(organizationId, action.customerName);
+    const existingProduct = await this.findProduct(organizationId, action.productName!);
 
-    const existingProduct = await this.db.db
-      .select()
-      .from(product)
-      .where(
-        and(
-          eq(product.organizationId, organizationId),
-          ilike(product.name, action.productName),
-        ),
-      )
-      .limit(1);
-
-    const unitPriceKobo = Math.round((action.amountNaira * 100) / quantity);
-    const totalKobo = Math.round(action.amountNaira * 100);
-    const now = new Date();
-
-    const result = await this.db.db.transaction(async (tx) => {
-      const [createdOrder] = await tx
-        .insert(order)
-        .values({
-          organizationId,
-          contactId: customerId,
-          status: action.paid ? "paid" : "pending",
-          subtotalKobo: totalKobo,
-          totalKobo,
-          currency: "NGN",
-          paidAt: action.paid ? now : null,
-          notes: "Recorded through Nomidat",
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      await tx.insert(orderItem).values({
-        orderId: createdOrder.id,
-        productId: existingProduct[0]?.id,
-        productName: action.productName,
+    const result = await this.salesService.createSale(organizationId, null, {
+      customerId: customerId ?? undefined,
+      items: [{
+        productId: existingProduct?.id,
+        productName: existingProduct?.name ?? action.productName!,
         quantity,
-        unitPriceKobo,
-        totalKobo,
-      });
-
-      if (existingProduct[0]) {
-        const nextStock = existingProduct[0].stockQuantity - quantity;
-        await tx
-          .update(product)
-          .set({ stockQuantity: nextStock })
-          .where(
-            and(
-              eq(product.id, existingProduct[0].id),
-              eq(product.organizationId, organizationId),
-            ),
-          );
-      }
-
-      return createdOrder;
+        unitPriceKobo: Math.floor(totalKobo / quantity),
+      }],
+      paymentAmountKobo: action.paid ? totalKobo : 0,
+      paymentMethod: "cash",
+      notes: "Recorded through Nomidat",
     });
 
-    const paymentText = action.paid ? "paid" : "on credit";
-    const stockText = existingProduct[0]
-      ? ` Stock is now ${Math.max(0, existingProduct[0].stockQuantity - quantity)}.`
-      : " I did not change inventory because that product is not in your inventory yet.";
+    return this.formatSaleResponse(action, quantity, amountNaira, result);
+  }
 
-    return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.id.slice(0, 8)}.`;
+  private validateSaleAction(action: ParsedAction): string | null {
+    if (!action.productName) return "What product did you sell?";
+    if (!this.isPositiveNumber(action.quantity)) return "How many units did you sell?";
+    if (!this.isPositiveNumber(action.amountNaira)) return "What was the total selling amount?";
+    return null;
+  }
+
+  private isPositiveNumber(value: number | undefined): value is number {
+    return typeof value === "number" && value > 0;
+  }
+
+  private async findCustomerId(
+    organizationId: string,
+    customerName?: string,
+  ): Promise<string | null> {
+    if (!customerName) return null;
+    const [customer] = await this.db.db
+      .select({ id: contact.id })
+      .from(contact)
+      .where(and(eq(contact.organizationId, organizationId), ilike(contact.name, customerName)))
+      .limit(1);
+    return customer?.id ?? null;
+  }
+
+  private async findProduct(organizationId: string, productName: string) {
+    const [item] = await this.db.db
+      .select({ id: product.id, name: product.name })
+      .from(product)
+      .where(and(eq(product.organizationId, organizationId), ilike(product.name, productName)))
+      .limit(1);
+    return item;
+  }
+
+  private formatSaleResponse(
+    action: ParsedAction,
+    quantity: number,
+    amountNaira: number,
+    result: { id: string; balanceKobo: number },
+  ): string {
+    const paymentText = action.paid ? "paid" : "on credit";
+    const balanceText = result.balanceKobo > 0
+      ? ` Outstanding: ₦${(result.balanceKobo / 100).toLocaleString("en-NG")}.`
+      : "";
+    return `Recorded ${quantity} × ${action.productName} for ₦${amountNaira.toLocaleString("en-NG")} ${paymentText}.${balanceText} Order ${result.id.slice(0, 8)}.`;
   }
 
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
@@ -447,20 +442,29 @@ Rules:
   }
 
   private async summary(organizationId: string): Promise<string> {
-    const orders = await this.db.db
-      .select({ totalKobo: order.totalKobo })
-      .from(order)
-      .where(and(eq(order.organizationId, organizationId), eq(order.status, "paid")));
-
-    const expenses = await this.db.db
-      .select({ amountKobo: expense.amountKobo })
-      .from(expense)
-      .where(eq(expense.organizationId, organizationId));
+    const [orders, expenses] = await Promise.all([
+      this.getPaidSales(organizationId),
+      this.getRecordedExpenses(organizationId),
+    ]);
 
     const revenue = orders.reduce((sum, row) => sum + row.totalKobo, 0);
     const spending = expenses.reduce((sum, row) => sum + row.amountKobo, 0);
 
-    return `Business summary: ₦${(revenue / 100).toLocaleString("en-NG")} paid sales and ₦${(spending / 100).toLocaleString("en-NG")} recorded expenses. Outstanding credit is available by asking "who owes me?"`;
+    return `Business summary: ₦${(revenue / 100).toLocaleString("en-NG")} paid sales and ₦${(spending / 100).toLocaleString("en-NG")} recorded expenses. Outstanding credit is available by asking "who owes me?".`;
+  }
+
+  private getPaidSales(organizationId: string) {
+    return this.db.db
+      .select({ totalKobo: order.totalKobo })
+      .from(order)
+      .where(and(eq(order.organizationId, organizationId), eq(order.status, "paid")));
+  }
+
+  private getRecordedExpenses(organizationId: string) {
+    return this.db.db
+      .select({ amountKobo: expense.amountKobo })
+      .from(expense)
+      .where(eq(expense.organizationId, organizationId));
   }
 
   private getOpenAiKey(): string {
