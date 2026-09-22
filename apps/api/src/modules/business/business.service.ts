@@ -65,8 +65,8 @@ export class BusinessService {
       this.getOrderTotal(organizationId),
       this.getPendingCredit(organizationId),
       this.getExpenseTotal(organizationId),
-      this.getCount(contact, organizationId),
-      this.getCount(product, organizationId),
+      this.getContactCount(organizationId),
+      this.getProductCount(organizationId),
       this.getLowStockCount(organizationId),
     ]);
     return {
@@ -94,8 +94,13 @@ export class BusinessService {
     return Number(row?.totalKobo ?? 0);
   }
 
-  private async getCount(table: typeof contact | typeof product, organizationId: string): Promise<number> {
-    const [row] = await this.db.db.select({ count: count() }).from(table).where(eq(table.organizationId, organizationId));
+  private async getContactCount(organizationId: string): Promise<number> {
+    const [row] = await this.db.db.select({ count: count() }).from(contact).where(eq(contact.organizationId, organizationId));
+    return Number(row?.count ?? 0);
+  }
+
+  private async getProductCount(organizationId: string): Promise<number> {
+    const [row] = await this.db.db.select({ count: count() }).from(product).where(eq(product.organizationId, organizationId));
     return Number(row?.count ?? 0);
   }
 
