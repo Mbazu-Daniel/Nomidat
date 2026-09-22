@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
-import { and, desc, eq, ilike } from "@nomidat/db";
+import { and, desc, eq, ilike, sql } from "@nomidat/db";
 import {
   contact,
   conversation,
@@ -14,6 +14,8 @@ import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
 import type { ChannelAdapter, InboundMessage } from "../channel/types";
+import { inboundUpdate } from "@nomidat/db/schema";
+import { z } from "zod";
 
 type Intent =
   | "create_contact"
@@ -23,6 +25,15 @@ type Intent =
   | "check_inventory"
   | "summary"
   | "unknown";
+
+const parsedActionSchema = z.object({
+  intent: z.enum(["create_contact", "record_sale", "record_expense", "check_balance", "check_inventory", "summary", "unknown"]),
+  customerName: z.string().min(1).optional(), customerPhone: z.string().min(1).optional(),
+  productName: z.string().min(1).optional(), quantity: z.number().finite().int().positive().optional(),
+  amountNaira: z.number().finite().positive().optional(), paid: z.boolean().optional(),
+  description: z.string().min(1).optional(), category: z.string().min(1).optional(),
+  date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional(),
+}).strict();
 
 type ParsedAction = {
   intent: Intent;
@@ -78,7 +89,7 @@ export class ConversationalService {
       .limit(12);
 
     const action = await this.understand(history.reverse());
-    const reply = await this.executeAction(action, organizationId);
+    const reply = await this.executeAction(action, organizationId);\n\n    await this.completeInboundUpdate(idempotency.id, reply);
 
     await this.db.db.insert(message).values({
       conversationId: conversationRow.id,
@@ -96,6 +107,21 @@ export class ConversationalService {
     return reply;
   }
 
+  private async beginInboundUpdate(inbound: InboundMessage, organizationId: string): Promise<{ status: "new"; id: string } | { status: "completed"; response: string } | { status: "processing" }> {
+    if (!inbound.rawUpdateId) return { status: "new", id: "" };
+    const [created] = await this.db.db.insert(inboundUpdate).values({ organizationId, provider: inbound.provider, rawUpdateId: inbound.rawUpdateId }).onConflictDoNothing().returning({ id: inboundUpdate.id });
+    if (created) return { status: "new", id: created.id };
+    const existing = await this.db.db.select({ id: inboundUpdate.id, response: inboundUpdate.response }).from(inboundUpdate).where(and(
+      eq(inboundUpdate.organizationId, organizationId), eq(inboundUpdate.provider, inbound.provider), eq(inboundUpdate.rawUpdateId, inbound.rawUpdateId),
+    )).limit(1);
+    if (existing[0]?.response !== null && existing[0]?.response !== undefined) return { status: "completed", response: existing[0].response };
+    return { status: "processing" };
+  }
+
+  private async completeInboundUpdate(id: string, response: string): Promise<void> {
+    if (!id) return;
+    await this.db.db.update(inboundUpdate).set({ response, completedAt: new Date() }).where(eq(inboundUpdate.id, id));
+  }
   private async getOrCreateConversation(
     organizationId: string,
     channelIdentityId: string,
@@ -208,7 +234,7 @@ Rules:
         Authorization: `Bearer ${this.getOpenAiKey()}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
+      signal: AbortSignal.timeout(15_000),\n      body: JSON.stringify({
         model: this.env.OPENAI_MODEL,
         temperature: 0,
         response_format: { type: "json_object" },
@@ -227,7 +253,7 @@ Rules:
     if (!raw) throw new ServiceUnavailableException("AI returned no result.");
 
     try {
-      return JSON.parse(raw) as ParsedAction;
+      const parsed = parsedActionSchema.safeParse(JSON.parse(raw));\n      if (!parsed.success) throw new ServiceUnavailableException("AI returned an invalid action.");\n      return parsed.data;
     } catch {
       throw new ServiceUnavailableException("AI returned an invalid action.");
     }
@@ -312,91 +338,52 @@ Rules:
   }
 
   private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
-    if (!action.productName) return "What product did you sell?";
-    if (!action.quantity || action.quantity <= 0) return "How many units did you sell?";
-    if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
-    const quantity = action.quantity;
-
-    let customerId: string | null = null;
-    if (action.customerName) {
-      const existing = await this.db.db
-        .select()
-        .from(contact)
-        .where(
-          and(
-            eq(contact.organizationId, organizationId),
-            ilike(contact.name, action.customerName),
-          ),
-        )
-        .limit(1);
-      customerId = existing[0]?.id ?? null;
-    }
-
-    const existingProduct = await this.db.db
-      .select()
-      .from(product)
-      .where(
-        and(
-          eq(product.organizationId, organizationId),
-          ilike(product.name, action.productName),
-        ),
-      )
-      .limit(1);
-
-    const unitPriceKobo = Math.round((action.amountNaira * 100) / quantity);
-    const totalKobo = Math.round(action.amountNaira * 100);
-    const now = new Date();
-
+    const validationError = this.validateSaleAction(action);
+    if (validationError) return validationError;
+    const quantity = action.quantity!;
+    const amountNaira = action.amountNaira!;
+    const customerId = await this.findCustomerId(organizationId, action.customerName);
+    const existingProduct = await this.findProduct(organizationId, action.productName!);
+    const totalKobo = Math.round(amountNaira * 100);
     const result = await this.db.db.transaction(async (tx) => {
-      const [createdOrder] = await tx
-        .insert(order)
-        .values({
-          organizationId,
-          contactId: customerId,
-          status: action.paid ? "paid" : "pending",
-          subtotalKobo: totalKobo,
-          totalKobo,
-          currency: "NGN",
-          paidAt: action.paid ? now : null,
-          notes: "Recorded through Nomidat",
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      await tx.insert(orderItem).values({
-        orderId: createdOrder.id,
-        productId: existingProduct[0]?.id,
-        productName: action.productName,
-        quantity,
-        unitPriceKobo,
-        totalKobo,
-      });
-
-      if (existingProduct[0]) {
-        const nextStock = existingProduct[0].stockQuantity - quantity;
-        await tx
-          .update(product)
-          .set({ stockQuantity: nextStock })
-          .where(
-            and(
-              eq(product.id, existingProduct[0].id),
-              eq(product.organizationId, organizationId),
-            ),
-          );
+      let stockQuantity: number | null = null;
+      if (existingProduct) {
+        const updated = await tx.update(product).set({ stockQuantity: sql`${product.stockQuantity} - ${quantity}` }).where(and(
+          eq(product.id, existingProduct.id), eq(product.organizationId, organizationId), sql`${product.stockQuantity} >= ${quantity}`,
+        )).returning({ stockQuantity: product.stockQuantity });
+        if (!updated[0]) throw new BadRequestException(`Not enough ${existingProduct.name} in stock.`);
+        stockQuantity = updated[0].stockQuantity;
       }
-
-      return createdOrder;
+      const [createdOrder] = await tx.insert(order).values({
+        organizationId, contactId: customerId, status: action.paid ? "paid" : "pending", subtotalKobo: totalKobo, totalKobo,
+        currency: "NGN", paidAt: action.paid ? new Date() : null, notes: "Recorded through Nomidat",
+      }).returning();
+      await tx.insert(orderItem).values({ orderId: createdOrder.id, productId: existingProduct?.id, productName: action.productName!,
+        quantity, unitPriceKobo: Math.round(totalKobo / quantity), totalKobo });
+      return { orderId: createdOrder.id, stockQuantity };
     });
-
     const paymentText = action.paid ? "paid" : "on credit";
-    const stockText = existingProduct[0]
-      ? ` Stock is now ${Math.max(0, existingProduct[0].stockQuantity - action.quantity)}.`
-      : " I did not change inventory because that product is not in your inventory yet.";
-
-    return `Recorded ${action.quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.id.slice(0, 8)}.`;
+    const stockText = result.stockQuantity === null ? " I did not change inventory because that product is not in your inventory yet." : ` Stock is now ${result.stockQuantity}.`;
+    return `Recorded ${quantity} × ${action.productName} for ₦${amountNaira.toLocaleString("en-NG")} ${paymentText}.${stockText} Order ${result.orderId.slice(0, 8)}.`;
   }
 
+  private validateSaleAction(action: ParsedAction): string | null {
+    if (!action.productName) return "What product did you sell?";
+    if (!action.quantity) return "How many units did you sell?";
+    if (!action.amountNaira) return "What was the total selling amount?";
+    return null;
+  }
+
+  private async findCustomerId(organizationId: string, name?: string): Promise<string | null> {
+    if (!name) return null;
+    const rows = await this.db.db.select({ id: contact.id }).from(contact).where(and(eq(contact.organizationId, organizationId), ilike(contact.name, name))).limit(1);
+    return rows[0]?.id ?? null;
+  }
+
+  private async findProduct(organizationId: string, name: string) {
+    const rows = await this.db.db.select().from(product).where(and(eq(product.organizationId, organizationId), ilike(product.name, name))).limit(1);
+    return rows[0] ?? null;
+  }
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "Which customer should I check?";
 
