@@ -63,7 +63,9 @@ export class ExpensesService {
 
   async update(organizationId: string, expenseId: string, input: UpdateExpenseDto) {
     const existing = await this.get(organizationId, expenseId);
-    const categoryId = input.categoryId === undefined ? existing.categoryId : await this.resolveCategoryId(input.categoryId, organizationId);
+    const categoryId = input.categoryId === undefined
+      ? existing.categoryId
+      : await this.resolveCategoryId(input.categoryId, organizationId);
 
     const [updated] = await this.db.db
       .update(expense)
@@ -72,8 +74,9 @@ export class ExpensesService {
         amountKobo: input.amountKobo ?? existing.amountKobo,
         description: input.description === undefined ? existing.description : input.description.trim() || null,
         spentAt: input.spentAt ? new Date(input.spentAt) : existing.spentAt,
-        paymentMethod:
-          input.paymentMethod === undefined ? existing.paymentMethod : input.paymentMethod.trim() || existing.paymentMethod,
+        paymentMethod: input.paymentMethod === undefined
+          ? existing.paymentMethod
+          : input.paymentMethod.trim() || existing.paymentMethod,
         receiptUrl: input.receiptUrl === undefined ? existing.receiptUrl : input.receiptUrl.trim() || null,
         updatedAt: new Date(),
       })
@@ -100,11 +103,14 @@ export class ExpensesService {
   async createCategory(organizationId: string, input: CreateExpenseCategoryDto) {
     const name = input.name.trim();
     if (!name) throw new BadRequestException("Category name is required.");
+    return this.insertCategory(organizationId, name, input.description?.trim() || null);
+  }
 
+  private async insertCategory(organizationId: string, name: string, description: string | null) {
     try {
       const [created] = await this.db.db
         .insert(expenseCategory)
-        .values({ organizationId, name, description: input.description?.trim() || null, isDefault: false })
+        .values({ organizationId, name, description, isDefault: false })
         .returning();
       return created;
     } catch (error) {
@@ -122,7 +128,10 @@ export class ExpensesService {
     const [category] = await this.db.db
       .select({ id: expenseCategory.id })
       .from(expenseCategory)
-.where(and(eq(expenseCategory.id, categoryId), sql`(${expenseCategory.organizationId} IS NULL OR ${expenseCategory.organizationId} = ${organizationId})`))
+      .where(and(
+        eq(expenseCategory.id, categoryId),
+        sql`(${expenseCategory.organizationId} IS NULL OR ${expenseCategory.organizationId} = ${organizationId})`,
+      ))
       .limit(1);
 
     if (!category) throw new NotFoundException("Expense category not found.");
