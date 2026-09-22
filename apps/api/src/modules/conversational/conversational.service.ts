@@ -1,12 +1,11 @@
 import { BadRequestException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
-import { and, desc, eq, ilike, sql } from "@nomidat/db";
+import { and, desc, eq, ilike } from "@nomidat/db";
 import {
   contact,
   conversation,
   expense,
   expenseCategory,
   order,
-  orderItem,
   product,
   message,
 } from "@nomidat/db/schema";

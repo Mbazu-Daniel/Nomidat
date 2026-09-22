@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
-import { and, desc, eq, sql } from "@nomidat/db";
+import { and, desc, eq } from "@nomidat/db";
 import { expense, expenseCategory } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateExpenseCategoryDto, CreateExpenseDto, UpdateExpenseDto } from "./dto";
