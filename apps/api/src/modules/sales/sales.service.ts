@@ -201,7 +201,7 @@ export class SalesService {
   private async createInitialPayment(
     tx: Pick<DbHandle["db"], "insert">,
     organizationId: string,
-    userId: string,
+    userId: string | null,
     orderId: string,
     customerId: string | null,
     amountKobo: number,
@@ -218,7 +218,7 @@ export class SalesService {
       currency: "NGN",
       method: input.paymentMethod ?? "cash",
       reference: input.paymentReference,
-      createdByUserId: userId,
+      createdByUserId: userId ?? undefined,
       paidAt,
     });
   }
