@@ -27,6 +27,7 @@ const sections = {
 export function BusinessListPage({ section }: { section: keyof typeof sections }) {
   const config = sections[section];
   const Icon = config.icon;
+  const actionLabel = section === "sales" ? "Record sale" : section === "customers" ? "Add customer" : section === "inventory" ? "Add product" : "Record expense";
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -39,17 +40,17 @@ export function BusinessListPage({ section }: { section: keyof typeof sections }
             <h1 className="text-2xl font-semibold tracking-tight">{config.title}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{config.description}</p>
           </div>
-          <button type="button" className="hidden rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-orange-600 sm:inline-flex">
-            {section === "sales" ? "Record sale" : section === "customers" ? "Add customer" : section === "inventory" ? "Add product" : "Record expense"}
+          <button type="button" disabled title="This action is not available yet" className="hidden cursor-not-allowed rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-medium text-white opacity-60 sm:inline-flex">
+            {actionLabel}
           </button>
         </div>
 
         {section === "sales" ? (
           <div className="mt-6 overflow-hidden rounded-2xl border border-orange-100 bg-white">
             <div className="grid grid-cols-2 gap-3 border-b border-orange-100 p-4 sm:grid-cols-4">
-              <Metric label="Revenue" value={formatNaira(250900)} />
-              <Metric label="Paid" value={formatNaira(156400)} />
-              <Metric label="Credit" value={formatNaira(94500)} />
+              <Metric label="Revenue" value={formatNaira(businessData.sales.reduce((sum, sale) => sum + sale.amount, 0))} />
+              <Metric label="Paid" value={formatNaira(businessData.sales.filter((sale) => sale.status === "Paid").reduce((sum, sale) => sum + sale.amount, 0))} />
+              <Metric label="Credit" value={formatNaira(businessData.sales.filter((sale) => sale.status === "Credit").reduce((sum, sale) => sum + sale.amount, 0))} />
               <Metric label="Transactions" value={String(businessData.sales.length)} />
             </div>
             <div className="divide-y divide-orange-100">
