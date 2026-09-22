@@ -11,7 +11,7 @@ export class ExpensesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
   async list(organizationId: string, limit = 20) {
-    return this.db.db
+    return this.db
       .select({
         id: expense.id,
         categoryId: expense.categoryId,
@@ -32,7 +32,7 @@ export class ExpensesService {
   }
 
   async get(organizationId: string, expenseId: string) {
-    const [item] = await this.db.db
+    const [item] = await this.db
       .select()
       .from(expense)
       .where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)))
@@ -43,7 +43,7 @@ export class ExpensesService {
   }
 
   async create(organizationId: string, userId: string | null, input: CreateExpenseDto) {
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(expense)
       .values({
         organizationId,
@@ -67,7 +67,7 @@ export class ExpensesService {
       ? await this.resolveCategoryId(organizationId, categoryId)
       : undefined;
 
-    const [updated] = await this.db.db
+    const [updated] = await this.db
       .update(expense)
       .set({
         ...values,
@@ -84,12 +84,12 @@ export class ExpensesService {
 
   async remove(organizationId: string, expenseId: string) {
     await this.get(organizationId, expenseId);
-    await this.db.db.delete(expense).where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)));
+    await this.db.delete(expense).where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)));
     return { id: expenseId, deleted: true };
   }
 
   async listCategories(organizationId: string) {
-    return this.db.db
+    return this.db
       .select()
       .from(expenseCategory)
       .where(sql`(${expenseCategory.organizationId} IS NULL OR ${expenseCategory.organizationId} = ${organizationId})`)
@@ -108,7 +108,7 @@ export class ExpensesService {
 
   private async insertCategory(organizationId: string, name: string, description?: string) {
     try {
-      const [created] = await this.db.db
+      const [created] = await this.db
         .insert(expenseCategory)
         .values({ organizationId, name, description: description?.trim() || null, isDefault: false })
         .returning();
@@ -124,7 +124,7 @@ export class ExpensesService {
   private async resolveCategoryId(organizationId: string, categoryId?: string) {
     if (!categoryId) return null;
 
-    const [category] = await this.db.db
+    const [category] = await this.db
       .select({ id: expenseCategory.id })
       .from(expenseCategory)
       .where(and(
