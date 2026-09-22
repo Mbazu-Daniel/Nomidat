@@ -141,11 +141,7 @@ export class ConversationalService {
     return adapter.getInboundMedia(inbound.mediaUrl);
   }
 
-  private createTranscriptionForm(
-    data: Uint8Array,
-    mediaMimeType: string | undefined,
-    inboundMimeType: string | undefined,
-  ): FormData {
+  private createTranscriptionForm(data: Uint8Array, mediaMimeType: string | undefined, inboundMimeType: string | undefined): FormData {
     const form = new FormData();
     const audioBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
     form.append("file", new Blob([audioBuffer], { type: mediaMimeType ?? inboundMimeType ?? "audio/ogg" }), "voice.ogg");
@@ -175,9 +171,7 @@ export class ConversationalService {
     return this.parseAiAction(raw);
   }
 
-  private buildAiMessages(
-    history: Array<{ role: string; content: string | null }>,
-  ): Array<{ role: "assistant" | "user"; content: string }> {
+  private buildAiMessages(history: Array<{ role: string; content: string | null }>): Array<{ role: "assistant" | "user"; content: string }> {
     return history
       .filter((item): item is { role: string; content: string } => Boolean(item.content))
       .map((item) => ({
@@ -185,6 +179,93 @@ export class ConversationalService {
         content: item.content,
       }));
   }
+
+  private readonly actionHandlers: Record<Intent, (action: ParsedAction, organizationId: string) => Promise<string>> = {
+    create_contact: (action, id) => this.createContact(action, id),
+    record_sale: (action, id) => this.recordSale(action, id),
+    record_expense: (action, id) => this.recordExpense(action, id),
+    check_balance: (action, id) => this.checkBalance(action, id),
+    check_inventory: (action, id) => this.checkInventory(action, id),
+    summary: (_action, id) => this.summary(id),
+    unknown: async () => "I understood the message, but I need a little more information to know what you want me to record.",
+  };
+
+  private executeAction(action: ParsedAction, organizationId: string): Promise<string> {
+    return this.actionHandlers[action.intent](action, organizationId);
+  }
+
+  private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
+    if (!action.customerName) return "What is the customer's name?";
+
+    const existing = await this.db
+      .select()
+      .from(contact)
+      .where(
+        and(
+          eq(contact.organizationId, organizationId),
+          ilike(contact.name, action.customerName),
+        ),
+      )
+      .limit(1);
+
+    if (existing[0]) return `${existing[0].name} is already in your contacts.`;
+
+    const [created] = await this.db
+      .insert(contact)
+      .values({
+        organizationId,
+        name: action.customerName,
+        phone: action.customerPhone,
+        kind: "customer",
+        source: "conversational",
+      })
+      .returning();
+
+    return `Recorded ${created.name} as a customer.`;
+  }
+
+  private async recordExpense(action: ParsedAction, organizationId: string): Promise<string> {
+    if (!action.amountNaira || action.amountNaira <= 0) {
+      return "How much was the expense?";
+    }
+
+    const categories = await this.db
+      .select()
+      .from(expenseCategory)
+      .where(eq(expenseCategory.isDefault, true));
+
+    const category = action.category
+      ? categories.find((item) => item.name.toLowerCase() === action.category?.toLowerCase())
+      : categories.find((item) => item.name.toLowerCase().includes("other"));
+
+    const [created] = await this.db
+      .insert(expense)
+      .values({
+        organizationId,
+        categoryId: category?.id,
+        amountKobo: Math.round(action.amountNaira * 100),
+        description: action.description ?? "Recorded through Nomidat",
+        spentAt: action.date ? new Date(`${action.date}T12:00:00`) : new Date(),
+        paymentMethod: "cash",
+      })
+      .returning();
+
+    return `Recorded ₦${(created.amountKobo / 100).toLocaleString("en-NG")} expense.`;
+  }
+
+  private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
+    const validationError = this.validateSaleAction(action);
+    if (validationError) return validationError;
+    const quantity = action.quantity!;
+    const amountNaira = action.amountNaira!;
+    const result = await this.salesService.createSale(
+      organizationId,
+      null,
+      await this.buildSaleInput(action, organizationId, quantity, amountNaira),
+    );
+    return this.formatSaleResponse(action, quantity, amountNaira, result);
+  }
+
   private validateSaleAction(action: ParsedAction): string | null {
     const checks: Array<[boolean, string]> = [
       [!action.productName, "What product did you sell?"],
@@ -193,12 +274,8 @@ export class ConversationalService {
     ];
     return checks.find(([invalid]) => invalid)?.[1] ?? null;
   }
-  private async buildSaleInput(
-    action: ParsedAction,
-    organizationId: string,
-    quantity: number,
-    amountNaira: number,
-  ) {
+
+  private async buildSaleInput(action: ParsedAction, organizationId: string, quantity: number, amountNaira: number) {
     const [customerId, existingProduct] = await Promise.all([
       this.findCustomerId(organizationId, action.customerName),
       this.findProduct(organizationId, action.productName!),
@@ -213,12 +290,7 @@ export class ConversationalService {
     };
   }
 
-  private buildSaleItem(
-    action: ParsedAction,
-    existingProduct: { id: string; name: string } | undefined,
-    quantity: number,
-    totalKobo: number,
-  ) {
+  private buildSaleItem(action: ParsedAction, existingProduct: { id: string; name: string } | undefined, quantity: number, totalKobo: number) {
     return {
       productId: existingProduct?.id,
       productName: existingProduct?.name ?? action.productName!,
@@ -232,3 +304,90 @@ export class ConversationalService {
     return paid ? totalKobo : 0;
   }
 
+  private async findCustomerId(organizationId: string, customerName?: string): Promise<string | undefined> {
+    if (!customerName) return undefined;
+    const rows = await this.db.select({ id: contact.id }).from(contact).where(and(eq(contact.organizationId, organizationId), ilike(contact.name, customerName))).limit(1);
+    return rows[0]?.id;
+  }
+
+  private async findProduct(organizationId: string, productName: string) {
+    const rows = await this.db.select({ id: product.id, name: product.name }).from(product).where(and(eq(product.organizationId, organizationId), ilike(product.name, productName))).limit(1);
+    return rows[0];
+  }
+
+  private formatSaleResponse(action: ParsedAction, quantity: number, amountNaira: number, result: { id: string; balanceKobo: number }): string {
+    const paymentText = action.paid ? "paid" : "on credit";
+    const balanceText = result.balanceKobo > 0 ? ` Outstanding: ₦${(result.balanceKobo / 100).toLocaleString("en-NG")}.` : "";
+    return `Recorded ${quantity} × ${action.productName} for ₦${amountNaira.toLocaleString("en-NG")} ${paymentText}.${balanceText} Order ${result.id.slice(0, 8)}.`;
+  }
+
+  private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
+    if (!action.customerName) return "Which customer should I check?";
+
+    const customers = await this.db
+      .select()
+      .from(contact)
+      .where(
+        and(eq(contact.organizationId, organizationId), ilike(contact.name, action.customerName)),
+      )
+      .limit(1);
+
+    const customer = customers[0];
+    if (!customer) return `I couldn't find ${action.customerName} in your customers.`;
+
+    const rows = await this.db
+      .select({ totalKobo: order.totalKobo })
+      .from(order)
+      .where(
+        and(
+          eq(order.organizationId, organizationId),
+          eq(order.contactId, customer.id),
+          eq(order.status, "pending"),
+        ),
+      );
+
+    const total = rows.reduce((sum, row) => sum + row.totalKobo, 0);
+    return `${customer.name} currently owes ₦${(total / 100).toLocaleString("en-NG")}.`;
+  }
+
+  private async checkInventory(action: ParsedAction, organizationId: string): Promise<string> {
+    if (!action.productName) return "Which product should I check?";
+
+    const rows = await this.db
+      .select()
+      .from(product)
+      .where(
+        and(eq(product.organizationId, organizationId), ilike(product.name, action.productName)),
+      )
+      .limit(1);
+
+    const item = rows[0];
+    if (!item) return `I couldn't find ${action.productName} in your inventory.`;
+
+    return `${item.name}: ${item.stockQuantity} ${item.unit} in stock.`;
+  }
+
+  private async summary(organizationId: string): Promise<string> {
+    const orders = await this.db
+      .select({ totalKobo: order.totalKobo })
+      .from(order)
+      .where(and(eq(order.organizationId, organizationId), eq(order.status, "paid")));
+
+    const expenses = await this.db
+      .select({ amountKobo: expense.amountKobo })
+      .from(expense)
+      .where(eq(expense.organizationId, organizationId));
+
+    const revenue = orders.reduce((sum, row) => sum + row.totalKobo, 0);
+    const spending = expenses.reduce((sum, row) => sum + row.amountKobo, 0);
+
+    return `Business summary: ₦${(revenue / 100).toLocaleString("en-NG")} paid sales and ₦${(spending / 100).toLocaleString("en-NG")} recorded expenses. Outstanding credit is available by asking "who owes me?"`;
+  }
+
+  private getOpenAiKey(): string {
+    if (!this.env.OPENAI_API_KEY) {
+      throw new ServiceUnavailableException("OPENAI_API_KEY is not configured.");
+    }
+    return this.env.OPENAI_API_KEY;
+  }
+}
