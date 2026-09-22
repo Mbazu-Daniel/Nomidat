@@ -46,21 +46,20 @@ function MiniAppPage() {
     return () => { cancelled = true; };
   }, []);
 
-  if (status === "loading") {
-    return <div className="flex min-h-screen items-center justify-center bg-[#fffaf7] text-sm text-muted-foreground">{message}</div>;
+  if (status !== "ready") {
+    return status === "loading"
+      ? <div className="flex min-h-screen items-center justify-center bg-[#fffaf7] text-sm text-muted-foreground">{message}</div>
+      : <main className="flex min-h-screen items-center justify-center bg-[#fffaf7] px-6 text-center"><div className="max-w-sm"><div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-600"><IconSparkles className="size-7" /></div><h1 className="text-xl font-semibold">Open Nomidat in Telegram</h1><p className="mt-2 text-sm text-muted-foreground">{message}</p></div></main>;
   }
 
-  if (status === "error") {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#fffaf7] px-6 text-center">
-        <div className="max-w-sm">
-          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-600"><IconSparkles className="size-7" /></div>
-          <h1 className="text-xl font-semibold">Open Nomidat in Telegram</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-        </div>
-      </main>
-    );
-  }
+  const viewRenderers: Record<View, (onNavigate: (view: View) => void) => ReactNode> = {
+    home: (onNavigate) => <HomeView onNavigate={onNavigate} />,
+    sales: () => <SalesView />,
+    customers: () => <CustomersView />,
+    stock: () => <StockView />,
+    expenses: () => <ExpensesView />,
+    more: (onNavigate) => <MoreView onNavigate={onNavigate} />,
+  };
 
   return (
     <main className="min-h-screen bg-[#fffaf7] pb-24 text-foreground">
@@ -72,12 +71,7 @@ function MiniAppPage() {
           </div>
         </header>
 
-        {view === "home" ? <HomeView onNavigate={setView} /> : null}
-        {view === "sales" ? <SalesView /> : null}
-        {view === "customers" ? <CustomersView /> : null}
-        {view === "stock" ? <StockView /> : null}
-        {view === "expenses" ? <ExpensesView /> : null}
-        {view === "more" ? <MoreView onNavigate={setView} /> : null}
+        {viewRenderers[view](setView)}
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-orange-100 bg-white/95 px-4 py-2 backdrop-blur">
