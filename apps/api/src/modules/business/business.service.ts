@@ -23,7 +23,7 @@ export class BusinessService {
       .leftJoin(contact, eq(order.contactId, contact.id))
       .where(eq(order.organizationId, organizationId))
       .orderBy(desc(order.createdAt))
-      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
+      .limit(this.limit(limit));
   }
 
   async getCustomers(organizationId: string, limit = DEFAULT_LIMIT) {
@@ -38,42 +38,13 @@ export class BusinessService {
       .from(contact)
       .where(eq(contact.organizationId, organizationId))
       .orderBy(desc(contact.createdAt))
-      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
+      .limit(this.limit(limit));
 
     return Promise.all(
-      customers.map(async (customer) => {
-        const pendingSales = await this.db.db
-          .select({ id: order.id, totalKobo: order.totalKobo })
-          .from(order)
-          .where(
-            and(
-              eq(order.organizationId, organizationId),
-              eq(order.contactId, customer.id),
-              eq(order.status, "pending"),
-            ),
-          );
-
-        const outstandingKobo = await Promise.all(
-          pendingSales.map(async (sale) => {
-            const [paid] = await this.db.db
-              .select({ totalKobo: sum(payment.amountKobo) })
-              .from(payment)
-              .where(
-                and(
-                  eq(payment.organizationId, organizationId),
-                  eq(payment.orderId, sale.id),
-                ),
-              );
-
-            return Math.max(0, sale.totalKobo - Number(paid?.totalKobo ?? 0));
-          }),
-        );
-
-        return {
-          ...customer,
-          outstandingKobo: outstandingKobo.reduce((total, value) => total + value, 0),
-        };
-      }),
+      customers.map(async (customer) => ({
+        ...customer,
+        outstandingKobo: await this.getOutstandingForCustomer(organizationId, customer.id),
+      })),
     );
   }
 
@@ -91,7 +62,7 @@ export class BusinessService {
       .from(product)
       .where(eq(product.organizationId, organizationId))
       .orderBy(desc(product.updatedAt))
-      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
+      .limit(this.limit(limit));
   }
 
   async getSummary(organizationId: string) {
@@ -104,32 +75,17 @@ export class BusinessService {
       this.db.db.select({ count: count() }).from(product).where(and(eq(product.organizationId, organizationId), lte(product.stockQuantity, product.lowStockThreshold))),
     ]);
 
-    const outstandingCreditKobo = await Promise.all(
-      pendingOrders.map(async (pendingOrder) => {
-        const [paid] = await this.db.db
-          .select({ totalKobo: sum(payment.amountKobo) })
-          .from(payment)
-          .where(
-            and(
-              eq(payment.organizationId, organizationId),
-              eq(payment.orderId, pendingOrder.id),
-            ),
-          );
-
-        return Math.max(0, pendingOrder.totalKobo - Number(paid?.totalKobo ?? 0));
-      }),
-    );
+    const outstandingCreditKobo = await this.getOutstandingForOrders(organizationId, pendingOrders);
 
     return {
       salesTotalKobo: Number(sales[0]?.totalKobo ?? 0),
-      outstandingCreditKobo: outstandingCreditKobo.reduce((total, value) => total + value, 0),
+      outstandingCreditKobo,
       expensesTotalKobo: Number(expenses[0]?.totalKobo ?? 0),
       customerCount: Number(customers[0]?.count ?? 0),
       productCount: Number(products[0]?.count ?? 0),
       lowStockCount: Number(lowStock[0]?.count ?? 0),
     };
   }
-
 
   async getExpenses(organizationId: string, limit = DEFAULT_LIMIT) {
     return this.db.db
@@ -145,6 +101,41 @@ export class BusinessService {
       .leftJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))
       .where(eq(expense.organizationId, organizationId))
       .orderBy(desc(expense.spentAt))
-      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
+      .limit(this.limit(limit));
+  }
+
+  private limit(limit: number) {
+    return Math.min(Math.max(limit, 1), MAX_LIMIT);
+  }
+
+  private async getOutstandingForCustomer(organizationId: string, customerId: string) {
+    const pendingSales = await this.db.db
+      .select({ id: order.id, totalKobo: order.totalKobo })
+      .from(order)
+      .where(and(
+        eq(order.organizationId, organizationId),
+        eq(order.contactId, customerId),
+        eq(order.status, "pending"),
+      ));
+
+    return this.getOutstandingForOrders(organizationId, pendingSales);
+  }
+
+  private async getOutstandingForOrders(
+    organizationId: string,
+    pendingOrders: Array<{ id: string; totalKobo: number }>,
+  ) {
+    const balances = await Promise.all(
+      pendingOrders.map(async (sale) => sale.totalKobo - await this.getPaidAmount(organizationId, sale.id)),
+    );
+    return balances.reduce((total, balance) => total + Math.max(0, balance), 0);
+  }
+
+  private async getPaidAmount(organizationId: string, saleId: string) {
+    const [paid] = await this.db.db
+      .select({ totalKobo: sum(payment.amountKobo) })
+      .from(payment)
+      .where(and(eq(payment.organizationId, organizationId), eq(payment.orderId, saleId)));
+    return Number(paid?.totalKobo ?? 0);
   }
 }
