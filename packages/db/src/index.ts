@@ -3,9 +3,9 @@ import postgres from "postgres";
 
 export type Database = PostgresJsDatabase<Record<string, never>>;
 
-export function createDb(connectionString: string): { db: Database; client: postgres.Sql } {
+export type DatabaseClient = Database & { close: () => Promise<void> };\n\nexport function createDb(connectionString: string): DatabaseClient {
   const client = postgres(connectionString);
-  return { db: drizzle(client), client };
+  const db = drizzle(client);\n  return Object.assign(db, {\n    close: () => client.end({ timeout: 5 }),\n  });
 }
 
 export { generateId } from "./id";

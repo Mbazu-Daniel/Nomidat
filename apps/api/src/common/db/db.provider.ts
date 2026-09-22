@@ -4,10 +4,10 @@ import { type ApiEnv } from "../config/env";
 import { API_ENV } from "../config/env.module";
 
 export const DATABASE = Symbol("DATABASE");
-export type DbHandle = ReturnType<typeof createDb>["db"];
+export type DbHandle = ReturnType<typeof createDb>;
 
 export const dbProvider: Provider = {
   provide: DATABASE,
   inject: [API_ENV],
-  useFactory: (env: ApiEnv): DbHandle => createDb(env.DATABASE_URL).db,
+  useFactory: (env: ApiEnv): DbHandle => createDb(env.DATABASE_URL),
 };
