@@ -8,7 +8,6 @@ export const invoice = pgTable(
   {
     ...createOrgScopedColumns(),
     contactId: uuid("contact_id").references(() => contact.id, { onDelete: "set null" }),
-    sourceSaleId: uuid("source_sale_id"),
     invoiceNumber: text("invoice_number").notNull(),
     status: text("status").notNull().default("draft"),
     ...createMoneyTotalColumns(),
@@ -23,7 +22,6 @@ export const invoice = pgTable(
     index("invoice_organization_id_idx").on(t.organizationId),
     uniqueIndex("invoice_organization_id_number_uidx").on(t.organizationId, t.invoiceNumber),
     index("invoice_organization_id_contact_id_idx").on(t.organizationId, t.contactId),
-    uniqueIndex("invoice_organization_id_source_sale_uidx").on(t.organizationId, t.sourceSaleId),
     index("invoice_organization_id_status_idx").on(t.organizationId, t.status),
   ],
 );

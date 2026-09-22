@@ -10,3 +10,4 @@ import { InvoicesService } from "./invoices.service";
   providers: [InvoicesService],
 })
 export class InvoicesModule {}
+
