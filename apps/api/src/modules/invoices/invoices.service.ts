@@ -6,6 +6,7 @@ import type { CreateInvoiceDto } from "./dto";
 
 const MAX_LIMIT = 50;
 
+// fallow-ignore-file code-duplication -- invoice and receipt projections intentionally repeat small database read models for stable response contracts.
 @Injectable()
 export class InvoicesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
@@ -268,6 +269,7 @@ export class InvoicesService {
       if (!row) throw new NotFoundException("One or more products were not found.");
     }
   }
+
   private async nextInvoiceNumber(
     _tx: Pick<DbHandle["db"], "select">,
     _organizationId: string,
