@@ -78,7 +78,7 @@ export class SalesService {
         method: input.method ?? "cash",
         reference: input.reference,
         notes: input.notes,
-        createdByUserId: userId,
+        createdByUserId: userId ?? undefined,
         paidAt: now,
       });
 
