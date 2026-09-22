@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
-import { getOrganizationSession, authorizeOrganization } from "../../common/helpers/organization-auth";
+import { authorizeOrganization } from "../../common/helpers/organization-auth";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { CreateExpenseCategoryDto, CreateExpenseDto, UpdateExpenseDto } from "./dto";
 import { ExpensesService } from "./expenses.service";
@@ -21,7 +21,7 @@ export class ExpensesController {
     @Body() body: CreateExpenseDto,
     @Req() req: Request,
   ) {
-    const session = await getOrganizationSession(this.auth, req, organizationId);
+    const session = await authorizeOrganization(this.auth, req, organizationId);
     return this.expenses.create(organizationId, session.userId, body);
   }
 
@@ -33,7 +33,7 @@ export class ExpensesController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await authorizeOrganization(this.auth, req, organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.list(organizationId, limit);
   }
 
@@ -44,7 +44,7 @@ export class ExpensesController {
     @Param("expenseId") expenseId: string,
     @Req() req: Request,
   ) {
-    await authorizeOrganization(this.auth, req, organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.get(organizationId, expenseId);
   }
 
@@ -56,7 +56,7 @@ export class ExpensesController {
     @Body() body: UpdateExpenseDto,
     @Req() req: Request,
   ) {
-    await authorizeOrganization(this.auth, req, organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.update(organizationId, expenseId, body);
   }
 
@@ -67,14 +67,14 @@ export class ExpensesController {
     @Param("expenseId") expenseId: string,
     @Req() req: Request,
   ) {
-    await authorizeOrganization(this.auth, req, organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.remove(organizationId, expenseId);
   }
 
   @Get("expense-categories")
   @ApiOperation({ summary: "List expense categories" })
   async listCategories(@Param("organizationId") organizationId: string, @Req() req: Request) {
-    await authorizeOrganization(this.auth, req, organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.listCategories();
   }
 
@@ -85,7 +85,11 @@ export class ExpensesController {
     @Body() body: CreateExpenseCategoryDto,
     @Req() req: Request,
   ) {
-    await authorizeOrganization(this.auth, req, organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.createCategory(body);
+  }
+
+  private authorize(req: Request, organizationId: string) {
+    return authorizeOrganization(this.auth, req, organizationId);
   }
 }
