@@ -12,7 +12,6 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { ActivityRow } from "@/components/nomidat/activity-row";
-import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
 import { StatCard } from "@/components/nomidat/stat-card";
 import { businessData, formatNaira } from "@/data/nomidat";
 import { createTelegramSession } from "@/lib/telegram-session";
@@ -23,19 +22,13 @@ export const Route = createFileRoute("/mini-app")({
   head: () => ({ scripts: [{ src: "https://telegram.org/js/telegram-web-app.js" }] }),
 });
 
-type View = "home" | "sales" | "customers" | "stock" | "more";
+type View = "home" | "sales" | "customers" | "stock" | "expenses" | "more";
 
 function MiniAppPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState("Opening Telegram session…");
   const [userName, setUserName] = useState<string | null>(null);
-  const [organizationId, setOrganizationId] = useState("demo");
   const [view, setView] = useState<View>("home");
-
-  const organizations: OrganizationOption[] = [
-    { id: "demo", name: "My Business" },
-    { id: "second", name: "Second Business" },
-  ];
 
   useEffect(() => {
     let cancelled = false;
@@ -77,13 +70,13 @@ function MiniAppPage() {
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-orange-600">nomidat</p>
             <p className="mt-1 truncate text-lg font-semibold">Hi, {userName ?? "there"} 👋</p>
           </div>
-          <OrganizationSwitcher organizations={organizations} currentOrganizationId={organizationId} onChange={setOrganizationId} />
         </header>
 
         {view === "home" ? <HomeView onNavigate={setView} /> : null}
         {view === "sales" ? <SalesView /> : null}
         {view === "customers" ? <CustomersView /> : null}
         {view === "stock" ? <StockView /> : null}
+        {view === "expenses" ? <ExpensesView /> : null}
         {view === "more" ? <MoreView onNavigate={setView} /> : null}
       </div>
 
@@ -106,7 +99,7 @@ function MiniAppPage() {
 }
 
 function HomeView({ onNavigate }: { onNavigate: (view: View) => void }) {
-  const todaySales = businessData.sales.reduce((sum, sale) => sum + sale.amount, 0);
+  const todaySales = businessData.sales.filter((sale) => sale.date.startsWith("Today")).reduce((sum, sale) => sum + sale.amount, 0);
   const credit = businessData.customers.reduce((sum, customer) => sum + customer.outstanding, 0);
   const expenses = businessData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
@@ -124,7 +117,7 @@ function HomeView({ onNavigate }: { onNavigate: (view: View) => void }) {
         <div className="grid grid-cols-4 gap-2">
           {([
             ["Sale", "sales", IconReceipt],
-            ["Expense", "more", IconWallet],
+            ["Expense", "expenses", IconWallet],
             ["Customer", "customers", IconUsers],
             ["Stock", "stock", IconPackage],
           ] as const).map(([label, target, Icon]) => (
@@ -150,8 +143,11 @@ function CustomersView() {
 function StockView() {
   return <ListView title="Inventory" description="Current stock levels.">{businessData.products.map((product) => { const low = product.quantity <= product.reorderLevel; return <div key={product.id} className="flex items-center gap-3 border-b border-orange-100 py-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600"><IconPackage className="size-5" /></span><div className="min-w-0 flex-1"><p className="text-sm font-medium">{product.name}</p><p className="text-xs text-muted-foreground">{product.quantity} {product.unit}</p></div><span className={`rounded-full px-2 py-1 text-[11px] ${low ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{low ? "Low stock" : "Healthy"}</span></div>; })}</ListView>;
 }
+function ExpensesView() {
+  return <ListView title="Expenses" description="Recent business spending.">{businessData.expenses.map((expense) => <div key={expense.id} className="flex items-center gap-3 border-b border-orange-100 py-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600"><IconWallet className="size-5" /></span><div className="min-w-0 flex-1"><p className="text-sm font-medium">{expense.description}</p><p className="text-xs text-muted-foreground">{expense.category} · {expense.date}</p></div><p className="text-sm font-semibold">{formatNaira(expense.amount)}</p></div>)}</ListView>;
+}
 function MoreView({ onNavigate }: { onNavigate: (view: View) => void }) {
-  return <section className="mt-6 space-y-3"><h1 className="text-xl font-semibold">More</h1><p className="text-sm text-muted-foreground">Business tools available from Nomidat.</p><button type="button" onClick={() => onNavigate("home")} className="flex w-full items-center justify-between rounded-2xl border border-orange-100 bg-white p-4 text-left"><span><span className="block text-sm font-medium">Expenses</span><span className="text-xs text-muted-foreground">Review business spending</span></span><IconChevronRight className="size-4 text-muted-foreground" /></button><button type="button" onClick={() => onNavigate("stock")} className="flex w-full items-center justify-between rounded-2xl border border-orange-100 bg-white p-4 text-left"><span><span className="block text-sm font-medium">Inventory</span><span className="text-xs text-muted-foreground">Check stock levels</span></span><IconChevronRight className="size-4 text-muted-foreground" /></button></section>;
+  return <section className="mt-6 space-y-3"><h1 className="text-xl font-semibold">More</h1><p className="text-sm text-muted-foreground">Business tools available from Nomidat.</p><button type="button" onClick={() => onNavigate("expenses")} className="flex w-full items-center justify-between rounded-2xl border border-orange-100 bg-white p-4 text-left"><span><span className="block text-sm font-medium">Expenses</span><span className="text-xs text-muted-foreground">Review business spending</span></span><IconChevronRight className="size-4 text-muted-foreground" /></button><button type="button" onClick={() => onNavigate("stock")} className="flex w-full items-center justify-between rounded-2xl border border-orange-100 bg-white p-4 text-left"><span><span className="block text-sm font-medium">Inventory</span><span className="text-xs text-muted-foreground">Check stock levels</span></span><IconChevronRight className="size-4 text-muted-foreground" /></button></section>;
 }
 function ListView({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return <section className="mt-6 rounded-2xl border border-orange-100 bg-white px-4 pb-2 pt-4"><h1 className="text-xl font-semibold">{title}</h1><p className="mt-1 text-xs text-muted-foreground">{description}</p><div className="mt-2">{children}</div></section>;
