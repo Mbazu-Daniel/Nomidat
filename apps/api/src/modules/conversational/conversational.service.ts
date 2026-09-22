@@ -317,59 +317,113 @@ Rules:
   }
 
   private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
-    if (!action.productName) return "What product did you sell?";
-    if (!action.quantity || action.quantity <= 0) return "How many units did you sell?";
-    if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
-    const quantity = action.quantity;
+    const validationError = this.validateSaleAction(action);
+    if (validationError) return validationError;
 
-    let customerId: string | undefined;
-    if (action.customerName) {
-      const existing = await this.db.db
-        .select({ id: contact.id })
-        .from(contact)
-        .where(
-          and(
-            eq(contact.organizationId, organizationId),
-            ilike(contact.name, action.customerName),
-          ),
-        )
-        .limit(1);
-      customerId = existing[0]?.id;
-    }
+    const quantity = action.quantity!;
+    const amountNaira = action.amountNaira!;
+    const result = await this.salesService.createSale(
+      organizationId,
+      null,
+      await this.buildSaleInput(action, organizationId, quantity, amountNaira),
+    );
 
-    const existingProduct = await this.db.db
-      .select({ id: product.id, name: product.name })
+    return this.formatSaleResponse(action, quantity, amountNaira, result);
+  }
+
+  private validateSaleAction(action: ParsedAction): string | null {
+    const missing = [
+      [!action.productName, "What product did you sell?"],
+      [!this.isPositiveNumber(action.quantity), "How many units did you sell?"],
+      [!this.isPositiveNumber(action.amountNaira), "What was the total selling amount?"],
+    ] as const;
+
+    return missing.find(([invalid]) => invalid)?.[1] ?? null;
+  }
+
+  private isPositiveNumber(value: number | undefined): value is number {
+    return typeof value === "number" && value > 0;
+  }
+
+  private async findCustomerId(
+    organizationId: string,
+    customerName?: string,
+  ): Promise<string | null> {
+    if (!customerName) return null;
+    const rows = await this.db.db
+      .select({ id: contact.id })
+      .from(contact)
+      .where(
+        and(
+          eq(contact.organizationId, organizationId),
+          ilike(contact.name, customerName),
+        ),
+      )
+      .limit(1);
+    return rows[0]?.id ?? null;
+  }
+
+  private async findProduct(organizationId: string, productName: string) {
+    const rows = await this.db.db
+      .select()
       .from(product)
       .where(
         and(
           eq(product.organizationId, organizationId),
-          ilike(product.name, action.productName),
+          ilike(product.name, productName),
         ),
       )
       .limit(1);
+    return rows[0];
+  }
 
-    const totalKobo = Math.round(action.amountNaira * 100);
-    const result = await this.salesService.createSale(organizationId, null, {
-      customerId,
-      items: [
-        {
-          productId: existingProduct[0]?.id,
-          productName: existingProduct[0]?.name ?? action.productName,
-          quantity,
-          unitPriceKobo: Math.round(totalKobo / action.quantity),
-        },
-      ],
+  private async buildSaleInput(
+    action: ParsedAction,
+    organizationId: string,
+    quantity: number,
+    amountNaira: number,
+  ) {
+    const [customerId, existingProduct] = await Promise.all([
+      this.findCustomerId(organizationId, action.customerName),
+      this.findProduct(organizationId, action.productName!),
+    ]);
+    const totalKobo = Math.round(amountNaira * 100);
+
+    return {
+      customerId: customerId ?? undefined,
+      items: [this.buildSaleItem(action, existingProduct, quantity, totalKobo)],
       paymentAmountKobo: action.paid ? totalKobo : 0,
-      paymentMethod: "cash",
+      paymentMethod: "cash" as const,
       notes: "Recorded through Nomidat",
-    });
+    };
+  }
 
+  private buildSaleItem(
+    action: ParsedAction,
+    existingProduct: { id: string; name: string } | undefined,
+    quantity: number,
+    totalKobo: number,
+  ) {
+    return {
+      productId: existingProduct?.id,
+      productName: existingProduct?.name ?? action.productName!,
+      quantity,
+      unitPriceKobo: Math.floor(totalKobo / quantity),
+    };
+  }
+
+  private formatSaleResponse(
+    action: ParsedAction,
+    quantity: number,
+    amountNaira: number,
+    result: { id: string; balanceKobo: number },
+  ): string {
     const paymentText = action.paid ? "paid" : "on credit";
     const balanceText = result.balanceKobo > 0
       ? ` Outstanding: ₦${(result.balanceKobo / 100).toLocaleString("en-NG")}.`
       : "";
 
-    return `Recorded ${quantity} × ${action.productName} for ₦${action.amountNaira.toLocaleString("en-NG")} ${paymentText}.${balanceText} Order ${result.id.slice(0, 8)}.`;
+    return `Recorded ${quantity} × ${action.productName} for ₦${amountNaira.toLocaleString("en-NG")} ${paymentText}.${balanceText} Order ${result.id.slice(0, 8)}.`;
   }
 
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
