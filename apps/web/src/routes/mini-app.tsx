@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { IconChartDonut, IconChevronRight, IconPackage, IconReceipt, IconSparkles, IconUsers, IconWallet } from "@tabler/icons-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { MiniAppHome } from "@/components/nomidat/mini-app-home";
 import { loadMiniAppData } from "@/components/nomidat/mini-app-loader";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
@@ -136,7 +136,7 @@ function useBusinessData(organizationId: string, ready: boolean) {
 }
 
 function setBusinessData(
-  setData: React.Dispatch<React.SetStateAction<BusinessData>>,
+  setData: Dispatch<SetStateAction<BusinessData>>,
   result: Partial<Omit<BusinessData, "message">>,
 ) {
   setData((current) => ({
