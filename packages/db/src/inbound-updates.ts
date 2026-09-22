@@ -1,6 +1,6 @@
 import { index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { generateId } from "../id";
-import { organization } from "../organization/organization";
+import { generateId } from "./id";
+import { organization } from "./organization/organization";
 
 export const inboundUpdate = pgTable(
   "inbound_update",
