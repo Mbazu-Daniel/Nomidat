@@ -50,22 +50,11 @@ export class InventoryService {
   }
 
   async createProduct(organizationId: string, input: CreateProductDto) {
-    const sku = input.sku;
-    await this.ensureSkuAvailable(organizationId, sku);
+    await this.ensureSkuAvailable(organizationId, input.sku);
 
     const [created] = await this.db.db
       .insert(product)
-      .values({
-        organizationId,
-        name: input.name,
-        sku,
-        description: input.description,
-        priceKobo: input.priceKobo,
-        costKobo: input.costKobo ?? 0,
-        stockQuantity: input.stockQuantity ?? 0,
-        lowStockThreshold: input.lowStockThreshold ?? 5,
-        unit: input.unit ?? "pcs",
-      })
+      .values(this.buildProductValues(organizationId, input))
       .returning();
 
     return created;
@@ -78,16 +67,7 @@ export class InventoryService {
 
     const [updated] = await this.db.db
       .update(product)
-      .set({
-        name: input.name ?? existing.name,
-        sku,
-        description: input.description ?? existing.description,
-        priceKobo: input.priceKobo ?? existing.priceKobo,
-        costKobo: input.costKobo ?? existing.costKobo,
-        lowStockThreshold: input.lowStockThreshold ?? existing.lowStockThreshold,
-        unit: input.unit ?? existing.unit,
-        updatedAt: new Date(),
-      })
+      .set(this.buildProductUpdate(input, existing, sku))
       .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
       .returning();
 
@@ -161,6 +141,37 @@ export class InventoryService {
     if (!updated) throw new ConflictException("Stock changed while applying the adjustment.");
 
     return { ...updated, adjustmentQuantity: input.quantity, reason: input.reason };
+  }
+
+  private buildProductValues(organizationId: string, input: CreateProductDto) {
+    return {
+      organizationId,
+      name: input.name,
+      sku: input.sku,
+      description: input.description,
+      priceKobo: input.priceKobo,
+      costKobo: input.costKobo ?? 0,
+      stockQuantity: input.stockQuantity ?? 0,
+      lowStockThreshold: input.lowStockThreshold ?? 5,
+      unit: input.unit ?? "pcs",
+    };
+  }
+
+  private buildProductUpdate(
+    input: UpdateProductDto,
+    existing: Awaited<ReturnType<InventoryService["getProduct"]>>,
+    sku: string | null,
+  ) {
+    return {
+      name: input.name ?? existing.name,
+      sku,
+      description: input.description ?? existing.description,
+      priceKobo: input.priceKobo ?? existing.priceKobo,
+      costKobo: input.costKobo ?? existing.costKobo,
+      lowStockThreshold: input.lowStockThreshold ?? existing.lowStockThreshold,
+      unit: input.unit ?? existing.unit,
+      updatedAt: new Date(),
+    };
   }
 
   private async ensureSkuAvailable(organizationId: string, sku?: string | null, productId?: string) {

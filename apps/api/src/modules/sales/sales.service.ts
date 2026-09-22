@@ -134,44 +134,12 @@ export class SalesService {
       let productName = item.productName ?? "Item";
 
       if (productId) {
-        const [storedProduct] = await tx
-          .select({
-            id: product.id,
-            name: product.name,
-            isActive: product.isActive,
-          })
-          .from(product)
-          .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
-          .limit(1);
-
-        if (!storedProduct) throw new NotFoundException("Product not found.");
-        if (!storedProduct.isActive) {
-          throw new ConflictException("Product is archived and cannot be sold.");
-        }
-
-        productName = storedProduct.name;
-        const [updatedProduct] = await tx
-          .update(product)
-          .set({
-            stockQuantity: sql`${product.stockQuantity} - ${item.quantity}`,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(product.id, productId),
-              eq(product.organizationId, organizationId),
-              gte(product.stockQuantity, item.quantity),
-            ),
-          )
-          .returning({ id: product.id });
-
-        if (!updatedProduct) {
-          throw new ConflictException(
-            "Insufficient stock for " +
-              storedProduct.name +
-              ". Available stock changed while recording this sale.",
-          );
-        }
+        productName = await this.resolveSaleProduct(
+          tx,
+          organizationId,
+          productId,
+          item.quantity,
+        );
       }
 
       resolvedItems.push({
@@ -184,6 +152,56 @@ export class SalesService {
     }
 
     return resolvedItems;
+  }
+
+  private async resolveSaleProduct(
+    tx: Pick<DbHandle["db"], "select" | "update">,
+    organizationId: string,
+    productId: string,
+    quantity: number,
+  ) {
+    const [storedProduct] = await tx
+      .select({ id: product.id, name: product.name, isActive: product.isActive })
+      .from(product)
+      .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
+      .limit(1);
+
+    if (!storedProduct) throw new NotFoundException("Product not found.");
+    if (!storedProduct.isActive) {
+      throw new ConflictException("Product is archived and cannot be sold.");
+    }
+
+    await this.decrementProductStock(tx, organizationId, productId, quantity, storedProduct.name);
+    return storedProduct.name;
+  }
+
+  private async decrementProductStock(
+    tx: Pick<DbHandle["db"], "update">,
+    organizationId: string,
+    productId: string,
+    quantity: number,
+    productName: string,
+  ) {
+    const [updatedProduct] = await tx
+      .update(product)
+      .set({
+        stockQuantity: sql`${product.stockQuantity} - ${quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(product.id, productId),
+          eq(product.organizationId, organizationId),
+          gte(product.stockQuantity, quantity),
+        ),
+      )
+      .returning({ id: product.id });
+
+    if (!updatedProduct) {
+      throw new ConflictException(
+        `Insufficient stock for ${productName}. Available stock changed while recording this sale.`,
+      );
+    }
   }
 
   async listSales(organizationId: string, limit = 20) {

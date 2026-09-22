@@ -62,19 +62,13 @@ export class ExpensesService {
 
   async update(organizationId: string, expenseId: string, input: UpdateExpenseDto) {
     await this.get(organizationId, expenseId);
-    const { spentAt, categoryId, ...values } = input;
-    const resolvedCategoryId = categoryId
-      ? await this.resolveCategoryId(categoryId)
+    const categoryId = input.categoryId
+      ? await this.resolveCategoryId(input.categoryId)
       : undefined;
 
     const [updated] = await this.db.db
       .update(expense)
-      .set({
-        ...values,
-        categoryId: resolvedCategoryId,
-        spentAt: spentAt ? new Date(spentAt) : undefined,
-        updatedAt: new Date(),
-      })
+      .set(this.buildExpenseUpdate(input, categoryId))
       .where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)))
       .returning();
 
@@ -94,6 +88,18 @@ export class ExpensesService {
 
   async createCategory(input: CreateExpenseCategoryDto) {
     return this.insertCategory(this.requireCategoryName(input.name), input.description);
+  }
+
+  private buildExpenseUpdate(input: UpdateExpenseDto, categoryId?: string | null) {
+    return {
+      amountKobo: input.amountKobo,
+      description: input.description,
+      categoryId,
+      spentAt: input.spentAt ? new Date(input.spentAt) : undefined,
+      paymentMethod: input.paymentMethod,
+      receiptUrl: input.receiptUrl,
+      updatedAt: new Date(),
+    };
   }
 
   private requireCategoryName(name: string) {
