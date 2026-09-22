@@ -397,16 +397,25 @@ Rules:
 
     return {
       customerId: customerId ?? undefined,
-      items: [{
-        productId: existingProduct?.id,
-        productName: existingProduct?.name ?? action.productName!,
-        quantity,
-        unitPriceKobo: Math.floor(totalKobo / quantity),
-        lineTotalKobo: totalKobo,
-      }],
+      items: [this.buildSaleItem(action, existingProduct, quantity, totalKobo)],
       paymentAmountKobo: action.paid ? totalKobo : 0,
       paymentMethod: "cash" as const,
       notes: "Recorded through Nomidat",
+    };
+  }
+
+  private buildSaleItem(
+    action: ParsedAction,
+    existingProduct: { id: string; name: string } | undefined,
+    quantity: number,
+    totalKobo: number,
+  ) {
+    return {
+      productId: existingProduct?.id,
+      productName: existingProduct?.name ?? action.productName!,
+      quantity,
+      unitPriceKobo: Math.floor(totalKobo / quantity),
+      lineTotalKobo: totalKobo,
     };
   }
 
