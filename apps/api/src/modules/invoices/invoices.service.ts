@@ -130,16 +130,7 @@ export class InvoicesService {
         })
         .returning({ id: invoice.id });
 
-      await tx.insert(invoiceItem).values(
-        items.map((item) => ({
-          invoiceId: created.id,
-          productId: item.productId,
-          description: item.productName,
-          quantity: item.quantity,
-          unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.totalKobo ?? item.quantity * item.unitPriceKobo,
-        })),
-      );
+      await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, items));
 
       return this.getInvoiceTx(tx, organizationId, created.id);
     });
@@ -223,92 +214,7 @@ export class InvoicesService {
     };
   }
 
-  private async resolveCustomerId(
-    tx: Pick<DbHandle["db"], "select">,
-    organizationId: string,
-    customerId?: string,
-  ) {
-    if (!customerId) return null;
-
-    const [customer] = await tx
-      .select({ id: contact.id })
-      .from(contact)
-      .where(and(eq(contact.id, customerId), eq(contact.organizationId, organizationId)))
-      .limit(1);
-
-    if (!customer) throw new NotFoundException("Customer not found.");
-    return customer.id;
-  }
-
-  private async validateProducts(
-    tx: Pick<DbHandle["db"], "select">,
-    organizationId: string,
-    productIds: Array<string | undefined>,
-  ) {
-    const ids = [...new Set(productIds.filter((id): id is string => Boolean(id)))];
-    for (const productId of ids) {
-      const [row] = await tx
-        .select({ id: product.id })
-        .from(product)
-        .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
-        .limit(1);
-      if (!row) throw new NotFoundException("One or more products were not found.");
-    }
-  }
-  private async nextInvoiceNumber(
-    _tx: Pick<DbHandle["db"], "select">,
-    _organizationId: string,
-  ) {
-    const stamp = Date.now().toString(36).toUpperCase();
-    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-    return `INV-${stamp}-${suffix}`;
-  }
-
-  private async getInvoiceTx(
-    tx: Pick<DbHandle["db"], "select">,
-    organizationId: string,
-    invoiceId: string,
-  ) {
-    const [result] = await tx
-      .select({
-        id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber,
-        customerId: contact.id,
-        customer: contact.name,
-        status: invoice.status,
-        subtotalKobo: invoice.subtotalKobo,
-        discountKobo: invoice.discountKobo,
-        taxKobo: invoice.taxKobo,
-        totalKobo: invoice.totalKobo,
-        currency: invoice.currency,
-        dueDate: invoice.dueDate,
-        paidAt: invoice.paidAt,
-        pdfUrl: invoice.pdfUrl,
-        notes: invoice.notes,
-        createdAt: invoice.createdAt,
-      })
-      .from(invoice)
-      .leftJoin(contact, eq(invoice.contactId, contact.id))
-      .where(and(eq(invoice.id, invoiceId), eq(invoice.organizationId, organizationId)))
-      .limit(1);
-
-    if (!result) throw new NotFoundException("Invoice not found.");
-
-    const items = await tx
-      .select({
-        id: invoiceItem.id,
-        productId: invoiceItem.productId,
-        description: invoiceItem.description,
-        quantity: invoiceItem.quantity,
-        unitPriceKobo: invoiceItem.unitPriceKobo,
-        totalKobo: invoiceItem.totalKobo,
-      })
-      .from(invoiceItem)
-      .where(eq(invoiceItem.invoiceId, invoiceId));
-
-    return { ...result, items };
-  }
-}  private buildInvoiceItems(
+  private buildInvoiceItems(
     invoiceId: string,
     items: Array<{
       productId?: string | null;
