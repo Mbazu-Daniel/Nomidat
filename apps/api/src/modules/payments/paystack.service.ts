@@ -7,8 +7,7 @@ import type { ApiEnv } from "../../common/config/env";
 import { API_ENV } from "../../common/config/env.module";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { InitializePaystackPaymentDto } from "./dto";
-
-const PAYSTACK_API_URL = "https://api.paystack.co";
+import type { PaystackApiResponse, PaystackChargeSuccessEvent, PaystackInitializeResponse, PaystackTransaction, PaystackWebhookRequest } from "./interfaces/paystack.interface";
 const PAYSTACK_PAYMENT_METHOD = "paystack";
 
 type PaystackResponse<T> = {
@@ -127,7 +126,7 @@ export class PaystackService {
       return { received: true };
     }
 
-    await this.applyTransaction(event.data.reference, event.data);
+    await this.applyTransaction(webhook.body.data.reference, webhook.body.data);
     return { received: true };
   }
 
@@ -290,7 +289,7 @@ export class PaystackService {
 
   private isChargeSuccessEvent(
     event: unknown,
-  ): event is { event: "charge.success"; data: PaystackTransaction } {
+  ): event is PaystackChargeSuccessEvent {
     if (!event || typeof event !== "object") return false;
     const value = event as { event?: unknown; data?: unknown };
     if (value.event !== "charge.success" || !value.data || typeof value.data !== "object") {
@@ -308,7 +307,7 @@ export class PaystackService {
   }
 
   private async request<T>(path: string, init: RequestInit) {
-    const response = await fetch(`${PAYSTACK_API_URL}${path}`, {
+    const response = await fetch(`${this.env.PAYSTACK_API_URL}${path}`, {
       ...init,
       headers: {
         Authorization: `Bearer ${this.env.PAYSTACK_SECRET_KEY}`,
@@ -317,7 +316,7 @@ export class PaystackService {
       },
     });
 
-    const body = (await response.json()) as PaystackResponse<T>;
+    const body = (await response.json()) as PaystackApiResponse<T>;
 
     if (!response.ok || !body.status) {
       throw new BadRequestException(body.message || "Paystack request failed.");

@@ -34,6 +34,7 @@ const apiEnvSchema = z.object({
   OPENAI_MODEL: z.string().default("gpt-5-mini"),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-4o-mini-transcribe"),
   PAYSTACK_SECRET_KEY: z.string().min(1),
+  PAYSTACK_API_URL: z.string().url().default("https://api.paystack.co"),
   PAYSTACK_CALLBACK_URL: z.string().url().optional(),
 });
 

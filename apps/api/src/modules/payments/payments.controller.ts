@@ -5,8 +5,7 @@ import { extractHeaders } from "../../common/helpers/auth-http";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { InitializePaystackPaymentDto } from "./dto";
 import { PaystackService } from "./paystack.service";
-
-type RawBodyRequest = Request & { rawBody?: Buffer };
+import type { PaystackWebhookRequest } from "./interfaces/paystack.interface";
 
 @ApiTags("Payments")
 @Controller()
@@ -42,9 +41,9 @@ export class PaymentsController {
   @ApiOperation({ summary: "Receive Paystack payment webhooks" })
   async webhook(
     @Headers("x-paystack-signature") signature: string | undefined,
-    @Req() req: RawBodyRequest,
+    @Req() req: Request,
     @Body() body: unknown,
   ) {
-    return this.paystack.handleWebhook(signature, req.rawBody ?? Buffer.from(""), body);
+    const webhook: PaystackWebhookRequest = { signature, rawBody: (req as Request & { rawBody?: Buffer }).rawBody ?? Buffer.from(""), body };\n    return this.paystack.handleWebhook(webhook);
   }
 }
