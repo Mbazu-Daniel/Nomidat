@@ -12,3 +12,4 @@ import { SalesService } from "./sales.service";
   exports: [SalesService],
 })
 export class SalesModule {}
+
