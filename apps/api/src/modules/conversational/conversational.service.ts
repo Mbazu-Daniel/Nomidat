@@ -329,11 +329,28 @@ Rules:
 
     const quantity = action.quantity!;
     const amountNaira = action.amountNaira!;
-    const totalKobo = Math.round(amountNaira * 100);
-    const customerId = await this.findCustomerId(organizationId, action.customerName);
-    const existingProduct = await this.findProduct(organizationId, action.productName!);
+    const result = await this.salesService.createSale(
+      organizationId,
+      null,
+      await this.buildSaleInput(action, organizationId, quantity, amountNaira),
+    );
 
-    const result = await this.salesService.createSale(organizationId, null, {
+    return this.formatSaleResponse(action, quantity, amountNaira, result);
+  }
+
+  private async buildSaleInput(
+    action: ParsedAction,
+    organizationId: string,
+    quantity: number,
+    amountNaira: number,
+  ) {
+    const [customerId, existingProduct] = await Promise.all([
+      this.findCustomerId(organizationId, action.customerName),
+      this.findProduct(organizationId, action.productName!),
+    ]);
+    const totalKobo = Math.round(amountNaira * 100);
+
+    return {
       customerId: customerId ?? undefined,
       items: [{
         productId: existingProduct?.id,
@@ -342,12 +359,11 @@ Rules:
         unitPriceKobo: Math.floor(totalKobo / quantity),
       }],
       paymentAmountKobo: action.paid ? totalKobo : 0,
-      paymentMethod: "cash",
+      paymentMethod: "cash" as const,
       notes: "Recorded through Nomidat",
-    });
-
-    return this.formatSaleResponse(action, quantity, amountNaira, result);
+    };
   }
+
 
   private validateSaleAction(action: ParsedAction): string | null {
     if (!action.productName) return "What product did you sell?";
