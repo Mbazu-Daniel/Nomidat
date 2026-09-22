@@ -21,8 +21,8 @@ export class ExpensesController {
     @Body() body: CreateExpenseDto,
     @Req() req: Request,
   ) {
-    await authorizeOrganization(this.auth, req, organizationId);
-    return this.expenses.create(organizationId, null, body);
+    const session = await authorizeOrganization(this.auth, req, organizationId);
+    return this.expenses.create(organizationId, session.userId, body);
   }
 
   @Get("expenses")
