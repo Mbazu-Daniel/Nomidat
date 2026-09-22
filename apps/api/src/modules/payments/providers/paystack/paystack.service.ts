@@ -119,17 +119,11 @@ export class PaystackService {
   }
 
   private async getSale(organizationId: string, orderId: string) {
-    const [sale] = await this.db
-      .select({
-        id: order.id,
-        contactId: order.contactId,
-        totalKobo: order.totalKobo,
-        currency: order.currency,
-        status: order.status,
-      })
-      .from(order)
-      .where(and(eq(order.id, orderId), eq(order.organizationId, organizationId)))
-      .limit(1);
+    const sale = await this.findOrder(
+      this.db,
+      organizationId,
+      orderId,
+    );
 
     if (!sale) throw new BadRequestException("Sale not found.");
     if (sale.status === "paid") {
@@ -365,13 +359,29 @@ export class PaystackService {
     organizationId: string,
     orderId: string,
   ) {
-    const [sale] = await tx
-      .select({ totalKobo: order.totalKobo })
+    const sale = await this.findOrder(tx, organizationId, orderId);
+
+    if (!sale) throw new BadRequestException("Sale not found.");
+    return { totalKobo: sale.totalKobo };
+  }
+
+  private async findOrder(
+    db: DbHandle | Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
+    organizationId: string,
+    orderId: string,
+  ) {
+    const [sale] = await db
+      .select({
+        id: order.id,
+        contactId: order.contactId,
+        totalKobo: order.totalKobo,
+        currency: order.currency,
+        status: order.status,
+      })
       .from(order)
       .where(and(eq(order.id, orderId), eq(order.organizationId, organizationId)))
       .limit(1);
 
-    if (!sale) throw new BadRequestException("Sale not found.");
     return sale;
   }
 
