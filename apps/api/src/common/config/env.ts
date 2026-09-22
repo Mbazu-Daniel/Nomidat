@@ -34,7 +34,6 @@ const apiEnvSchema = z.object({
   OPENAI_MODEL: z.string().default("gpt-5-mini"),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-4o-mini-transcribe"),
   AI_PROVIDER: z.enum(["openai", "gemini"]).default("openai"),
-  AI_FALLBACK_PROVIDER: z.enum(["openai", "gemini"]).default("gemini"),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
   TRANSCRIPTION_PROVIDER: z.enum(["deepgram", "whisper"]).default("deepgram"),
