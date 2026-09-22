@@ -228,6 +228,7 @@ export class SalesService {
     orderId: string,
   ) {
     const resolvedItems: Array<{
+      orderId: string;
       productId: string | null;
       productName: string;
       quantity: number;
