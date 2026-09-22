@@ -68,30 +68,10 @@ function useTelegramSession(): MiniAppSession & { setOrganizationId: (id: string
 
   useEffect(() => {
     let cancelled = false;
-
     void createTelegramSession(window.Telegram?.WebApp)
-      .then((result) => {
-        if (cancelled) return;
-        if (!result.ok) {
-          setStatus("error");
-          setMessage(result.message);
-          return;
-        }
-
-        setUserName(result.userName);
-        setStatus("ready");
-        setMessage("");
-        return getOrganizations();
-      })
-      .then((items) => {
-        if (cancelled || !items) return;
-        const options = items.map((organization) => ({ id: organization.id, name: organization.name }));
-        setOrganizations(options);
-        setOrganizationId(options[0]?.id ?? "");
-      })
-      .catch(() => {
-        if (!cancelled) setMessage("Could not load your businesses.");
-      });
+      .then((result) => handleTelegramResult(result, cancelled, setStatus, setMessage, setUserName))
+      .then((items) => applyOrganizations(items, cancelled, setOrganizations, setOrganizationId))
+      .catch(() => handleOrganizationLoadError(cancelled, setMessage));
 
     return () => {
       cancelled = true;
@@ -99,6 +79,42 @@ function useTelegramSession(): MiniAppSession & { setOrganizationId: (id: string
   }, []);
 
   return { status, message, userName, organizations, organizationId, setOrganizationId };
+}
+
+function handleTelegramResult(
+  result: Awaited<ReturnType<typeof createTelegramSession>>,
+  cancelled: boolean,
+  setStatus: Dispatch<SetStateAction<MiniAppSession["status"]>>,
+  setMessage: Dispatch<SetStateAction<string>>,
+  setUserName: Dispatch<SetStateAction<string | null>>,
+) {
+  if (cancelled) return undefined;
+  if (!result.ok) {
+    setStatus("error");
+    setMessage(result.message);
+    return undefined;
+  }
+
+  setUserName(result.userName);
+  setStatus("ready");
+  setMessage("");
+  return getOrganizations();
+}
+
+function applyOrganizations(
+  items: Awaited<ReturnType<typeof getOrganizations>> | undefined,
+  cancelled: boolean,
+  setOrganizations: Dispatch<SetStateAction<OrganizationOption[]>>,
+  setOrganizationId: Dispatch<SetStateAction<string>>,
+) {
+  if (cancelled || !items) return;
+  const options = items.map((organization) => ({ id: organization.id, name: organization.name }));
+  setOrganizations(options);
+  setOrganizationId(options[0]?.id ?? "");
+}
+
+function handleOrganizationLoadError(cancelled: boolean, setMessage: Dispatch<SetStateAction<string>>) {
+  if (!cancelled) setMessage("Could not load your businesses.");
 }
 
 function useBusinessData(organizationId: string, ready: boolean) {
@@ -120,12 +136,8 @@ function useBusinessData(organizationId: string, ready: boolean) {
 
     let cancelled = false;
     void loadMiniAppData(view, organizationId)
-      .then((result) => {
-        if (!cancelled) setBusinessData(setData, result);
-      })
-      .catch(() => {
-        if (!cancelled) setData((current) => ({ ...current, message: "Could not load this business data." }));
-      });
+      .then((result) => applyBusinessResult(cancelled, setData, result))
+      .catch(() => handleBusinessLoadError(cancelled, setData));
 
     return () => {
       cancelled = true;
@@ -133,6 +145,19 @@ function useBusinessData(organizationId: string, ready: boolean) {
   }, [organizationId, ready, view]);
 
   return { view, setView, data };
+}
+
+function applyBusinessResult(
+  cancelled: boolean,
+  setData: Dispatch<SetStateAction<BusinessData>>,
+  result: Partial<Omit<BusinessData, "message">>,
+) {
+  if (cancelled) return;
+  setBusinessData(setData, result);
+}
+
+function handleBusinessLoadError(cancelled: boolean, setData: Dispatch<SetStateAction<BusinessData>>) {
+  if (!cancelled) setData((current) => ({ ...current, message: "Could not load this business data." }));
 }
 
 function setBusinessData(
@@ -240,14 +265,21 @@ function StockView({ rows }: { rows: BusinessRow }) {
 }
 
 function StockRow({ product }: { product: BusinessRow[number] }) {
-  const low = (product.stockQuantity ?? 0) <= (product.lowStockThreshold ?? 0);
   return (
     <Row
       icon={<IconPackage className="size-5" />}
       title={product.name ?? "Product"}
-      detail={`${product.stockQuantity ?? 0} ${product.unit ?? "units"} · ${low ? "Low stock" : "Healthy"}`}
+      detail={getStockDetail(product)}
     />
   );
+}
+
+function getStockDetail(product: BusinessRow[number]) {
+  const stock = product.stockQuantity ?? 0;
+  const threshold = product.lowStockThreshold ?? 0;
+  const unit = product.unit ?? "units";
+  const status = stock <= threshold ? "Low stock" : "Healthy";
+  return `${stock} ${unit} · ${status}`;
 }
 
 function ExpensesView({ rows }: { rows: BusinessRow }) {
