@@ -32,7 +32,7 @@ const parsedActionSchema = z.object({
   productName: z.string().min(1).optional(), quantity: z.number().finite().int().positive().optional(),
   amountNaira: z.number().finite().positive().optional(), paid: z.boolean().optional(),
   description: z.string().min(1).optional(), category: z.string().min(1).optional(),
-  date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine((value) => !Number.isNaN(Date.parse(value + "T12:00:00")), "Invalid date").optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => !Number.isNaN(Date.parse(value + "T12:00:00")), "Invalid date").optional(),
 }).strict();
 
 type ActionHandler = (action: ParsedAction, organizationId: string) => Promise<string>;
@@ -88,7 +88,9 @@ export class ConversationalService {
     }
 
     if (!content) {
-      return "I couldn't understand that message. Please send text or a clearer voice note.";
+      const reply = "I couldn't understand that message. Please send text or a clearer voice note.";
+      await this.completeInboundUpdate(guard.id, reply);
+      return reply;
     }
 
     await this.db.db.insert(message).values({
