@@ -33,7 +33,7 @@ export class ExpensesController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.list(organizationId, limit);
   }
 
@@ -44,7 +44,7 @@ export class ExpensesController {
     @Param("expenseId") expenseId: string,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.get(organizationId, expenseId);
   }
 
@@ -56,7 +56,7 @@ export class ExpensesController {
     @Body() body: UpdateExpenseDto,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.update(organizationId, expenseId, body);
   }
 
@@ -67,14 +67,14 @@ export class ExpensesController {
     @Param("expenseId") expenseId: string,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.remove(organizationId, expenseId);
   }
 
   @Get("expense-categories")
   @ApiOperation({ summary: "List expense categories" })
   async listCategories(@Param("organizationId") organizationId: string, @Req() req: Request) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.listCategories(organizationId);
   }
 
@@ -85,7 +85,11 @@ export class ExpensesController {
     @Body() body: CreateExpenseCategoryDto,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.authorize(req, organizationId);
     return this.expenses.createCategory(organizationId, body);
+  }
+
+  private authorize(req: Request, organizationId: string) {
+    return this.auth.authorize(extractHeaders(req), organizationId);
   }
 }
