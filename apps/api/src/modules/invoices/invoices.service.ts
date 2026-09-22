@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { and, desc, eq } from "@nomidat/db";
-import { contact, invoice, invoiceItem, order, orderItem, payment } from "@nomidat/db/schema";
+import { contact, invoice, invoiceItem, order, orderItem, payment, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateInvoiceDto } from "./dto";
 
@@ -11,27 +11,13 @@ const MAX_LIMIT = 50;
 export class InvoicesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
-  // fallow-ignore-next-line complexity -- orchestration is intentionally covered through the invoice transaction flow.
   async createInvoice(organizationId: string, input: CreateInvoiceDto) {
-    if (input.items.length === 0) {
-      throw new BadRequestException("At least one invoice item is required.");
-    }
-
-    const subtotalKobo = input.items.reduce(
-      (total, item) => total + item.quantity * item.unitPriceKobo,
-      0,
-    );
-    const discountKobo = input.discountKobo ?? 0;
-    const taxKobo = input.taxKobo ?? 0;
-    const totalKobo = subtotalKobo - discountKobo + taxKobo;
-
-    if (totalKobo <= 0) throw new BadRequestException("Invoice total must be greater than zero.");
-    if (discountKobo > subtotalKobo) {
-      throw new BadRequestException("Discount cannot exceed the subtotal.");
-    }
+    const totals = this.getInvoiceTotals(input);
+    this.validateInvoiceTotals(input, totals);
 
     return this.db.db.transaction(async (tx) => {
       const customerId = await this.resolveCustomerId(tx, organizationId, input.customerId);
+      await this.validateProducts(tx, organizationId, input.items.map((item) => item.productId));
       const number = await this.nextInvoiceNumber(tx, organizationId);
 
       const [created] = await tx
@@ -41,29 +27,50 @@ export class InvoicesService {
           contactId: customerId,
           invoiceNumber: number,
           status: "issued",
-          subtotalKobo,
-          discountKobo,
-          taxKobo,
-          totalKobo,
+          subtotalKobo: totals.subtotalKobo,
+          discountKobo: totals.discountKobo,
+          taxKobo: totals.taxKobo,
+          totalKobo: totals.totalKobo,
           currency: "NGN",
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
           notes: input.notes,
         })
         .returning({ id: invoice.id });
 
-      await tx.insert(invoiceItem).values(
-        input.items.map((item) => ({
-          invoiceId: created.id,
-          productId: item.productId,
-          description: item.description,
-          quantity: item.quantity,
-          unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.quantity * item.unitPriceKobo,
-        })),
-      );
-
+      await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, input.items));
       return this.getInvoiceTx(tx, organizationId, created.id);
     });
+  }
+
+  private getInvoiceTotals(input: CreateInvoiceDto) {
+    const subtotalKobo = input.items.reduce(
+      (total, item) => total + item.quantity * item.unitPriceKobo,
+      0,
+    );
+    const discountKobo = input.discountKobo ?? 0;
+    const taxKobo = input.taxKobo ?? 0;
+
+    return {
+      subtotalKobo,
+      discountKobo,
+      taxKobo,
+      totalKobo: subtotalKobo - discountKobo + taxKobo,
+    };
+  }
+
+  private validateInvoiceTotals(
+    input: CreateInvoiceDto,
+    totals: ReturnType<InvoicesService["getInvoiceTotals"]>,
+  ) {
+    if (input.items.length === 0) {
+      throw new BadRequestException("At least one invoice item is required.");
+    }
+    if (totals.totalKobo <= 0) {
+      throw new BadRequestException("Invoice total must be greater than zero.");
+    }
+    if (totals.discountKobo > totals.subtotalKobo) {
+      throw new BadRequestException("Discount cannot exceed the subtotal.");
+    }
   }
 
   async createFromSale(organizationId: string, saleId: string) {
@@ -85,6 +92,14 @@ export class InvoicesService {
 
       if (!sale) throw new NotFoundException("Sale not found.");
 
+      const [existingInvoice] = await tx
+        .select({ id: invoice.id })
+        .from(invoice)
+        .where(and(eq(invoice.organizationId, organizationId), eq(invoice.sourceSaleId, saleId)))
+        .limit(1);
+
+      if (existingInvoice) throw new BadRequestException("An invoice already exists for this sale.");
+
       const items = await tx
         .select({
           productId: orderItem.productId,
@@ -104,6 +119,7 @@ export class InvoicesService {
         .values({
           organizationId,
           contactId: sale.customerId,
+          sourceSaleId: saleId,
           invoiceNumber: number,
           status: "issued",
           subtotalKobo: sale.subtotalKobo,
@@ -115,16 +131,7 @@ export class InvoicesService {
         })
         .returning({ id: invoice.id });
 
-      await tx.insert(invoiceItem).values(
-        items.map((item) => ({
-          invoiceId: created.id,
-          productId: item.productId,
-          description: item.productName,
-          quantity: item.quantity,
-          unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.totalKobo,
-        })),
-      );
+      await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, items));
 
       return this.getInvoiceTx(tx, organizationId, created.id);
     });
@@ -208,6 +215,28 @@ export class InvoicesService {
     };
   }
 
+  private buildInvoiceItems(
+    invoiceId: string,
+    items: Array<{
+      productId?: string | null;
+      description?: string | null;
+      productName?: string | null;
+      quantity: number;
+      unitPriceKobo: number;
+      totalKobo?: number;
+    }>,
+  ) {
+    return items.map((item) => {
+      const { productName, description, totalKobo, ...values } = item;
+      return {
+        invoiceId,
+        ...values,
+        description: description ?? productName ?? "Item",
+        totalKobo: totalKobo ?? item.quantity * item.unitPriceKobo,
+      };
+    });
+  }
+
   private async resolveCustomerId(
     tx: Pick<DbHandle["db"], "select">,
     organizationId: string,
@@ -223,6 +252,22 @@ export class InvoicesService {
 
     if (!customer) throw new NotFoundException("Customer not found.");
     return customer.id;
+  }
+
+  private async validateProducts(
+    tx: Pick<DbHandle["db"], "select">,
+    organizationId: string,
+    productIds: Array<string | undefined>,
+  ) {
+    const ids = [...new Set(productIds.filter((id): id is string => Boolean(id)))];
+    for (const productId of ids) {
+      const [row] = await tx
+        .select({ id: product.id })
+        .from(product)
+        .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
+        .limit(1);
+      if (!row) throw new NotFoundException("One or more products were not found.");
+    }
   }
 
   private async nextInvoiceNumber(
