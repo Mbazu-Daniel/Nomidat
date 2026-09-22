@@ -4,8 +4,8 @@ import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { InitializePaystackPaymentDto } from "./dto";
-import { PaystackService } from "./paystack.service";
-import type { PaystackWebhookRequest } from "./interfaces/paystack.interface";
+import { PaystackService } from "./providers/paystack/paystack.service";
+import type { PaystackWebhookRequest } from "./providers/paystack/paystack.interface";
 
 @ApiTags("Payments")
 @Controller()
@@ -44,6 +44,12 @@ export class PaymentsController {
     @Req() req: Request,
     @Body() body: unknown,
   ) {
-    const webhook: PaystackWebhookRequest = { signature, rawBody: (req as Request & { rawBody?: Buffer }).rawBody ?? Buffer.from(""), body };\n    return this.paystack.handleWebhook(webhook);
+    const webhook: PaystackWebhookRequest = {
+      signature,
+      rawBody: (req as Request & { rawBody?: Buffer }).rawBody ?? Buffer.from(""),
+      body,
+    };
+
+    return this.paystack.handleWebhook(webhook);
   }
 }

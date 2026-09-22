@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { DbModule } from "../../common/db/db.module";
 import { BusinessModule } from "../business/business.module";
 import { PaymentsController } from "./payments.controller";
-import { PaystackService } from "./paystack.service";
+import { PaystackService } from "./providers/paystack/paystack.service";
 
 @Module({
   imports: [DbModule, BusinessModule],
