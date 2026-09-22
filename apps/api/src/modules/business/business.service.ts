@@ -11,7 +11,7 @@ export class BusinessService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
   async getSales(organizationId: string, limit = DEFAULT_LIMIT) {
-    return this.db.db
+    return this.db
       .select({
         id: order.id,
         customer: contact.name,
@@ -29,12 +29,12 @@ export class BusinessService {
   async getCustomers(organizationId: string, limit = DEFAULT_LIMIT) {
     const safeLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
     const [customers, credit] = await Promise.all([
-      this.db.db.select({ id: contact.id, name: contact.name, phone: contact.phone, kind: contact.kind, createdAt: contact.createdAt })
+      this.db.select({ id: contact.id, name: contact.name, phone: contact.phone, kind: contact.kind, createdAt: contact.createdAt })
         .from(contact)
         .where(and(eq(contact.organizationId, organizationId), eq(contact.kind, "customer")))
         .orderBy(desc(contact.createdAt))
         .limit(safeLimit),
-      this.db.db.select({ customerId: order.contactId, totalKobo: sum(order.totalKobo) })
+      this.db.select({ customerId: order.contactId, totalKobo: sum(order.totalKobo) })
         .from(order)
         .where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")))
         .groupBy(order.contactId),
@@ -44,7 +44,7 @@ export class BusinessService {
   }
 
   async getProducts(organizationId: string, limit = DEFAULT_LIMIT) {
-    return this.db.db
+    return this.db
       .select({
         id: product.id,
         name: product.name,
@@ -80,27 +80,27 @@ export class BusinessService {
   }
 
   private async getOrderTotal(organizationId: string): Promise<number> {
-    const [row] = await this.db.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(eq(order.organizationId, organizationId));
+    const [row] = await this.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(eq(order.organizationId, organizationId));
     return Number(row?.totalKobo ?? 0);
   }
 
   private async getPendingCredit(organizationId: string): Promise<number> {
-    const [row] = await this.db.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")));
+    const [row] = await this.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")));
     return Number(row?.totalKobo ?? 0);
   }
 
   private async getExpenseTotal(organizationId: string): Promise<number> {
-    const [row] = await this.db.db.select({ totalKobo: sum(expense.amountKobo) }).from(expense).where(eq(expense.organizationId, organizationId));
+    const [row] = await this.db.select({ totalKobo: sum(expense.amountKobo) }).from(expense).where(eq(expense.organizationId, organizationId));
     return Number(row?.totalKobo ?? 0);
   }
 
   private async getCount(table: typeof contact | typeof product, organizationId: string): Promise<number> {
-    const [row] = await this.db.db.select({ count: count() }).from(table).where(eq(table.organizationId, organizationId));
+    const [row] = await this.db.select({ count: count() }).from(table).where(eq(table.organizationId, organizationId));
     return Number(row?.count ?? 0);
   }
 
   private async getLowStockCount(organizationId: string): Promise<number> {
-    const [row] = await this.db.db.select({ count: count() }).from(product).where(and(
+    const [row] = await this.db.select({ count: count() }).from(product).where(and(
       eq(product.organizationId, organizationId),
       lte(product.stockQuantity, product.lowStockThreshold),
     ));
@@ -108,7 +108,7 @@ export class BusinessService {
   }
 
   async getExpenses(organizationId: string, limit = DEFAULT_LIMIT) {
-    return this.db.db
+    return this.db
       .select({
         id: expense.id,
         description: expense.description,

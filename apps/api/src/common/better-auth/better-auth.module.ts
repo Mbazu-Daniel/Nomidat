@@ -15,7 +15,7 @@ import { createBetterAuth, type BetterAuthInstance } from "./create-better-auth"
       provide: BETTER_AUTH,
       inject: [API_ENV, EMAIL_CLIENT],
       useFactory: (env: ApiEnv, email: EmailClient | null): BetterAuthInstance => {
-        const { db } = createDb(env.DATABASE_URL);
+        const db = createDb(env.DATABASE_URL);
 
         return createBetterAuth({
           db,

@@ -32,7 +32,7 @@ export class SalesService {
       throw new BadRequestException("Payment cannot exceed the sale total.");
     }
 
-    return this.db.db.transaction((tx) =>
+    return this.db.transaction((tx) =>
       this.persistSale(tx, organizationId, userId, input, {
         subtotalKobo,
         discountKobo,
@@ -53,7 +53,7 @@ export class SalesService {
   }
 
   private async persistSale(
-    tx: Pick<DbHandle["db"], "select" | "insert" | "update">,
+    tx: Pick<DbHandle, "select" | "insert" | "update">,
     organizationId: string,
     userId: string | null,
     input: CreateSaleDto,
@@ -117,7 +117,7 @@ export class SalesService {
   }
 
   private async resolveSaleItems(
-    tx: Pick<DbHandle["db"], "select" | "update">,
+    tx: Pick<DbHandle, "select" | "update">,
     organizationId: string,
     items: CreateSaleDto["items"],
   ) {
@@ -187,7 +187,7 @@ export class SalesService {
   }
 
   async listSales(organizationId: string, limit = 20) {
-    const rows = await this.db.db
+    const rows = await this.db
       .select({
         id: order.id,
         customerId: contact.id,
@@ -214,7 +214,7 @@ export class SalesService {
   }
 
   async getSale(organizationId: string, saleId: string) {
-    return this.getSaleByIdTx(this.db.db, organizationId, saleId);
+    return this.getSaleByIdTx(this.db, organizationId, saleId);
   }
 
   async recordPayment(
@@ -223,7 +223,7 @@ export class SalesService {
     saleId: string,
     input: RecordPaymentDto,
   ) {
-    return this.db.db.transaction(async (tx) => {
+    return this.db.transaction(async (tx) => {
       await tx.execute(
         sql`SELECT id FROM ${order} WHERE id = ${saleId} AND organization_id = ${organizationId} FOR UPDATE`,
       );
@@ -271,7 +271,7 @@ export class SalesService {
   }
 
   async getCustomerBalance(organizationId: string, customerId: string) {
-    const [customer] = await this.db.db
+    const [customer] = await this.db
       .select({ id: contact.id, name: contact.name })
       .from(contact)
       .where(and(eq(contact.id, customerId), eq(contact.organizationId, organizationId)))
@@ -279,7 +279,7 @@ export class SalesService {
 
     if (!customer) throw new NotFoundException("Customer not found.");
 
-    const pendingSales = await this.db.db
+    const pendingSales = await this.db
       .select({ id: order.id, totalKobo: order.totalKobo, createdAt: order.createdAt })
       .from(order)
       .where(
@@ -309,7 +309,7 @@ export class SalesService {
   }
 
   private async resolveCustomerId(
-    tx: Pick<DbHandle["db"], "select">,
+    tx: Pick<DbHandle, "select">,
     organizationId: string,
     customerId?: string,
   ) {
@@ -326,7 +326,7 @@ export class SalesService {
   }
 
   private async getSaleByIdTx(
-    tx: Pick<DbHandle["db"], "select">,
+    tx: Pick<DbHandle, "select">,
     organizationId: string,
     saleId: string,
   ) {
@@ -392,11 +392,11 @@ export class SalesService {
   }
 
   private async getPaidAmount(organizationId: string, saleId: string) {
-    return this.getPaidAmountTx(this.db.db, organizationId, saleId);
+    return this.getPaidAmountTx(this.db, organizationId, saleId);
   }
 
   private async getPaidAmountTx(
-    tx: Pick<DbHandle["db"], "select">,
+    tx: Pick<DbHandle, "select">,
     organizationId: string,
     saleId: string,
   ) {
