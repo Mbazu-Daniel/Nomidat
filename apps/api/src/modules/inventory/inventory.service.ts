@@ -50,17 +50,14 @@ export class InventoryService {
   }
 
   async createProduct(organizationId: string, input: CreateProductDto) {
-    const name = input.name.trim();
-    if (!name) throw new BadRequestException("Product name is required.");
-
-    const sku = input.sku?.trim() || null;
+    const sku = input.sku;
     if (sku) await this.ensureSkuAvailable(organizationId, sku);
 
     const [created] = await this.db.db
       .insert(product)
       .values({
         organizationId,
-        name,
+        name: input.name,
         sku,
         description: input.description,
         priceKobo: input.priceKobo,
@@ -76,8 +73,8 @@ export class InventoryService {
 
   async updateProduct(organizationId: string, productId: string, input: UpdateProductDto) {
     const existing = await this.getProduct(organizationId, productId);
-    const sku = input.sku === undefined ? existing.sku : input.sku.trim() || null;
-    if (sku && sku !== existing.sku) await this.ensureSkuAvailable(organizationId, sku, productId);
+    const sku = input.sku ?? existing.sku;
+    if (sku !== existing.sku) await this.ensureSkuAvailable(organizationId, sku, productId);
 
     const [updated] = await this.db.db
       .update(product)
