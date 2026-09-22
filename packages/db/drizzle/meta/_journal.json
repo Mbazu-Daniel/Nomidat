@@ -29,6 +29,13 @@
       "when": 1789734784857,
       "tag": "0003_domain-tables",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790000002000,
+      "tag": "0004_inbound_update",
+      "breakpoints": true
     }
   ]
 }
