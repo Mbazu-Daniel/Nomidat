@@ -49,10 +49,10 @@ export class ExpensesService {
         organizationId,
         categoryId: await this.resolveCategoryId(input.categoryId),
         amountKobo: input.amountKobo,
-        description: input.description,
+        description: input.description?.trim() || null,
         spentAt: input.spentAt ? new Date(input.spentAt) : new Date(),
-        paymentMethod: input.paymentMethod ?? "cash",
-        receiptUrl: input.receiptUrl,
+        paymentMethod: input.paymentMethod?.trim() || "cash",
+        receiptUrl: input.receiptUrl?.trim() || null,
         createdByUserId: userId,
       })
       .returning();
@@ -61,18 +61,20 @@ export class ExpensesService {
   }
 
   async update(organizationId: string, expenseId: string, input: UpdateExpenseDto) {
-    await this.get(organizationId, expenseId);
-    const { spentAt, categoryId, ...values } = input;
-    const resolvedCategoryId = categoryId
-      ? await this.resolveCategoryId(categoryId)
-      : undefined;
+    const existing = await this.get(organizationId, expenseId);
+    const categoryId = input.categoryId
+      ? await this.resolveCategoryId(input.categoryId)
+      : existing.categoryId;
 
     const [updated] = await this.db.db
       .update(expense)
       .set({
-        ...values,
-        categoryId: resolvedCategoryId,
-        spentAt: spentAt ? new Date(spentAt) : undefined,
+        categoryId,
+        amountKobo: input.amountKobo ?? existing.amountKobo,
+        description: input.description?.trim() || existing.description,
+        spentAt: input.spentAt ? new Date(input.spentAt) : existing.spentAt,
+        paymentMethod: input.paymentMethod?.trim() || existing.paymentMethod,
+        receiptUrl: input.receiptUrl?.trim() || existing.receiptUrl,
         updatedAt: new Date(),
       })
       .where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)))
@@ -80,7 +82,6 @@ export class ExpensesService {
 
     return updated;
   }
-
 
   async remove(organizationId: string, expenseId: string) {
     await this.get(organizationId, expenseId);
@@ -93,20 +94,13 @@ export class ExpensesService {
   }
 
   async createCategory(input: CreateExpenseCategoryDto) {
-    return this.insertCategory(this.requireCategoryName(input.name), input.description);
-  }
+    const name = input.name.trim();
+    if (!name) throw new BadRequestException("Category name is required.");
 
-  private requireCategoryName(name: string) {
-    const normalized = name.trim();
-    if (!normalized) throw new BadRequestException("Category name is required.");
-    return normalized;
-  }
-
-  private async insertCategory(name: string, description?: string) {
     try {
       const [created] = await this.db.db
         .insert(expenseCategory)
-        .values({ name, description: description?.trim() || null, isDefault: false })
+        .values({ name, description: input.description?.trim() || null, isDefault: false })
         .returning();
       return created;
     } catch (error) {
