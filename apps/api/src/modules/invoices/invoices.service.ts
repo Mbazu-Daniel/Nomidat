@@ -11,22 +11,8 @@ export class InvoicesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
   async createInvoice(organizationId: string, input: CreateInvoiceDto) {
-    if (input.items.length === 0) {
-      throw new BadRequestException("At least one invoice item is required.");
-    }
-
-    const subtotalKobo = input.items.reduce(
-      (total, item) => total + item.quantity * item.unitPriceKobo,
-      0,
-    );
-    const discountKobo = input.discountKobo ?? 0;
-    const taxKobo = input.taxKobo ?? 0;
-    const totalKobo = subtotalKobo - discountKobo + taxKobo;
-
-    if (totalKobo <= 0) throw new BadRequestException("Invoice total must be greater than zero.");
-    if (discountKobo > subtotalKobo) {
-      throw new BadRequestException("Discount cannot exceed the subtotal.");
-    }
+    const totals = this.getInvoiceTotals(input);
+    this.validateInvoiceTotals(input, totals);
 
     return this.db.db.transaction(async (tx) => {
       const customerId = await this.resolveCustomerId(tx, organizationId, input.customerId);
@@ -40,10 +26,10 @@ export class InvoicesService {
           contactId: customerId,
           invoiceNumber: number,
           status: "issued",
-          subtotalKobo,
-          discountKobo,
-          taxKobo,
-          totalKobo,
+          subtotalKobo: totals.subtotalKobo,
+          discountKobo: totals.discountKobo,
+          taxKobo: totals.taxKobo,
+          totalKobo: totals.totalKobo,
           currency: "NGN",
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
           notes: input.notes,
@@ -51,9 +37,39 @@ export class InvoicesService {
         .returning({ id: invoice.id });
 
       await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, input.items));
-
       return this.getInvoiceTx(tx, organizationId, created.id);
     });
+  }
+
+  private getInvoiceTotals(input: CreateInvoiceDto) {
+    const subtotalKobo = input.items.reduce(
+      (total, item) => total + item.quantity * item.unitPriceKobo,
+      0,
+    );
+    const discountKobo = input.discountKobo ?? 0;
+    const taxKobo = input.taxKobo ?? 0;
+
+    return {
+      subtotalKobo,
+      discountKobo,
+      taxKobo,
+      totalKobo: subtotalKobo - discountKobo + taxKobo,
+    };
+  }
+
+  private validateInvoiceTotals(
+    input: CreateInvoiceDto,
+    totals: ReturnType<InvoicesService["getInvoiceTotals"]>,
+  ) {
+    if (input.items.length === 0) {
+      throw new BadRequestException("At least one invoice item is required.");
+    }
+    if (totals.totalKobo <= 0) {
+      throw new BadRequestException("Invoice total must be greater than zero.");
+    }
+    if (totals.discountKobo > totals.subtotalKobo) {
+      throw new BadRequestException("Discount cannot exceed the subtotal.");
+    }
   }
 
   async createFromSale(organizationId: string, saleId: string) {
@@ -209,14 +225,15 @@ export class InvoicesService {
       totalKobo?: number;
     }>,
   ) {
-    return items.map((item) => ({
-      invoiceId,
-      productId: item.productId ?? null,
-      description: item.description ?? item.productName ?? "Item",
-      quantity: item.quantity,
-      unitPriceKobo: item.unitPriceKobo,
-      totalKobo: item.totalKobo ?? item.quantity * item.unitPriceKobo,
-    }));
+    return items.map((item) => {
+      const { productName, description, totalKobo, ...values } = item;
+      return {
+        invoiceId,
+        ...values,
+        description: description ?? productName ?? "Item",
+        totalKobo: totalKobo ?? item.quantity * item.unitPriceKobo,
+      };
+    });
   }
 
   private async resolveCustomerId(
