@@ -363,9 +363,13 @@ Rules:
 
   private validateSaleAction(action: ParsedAction): string | null {
     if (!action.productName) return "What product did you sell?";
-    if (!action.quantity || action.quantity <= 0) return "How many units did you sell?";
-    if (!action.amountNaira || action.amountNaira <= 0) return "What was the total selling amount?";
+    if (!this.isPositiveNumber(action.quantity)) return "How many units did you sell?";
+    if (!this.isPositiveNumber(action.amountNaira)) return "What was the total selling amount?";
     return null;
+  }
+
+  private isPositiveNumber(value: number | undefined): value is number {
+    return typeof value === "number" && value > 0;
   }
 
   private formatSaleResponse(
