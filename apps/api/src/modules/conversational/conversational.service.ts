@@ -285,7 +285,11 @@ Rules:
     }
   }
 
-  private executeAction(action: ParsedAction, organizationId: string): Promise<string> {\n    return this.actionHandlers[action.intent](action, organizationId);\n  }\n\n  private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
+  private executeAction(action: ParsedAction, organizationId: string): Promise<string> {
+    return this.actionHandlers[action.intent](action, organizationId);
+  }
+
+  private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "What is the customer's name?";
 
     const existing = await this.db.db
