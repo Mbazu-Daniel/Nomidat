@@ -9,3 +9,4 @@ export * from "../payments";
 export * from "../expenses";
 export * from "../invoices";
 export * from "../conversations";
+export * from "../inbound-updates";

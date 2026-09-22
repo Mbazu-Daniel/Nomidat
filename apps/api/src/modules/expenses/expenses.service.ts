@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
-import { and, desc, eq, sql } from "@nomidat/db";
+import { and, desc, eq } from "@nomidat/db";
 import { expense, expenseCategory } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateExpenseCategoryDto, CreateExpenseDto, UpdateExpenseDto } from "./dto";
@@ -11,7 +11,7 @@ export class ExpensesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
   async list(organizationId: string, limit = 20) {
-    return this.db.db
+    return this.db
       .select({
         id: expense.id,
         categoryId: expense.categoryId,
@@ -32,7 +32,7 @@ export class ExpensesService {
   }
 
   async get(organizationId: string, expenseId: string) {
-    const [item] = await this.db.db
+    const [item] = await this.db
       .select()
       .from(expense)
       .where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)))
@@ -43,12 +43,11 @@ export class ExpensesService {
   }
 
   async create(organizationId: string, userId: string | null, input: CreateExpenseDto) {
-    const categoryId = await this.resolveCategoryId(input.categoryId, organizationId);
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(expense)
       .values({
         organizationId,
-        categoryId,
+        categoryId: await this.resolveCategoryId(input.categoryId),
         amountKobo: input.amountKobo,
         description: input.description?.trim() || null,
         spentAt: input.spentAt ? new Date(input.spentAt) : new Date(),
@@ -63,18 +62,19 @@ export class ExpensesService {
 
   async update(organizationId: string, expenseId: string, input: UpdateExpenseDto) {
     const existing = await this.get(organizationId, expenseId);
-    const categoryId = input.categoryId === undefined ? existing.categoryId : await this.resolveCategoryId(input.categoryId, organizationId);
+    const categoryId = input.categoryId
+      ? await this.resolveCategoryId(input.categoryId)
+      : existing.categoryId;
 
-    const [updated] = await this.db.db
+    const [updated] = await this.db
       .update(expense)
       .set({
         categoryId,
         amountKobo: input.amountKobo ?? existing.amountKobo,
-        description: input.description === undefined ? existing.description : input.description.trim() || null,
+        description: input.description?.trim() || existing.description,
         spentAt: input.spentAt ? new Date(input.spentAt) : existing.spentAt,
-        paymentMethod:
-          input.paymentMethod === undefined ? existing.paymentMethod : input.paymentMethod.trim() || existing.paymentMethod,
-        receiptUrl: input.receiptUrl === undefined ? existing.receiptUrl : input.receiptUrl.trim() || null,
+        paymentMethod: input.paymentMethod?.trim() || existing.paymentMethod,
+        receiptUrl: input.receiptUrl?.trim() || existing.receiptUrl,
         updatedAt: new Date(),
       })
       .where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)))
@@ -85,26 +85,22 @@ export class ExpensesService {
 
   async remove(organizationId: string, expenseId: string) {
     await this.get(organizationId, expenseId);
-    await this.db.db.delete(expense).where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)));
+    await this.db.delete(expense).where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)));
     return { id: expenseId, deleted: true };
   }
 
-  async listCategories(organizationId: string) {
-    return this.db.db
-      .select()
-      .from(expenseCategory)
-      .where(sql`(${expenseCategory.organizationId} IS NULL OR ${expenseCategory.organizationId} = ${organizationId})`)
-      .orderBy(expenseCategory.name);
+  async listCategories() {
+    return this.db.select().from(expenseCategory).orderBy(expenseCategory.name);
   }
 
-  async createCategory(organizationId: string, input: CreateExpenseCategoryDto) {
+  async createCategory(input: CreateExpenseCategoryDto) {
     const name = input.name.trim();
     if (!name) throw new BadRequestException("Category name is required.");
 
     try {
-      const [created] = await this.db.db
+      const [created] = await this.db
         .insert(expenseCategory)
-        .values({ organizationId, name, description: input.description?.trim() || null, isDefault: false })
+        .values({ name, description: input.description?.trim() || null, isDefault: false })
         .returning();
       return created;
     } catch (error) {
@@ -115,14 +111,13 @@ export class ExpensesService {
     }
   }
 
-  private async resolveCategoryId(categoryId?: string, organizationId?: string) {
+  private async resolveCategoryId(categoryId?: string) {
     if (!categoryId) return null;
-    if (!organizationId) throw new BadRequestException("Organization is required.");
 
-    const [category] = await this.db.db
+    const [category] = await this.db
       .select({ id: expenseCategory.id })
       .from(expenseCategory)
-.where(and(eq(expenseCategory.id, categoryId), sql`(${expenseCategory.organizationId} IS NULL OR ${expenseCategory.organizationId} = ${organizationId})`))
+      .where(eq(expenseCategory.id, categoryId))
       .limit(1);
 
     if (!category) throw new NotFoundException("Expense category not found.");

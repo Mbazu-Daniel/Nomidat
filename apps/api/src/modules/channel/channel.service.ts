@@ -22,14 +22,14 @@ export class ChannelService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
   async getOrganizationChannelIdentities(organizationId: string) {
-    return this.db.db
+    return this.db
       .select()
       .from(channelIdentity)
       .where(eq(channelIdentity.organizationId, organizationId));
   }
 
   async getChannelIdentityByExternalId(provider: ChannelProvider, externalId: string) {
-    const rows = await this.db.db
+    const rows = await this.db
       .select()
       .from(channelIdentity)
       .where(
@@ -42,7 +42,7 @@ export class ChannelService {
   async createOrganizationChannelLinkCode(organizationId: string, createdByUserId: string) {
     const code = createChannelLinkCodeValue();
     const expiresAt = getChannelLinkCodeExpiresAt();
-    const [row] = await this.db.db
+    const [row] = await this.db
       .insert(channelLinkCode)
       .values({
         organizationId,
@@ -55,7 +55,7 @@ export class ChannelService {
   }
 
   async deleteOrganizationChannelIdentity(organizationId: string, channelIdentityId: string) {
-    const deleted = await this.db.db
+    const deleted = await this.db
       .delete(channelIdentity)
       .where(
         and(
@@ -71,7 +71,7 @@ export class ChannelService {
   }
 
   async updateChannelLastInboundAt(channelIdentityId: string, at = new Date()) {
-    await this.db.db
+    await this.db
       .update(channelIdentity)
       .set({ lastInboundAt: at, updatedAt: at })
       .where(eq(channelIdentity.id, channelIdentityId));
@@ -118,7 +118,7 @@ export class ChannelService {
     displayName?: string;
     receivedAt: Date;
   }) {
-    return this.db.db.transaction(async (tx) => {
+    return this.db.transaction(async (tx) => {
       const rows = await tx
         .select()
         .from(channelLinkCode)
