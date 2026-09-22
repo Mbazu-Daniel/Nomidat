@@ -61,20 +61,18 @@ export class ExpensesService {
   }
 
   async update(organizationId: string, expenseId: string, input: UpdateExpenseDto) {
-    const existing = await this.get(organizationId, expenseId);
-    const categoryId = input.categoryId
-      ? await this.resolveCategoryId(input.categoryId)
-      : existing.categoryId;
+    await this.get(organizationId, expenseId);
+    const { spentAt, categoryId, ...values } = input;
+    const resolvedCategoryId = categoryId
+      ? await this.resolveCategoryId(categoryId)
+      : undefined;
 
     const [updated] = await this.db.db
       .update(expense)
       .set({
-        categoryId,
-        amountKobo: input.amountKobo ?? existing.amountKobo,
-        description: input.description ?? existing.description,
-        spentAt: input.spentAt ? new Date(input.spentAt) : existing.spentAt,
-        paymentMethod: input.paymentMethod ?? existing.paymentMethod,
-        receiptUrl: input.receiptUrl ?? existing.receiptUrl,
+        ...values,
+        categoryId: resolvedCategoryId,
+        spentAt: spentAt ? new Date(spentAt) : undefined,
         updatedAt: new Date(),
       })
       .where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)))
