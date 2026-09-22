@@ -73,8 +73,8 @@ export class InventoryService {
 
   async updateProduct(organizationId: string, productId: string, input: UpdateProductDto) {
     const existing = await this.getProduct(organizationId, productId);
-    const sku = input.sku ?? existing.sku;
-    if (sku !== existing.sku) await this.ensureSkuAvailable(organizationId, sku, productId);
+    const sku = input.sku === undefined ? existing.sku : input.sku.trim() || null;
+    if (sku && sku !== existing.sku) await this.ensureSkuAvailable(organizationId, sku, productId);
 
     const [updated] = await this.db.db
       .update(product)
