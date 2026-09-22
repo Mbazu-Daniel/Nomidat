@@ -165,7 +165,6 @@ export class SalesService {
   ) {
     const totals = this.getSaleTotals(input);
     const customerId = await this.resolveCustomerId(tx, organizationId, input.customerId);
-    const resolvedItems = await this.resolveSaleItems(tx, organizationId, input.items, createdOrder.id);
     const now = new Date();
 
     const [createdOrder] = await tx
@@ -186,6 +185,7 @@ export class SalesService {
       })
       .returning();
 
+    const resolvedItems = await this.resolveSaleItems(tx, organizationId, input.items, createdOrder.id);
     await tx.insert(orderItem).values(resolvedItems);
 
     if (totals.paymentAmountKobo > 0) {
