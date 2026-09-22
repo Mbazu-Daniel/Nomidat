@@ -1,12 +1,12 @@
 import { BadRequestException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
-import { z } from "zod";
-import { and, desc, eq, ilike } from "@nomidat/db";
+import { and, desc, eq, ilike, sql } from "@nomidat/db";
 import {
   contact,
   conversation,
   expense,
   expenseCategory,
   order,
+  orderItem,
   product,
   message,
 } from "@nomidat/db/schema";
@@ -14,7 +14,8 @@ import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
 import type { ChannelAdapter, InboundMessage } from "../channel/types";
-import { ReportsService } from "../reports/reports.service";
+import { inboundUpdate } from "@nomidat/db/schema";
+import { z } from "zod";
 import { SalesService } from "../sales/sales.service";
 
 type Intent =
@@ -24,43 +25,18 @@ type Intent =
   | "check_balance"
   | "check_inventory"
   | "summary"
-  | "sales_report"
-  | "expense_report"
-  | "top_products"
-  | "customer_balances"
-  | "inventory_report"
   | "unknown";
 
-type ActionHandler = (action: ParsedAction, organizationId: string) => Promise<string>;
-
 const parsedActionSchema = z.object({
-  intent: z.enum([
-    "create_contact",
-    "record_sale",
-    "record_expense",
-    "check_balance",
-    "check_inventory",
-    "summary",
-    "sales_report",
-    "expense_report",
-    "top_products",
-    "customer_balances",
-    "inventory_report",
-    "unknown",
-  ]),
-  customerName: z.string().optional(),
-  customerPhone: z.string().optional(),
-  productName: z.string().optional(),
-  quantity: z.number().finite().positive().optional(),
-  amountNaira: z.number().finite().positive().optional(),
-  paid: z.boolean().optional(),
-  description: z.string().optional(),
-  category: z.string().optional(),
-  date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine((value) => {
-    const parsed = new Date(`${value}T12:00:00Z`);
-    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-  }, "date must be a valid YYYY-MM-DD date"),
+  intent: z.enum(["create_contact", "record_sale", "record_expense", "check_balance", "check_inventory", "summary", "unknown"]),
+  customerName: z.string().min(1).optional(), customerPhone: z.string().min(1).optional(),
+  productName: z.string().min(1).optional(), quantity: z.number().finite().int().positive().optional(),
+  amountNaira: z.number().finite().positive().optional(), paid: z.boolean().optional(),
+  description: z.string().min(1).optional(), category: z.string().min(1).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => !Number.isNaN(Date.parse(value + "T12:00:00")), "Invalid date").optional(),
 }).strict();
+
+type ActionHandler = (action: ParsedAction, organizationId: string) => Promise<string>;
 
 type ParsedAction = {
   intent: Intent;
@@ -78,24 +54,18 @@ type ParsedAction = {
 @Injectable()
 export class ConversationalService {
   private readonly actionHandlers: Record<Intent, ActionHandler> = {
-    create_contact: (action, organizationId) => this.createContact(action, organizationId),
-    record_sale: (action, organizationId) => this.recordSale(action, organizationId),
-    record_expense: (action, organizationId) => this.recordExpense(action, organizationId),
-    check_balance: (action, organizationId) => this.checkBalance(action, organizationId),
-    check_inventory: (action, organizationId) => this.checkInventory(action, organizationId),
-    summary: (_action, organizationId) => this.summary(organizationId),
-    sales_report: (_action, organizationId) => this.salesReport(organizationId),
-    expense_report: (_action, organizationId) => this.expenseReport(organizationId),
-    top_products: (_action, organizationId) => this.topProductsReport(organizationId),
-    customer_balances: (_action, organizationId) => this.customerBalancesReport(organizationId),
-    inventory_report: (_action, organizationId) => this.inventoryReport(organizationId),
+    create_contact: (action, id) => this.createContact(action, id),
+    record_sale: (action, id) => this.recordSale(action, id),
+    record_expense: (action, id) => this.recordExpense(action, id),
+    check_balance: (action, id) => this.checkBalance(action, id),
+    check_inventory: (action, id) => this.checkInventory(action, id),
+    summary: (_action, id) => this.summary(id),
     unknown: async () => "I understood the message, but I need a little more information to know what you want me to record.",
   };
 
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
-    private readonly reports: ReportsService,
     private readonly salesService: SalesService,
   ) {}
 
@@ -105,181 +75,78 @@ export class ConversationalService {
     channelIdentityId: string,
     adapter: ChannelAdapter,
   ): Promise<string> {
-    const conversationRow = await this.getOrCreateConversation(
+    const guard = await this.beginInboundUpdate(inbound, organizationId);
+    if (guard.status === "completed") return guard.response;
+    if (guard.status === "processing") return "This message is already being processed.";
+    try {
+      const conversationRow = await this.getOrCreateConversation(
       organizationId,
       channelIdentityId,
     );
 
-    if (inbound.rawUpdateId) {
-      const existingResponse = await this.getStoredInboundResponse(inbound);
-      if (existingResponse) return existingResponse;
+    let content = inbound.text?.trim() ?? "";
+    if (inbound.kind === "voice") {
+      content = await this.transcribeVoice(inbound, adapter);
     }
-
-    const content = await this.getInboundContent(inbound, adapter);
 
     if (!content) {
-      return "I couldn't understand that message. Please send text or a clearer voice note.";
-    }
-
-    const claim = await this.claimInboundMessage(conversationRow.id, inbound, content);
-    if (!claim.claimed) return claim.response;
-
-    return this.processClaimedMessage(conversationRow.id, organizationId, inbound);
-  }
-
-  private async getInboundContent(
-    inbound: InboundMessage,
-    adapter: ChannelAdapter,
-  ): Promise<string> {
-    if (inbound.kind === "voice") {
-      return (await this.transcribeVoice(inbound, adapter)).trim();
-    }
-    return inbound.text?.trim() ?? "";
-  }
-
-  private async processClaimedMessage(
-    conversationId: string,
-    organizationId: string,
-    inbound: InboundMessage,
-  ): Promise<string> {
-    try {
-      const history = await this.getConversationHistory(conversationId);
-      const action = await this.understand(history);
-      const reply = await this.executeAction(action, organizationId);
-
-      await this.persistAssistantMessage(conversationId, inbound, action, reply);
-      await this.db.db
-        .update(conversation)
-        .set({ lastMessageAt: new Date(), updatedAt: new Date() })
-        .where(eq(conversation.id, conversationId));
-
+      const reply = "I couldn't understand that message. Please send text or a clearer voice note.";
+      await this.completeInboundUpdate(guard.id, reply);
       return reply;
-    } catch (error) {
-      await this.persistInboundFailure(conversationId, inbound);
-      throw error;
     }
-  }
 
-  private async getConversationHistory(conversationId: string) {
+    await this.db.db.insert(message).values({
+      conversationId: conversationRow.id,
+      role: "user",
+      content,
+    });
+
     const history = await this.db.db
       .select({ role: message.role, content: message.content })
       .from(message)
-      .where(eq(message.conversationId, conversationId))
+      .where(eq(message.conversationId, conversationRow.id))
       .orderBy(desc(message.createdAt))
       .limit(12);
 
-    return history.reverse();
-  }
+    const action = await this.understand(history.reverse());
+    const reply = await this.executeAction(action, organizationId);
 
-  private async persistAssistantMessage(
-    conversationId: string,
-    inbound: InboundMessage,
-    action: ParsedAction,
-    reply: string,
-  ) {
     await this.db.db.insert(message).values({
-      conversationId,
+      conversationId: conversationRow.id,
       role: "assistant",
       content: reply,
       toolName: action.intent,
       toolArgs: action,
     });
 
-    if (!inbound.rawUpdateId) return;
-
     await this.db.db
-      .update(message)
-      .set({ inboundResponse: reply })
-      .where(
-        and(
-          eq(message.conversationId, conversationId),
-          eq(message.provider, inbound.provider),
-          eq(message.rawUpdateId, inbound.rawUpdateId),
-          eq(message.role, "user"),
-        ),
-      );
+      .update(conversation)
+      .set({ lastMessageAt: new Date(), updatedAt: new Date() })
+      .where(eq(conversation.id, conversationRow.id));
+
+    await this.completeInboundUpdate(guard.id, reply);
+      return reply;
+    } catch (error) {
+      await this.releaseInboundUpdate(guard.id);
+      throw error;
+    }
   }
 
-  private async claimInboundMessage(
-    conversationId: string,
-    inbound: InboundMessage,
-    content: string,
-  ): Promise<{ claimed: boolean; response: string }> {
-    if (!inbound.rawUpdateId) return this.insertInboundMessage(conversationId, content);
-
-    const created = await this.tryClaimInboundMessage(conversationId, inbound, content);
-    if (created) return { claimed: true, response: "" };
-
-    return {
-      claimed: false,
-      response: await this.getInboundResponse(inbound),
-    };
+  private async beginInboundUpdate(inbound: InboundMessage, organizationId: string): Promise<{ status: "new"; id: string } | { status: "completed"; response: string } | { status: "processing" }> {
+    if (!inbound.rawUpdateId) return { status: "new", id: "" };
+    const [created] = await this.db.db.insert(inboundUpdate).values({ organizationId, provider: inbound.provider, rawUpdateId: inbound.rawUpdateId }).onConflictDoNothing().returning({ id: inboundUpdate.id });
+    if (created) return { status: "new", id: created.id };
+    const existing = await this.db.db.select({ id: inboundUpdate.id, response: inboundUpdate.response }).from(inboundUpdate).where(and(
+      eq(inboundUpdate.organizationId, organizationId), eq(inboundUpdate.provider, inbound.provider), eq(inboundUpdate.rawUpdateId, inbound.rawUpdateId),
+    )).limit(1);
+    if (existing[0]?.response !== null && existing[0]?.response !== undefined) return { status: "completed", response: existing[0].response };
+    return { status: "processing" };
   }
 
-  private async insertInboundMessage(conversationId: string, content: string) {
-    await this.db.db.insert(message).values({ conversationId, role: "user", content });
-    return { claimed: true, response: "" };
+  private async completeInboundUpdate(id: string, response: string): Promise<void> {
+    if (!id) return;
+    await this.db.db.update(inboundUpdate).set({ response, completedAt: new Date() }).where(eq(inboundUpdate.id, id));
   }
-
-  private async tryClaimInboundMessage(
-    conversationId: string,
-    inbound: InboundMessage,
-    content: string,
-  ) {
-    const [created] = await this.db.db
-      .insert(message)
-      .values({
-        conversationId,
-        provider: inbound.provider,
-        rawUpdateId: inbound.rawUpdateId,
-        role: "user",
-        content,
-      })
-      .onConflictDoNothing()
-      .returning({ id: message.id });
-    return Boolean(created);
-  }
-
-  private async getStoredInboundResponse(inbound: InboundMessage): Promise<string | null> {
-    const [existing] = await this.db.db
-      .select({ inboundResponse: message.inboundResponse })
-      .from(message)
-      .where(
-        and(
-          eq(message.provider, inbound.provider),
-          eq(message.rawUpdateId, inbound.rawUpdateId!),
-          eq(message.role, "user"),
-        ),
-      )
-      .limit(1);
-
-    return existing?.inboundResponse ?? null;
-  }
-
-  private async persistInboundFailure(
-    conversationId: string,
-    inbound: InboundMessage,
-  ): Promise<void> {
-    if (!inbound.rawUpdateId) return;
-
-    await this.db.db
-      .update(message)
-      .set({ inboundResponse: "I couldn't process that message. Please try again." })
-      .where(
-        and(
-          eq(message.conversationId, conversationId),
-          eq(message.provider, inbound.provider),
-          eq(message.rawUpdateId, inbound.rawUpdateId),
-          eq(message.role, "user"),
-        ),
-      );
-  }
-
-  private async getInboundResponse(inbound: InboundMessage) {
-    return (await this.getStoredInboundResponse(inbound)) ??
-      "That message is already being processed. Please wait for the response.";
-  }
-
   private async getOrCreateConversation(
     organizationId: string,
     channelIdentityId: string,
@@ -319,10 +186,7 @@ export class ConversationalService {
 
     const media = await adapter.getInboundMedia(inbound.mediaUrl);
     const form = new FormData();
-    const audioBuffer = media.data.buffer.slice(
-      media.data.byteOffset,
-      media.data.byteOffset + media.data.byteLength,
-    ) as ArrayBuffer;
+    const audioBuffer = media.data.buffer.slice(media.data.byteOffset, media.data.byteOffset + media.data.byteLength) as ArrayBuffer;
     form.append(
       "file",
       new Blob([audioBuffer], { type: media.mimeType ?? inbound.mediaMimeType ?? "audio/ogg" }),
@@ -334,19 +198,11 @@ export class ConversationalService {
       "Transcribe faithfully. The speaker may use Nigerian English, Nigerian Pidgin, Yoruba, Igbo, Hausa, or a mixture. Preserve names, numbers, currencies and business terms.",
     );
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
-    let response: Response;
-    try {
-      response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
-        body: form,
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
+    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
+      body: form,
+    });
 
     if (!response.ok) {
       throw new ServiceUnavailableException("Voice transcription failed.");
@@ -376,7 +232,7 @@ Do not translate for the user. Extract business intent and structured facts.
 
 Return ONLY JSON:
 {
-  "intent": "create_contact|record_sale|record_expense|check_balance|check_inventory|summary|sales_report|expense_report|top_products|customer_balances|inventory_report|unknown",
+  "intent": "create_contact|record_sale|record_expense|check_balance|check_inventory|summary|unknown",
   "customerName": string?,
   "customerPhone": string?,
   "productName": string?,
@@ -397,27 +253,20 @@ Rules:
 - "summary" means a general business summary.
 `;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
-    let response: Response;
-    try {
-      response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.getOpenAiKey()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: this.env.OPENAI_MODEL,
-          temperature: 0,
-          response_format: { type: "json_object" },
-          messages: [{ role: "system", content: system }, ...messages],
-        }),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.getOpenAiKey()}`,
+        "Content-Type": "application/json",
+      },
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({
+        model: this.env.OPENAI_MODEL,
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [{ role: "system", content: system }, ...messages],
+      }),
+    });
 
     if (!response.ok) {
       throw new ServiceUnavailableException("AI processing failed.");
@@ -430,16 +279,15 @@ Rules:
     if (!raw) throw new ServiceUnavailableException("AI returned no result.");
 
     try {
-      const parsed: unknown = JSON.parse(raw);
-      const result = parsedActionSchema.safeParse(parsed);
-      if (!result.success) return { intent: "unknown" };
-      return result.data;
+      const parsed = parsedActionSchema.safeParse(JSON.parse(raw));
+      if (!parsed.success) throw new ServiceUnavailableException("AI returned an invalid action.");
+      return parsed.data;
     } catch {
       throw new ServiceUnavailableException("AI returned an invalid action.");
     }
   }
 
-  private async executeAction(action: ParsedAction, organizationId: string): Promise<string> {
+  private executeAction(action: ParsedAction, organizationId: string): Promise<string> {
     return this.actionHandlers[action.intent](action, organizationId);
   }
 
@@ -502,117 +350,43 @@ Rules:
     return `Recorded ₦${(created.amountKobo / 100).toLocaleString("en-NG")} expense.`;
   }
 
-  private validateSaleAction(action: ParsedAction): string | null {
-    const missing = [
-      [!action.productName, "What product did you sell?"],
-      [!this.isPositiveNumber(action.quantity), "How many units did you sell?"],
-      [!this.isPositiveNumber(action.amountNaira), "What was the total selling amount?"],
-    ] as const;
-
-    return missing.find(([invalid]) => invalid)?.[1] ?? null;
-  }
-
-  private isPositiveNumber(value: number | undefined): value is number {
-    return typeof value === "number" && value > 0;
-  }
-
-  private async findCustomerId(
-    organizationId: string,
-    customerName?: string,
-  ): Promise<string | null> {
-    if (!customerName) return null;
-    const rows = await this.db.db
-      .select()
-      .from(contact)
-      .where(
-        and(
-          eq(contact.organizationId, organizationId),
-          ilike(contact.name, customerName),
-        ),
-      )
-      .limit(1);
-    return rows[0]?.id ?? null;
-  }
-
-  private async findProduct(organizationId: string, productName: string) {
-    const rows = await this.db.db
-      .select()
-      .from(product)
-      .where(
-        and(
-          eq(product.organizationId, organizationId),
-          ilike(product.name, productName),
-        ),
-      )
-      .limit(1);
-    return rows[0];
-  }
-
   private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
     const validationError = this.validateSaleAction(action);
     if (validationError) return validationError;
-
     const quantity = action.quantity!;
     const amountNaira = action.amountNaira!;
-    const result = await this.salesService.createSale(
-      organizationId,
-      null,
-      await this.buildSaleInput(action, organizationId, quantity, amountNaira),
-    );
-
-    return this.formatSaleResponse(action, quantity, amountNaira, result);
-  }
-
-  private async buildSaleInput(
-    action: ParsedAction,
-    organizationId: string,
-    quantity: number,
-    amountNaira: number,
-  ) {
     const [customerId, existingProduct] = await Promise.all([
       this.findCustomerId(organizationId, action.customerName),
       this.findProduct(organizationId, action.productName!),
     ]);
     const totalKobo = Math.round(amountNaira * 100);
-
-    return {
+    const result = await this.salesService.createSale(organizationId, null, {
       customerId: customerId ?? undefined,
-      items: [this.buildSaleItem(action, existingProduct, quantity, totalKobo)],
-      paymentAmountKobo: action.paid ? totalKobo : 0,
-      paymentMethod: "cash" as const,
-      notes: "Recorded through Nomidat",
-    };
+      items: [{ productId: existingProduct?.id, productName: existingProduct?.name ?? action.productName!, quantity,
+        unitPriceKobo: Math.floor(totalKobo / quantity), lineTotalKobo: totalKobo }],
+      paymentAmountKobo: action.paid ? totalKobo : 0, paymentMethod: "cash", notes: "Recorded through Nomidat",
+    });
+    const balanceText = result.balanceKobo > 0 ? " Outstanding: ₦" + (result.balanceKobo / 100).toLocaleString("en-NG") + "." : "";
+    return "Recorded " + quantity + " × " + action.productName + " for ₦" + amountNaira.toLocaleString("en-NG") + " " + (action.paid ? "paid" : "on credit") + "." + balanceText + " Order " + result.id.slice(0, 8) + ".";
   }
 
-  private buildSaleItem(
-    action: ParsedAction,
-    existingProduct: { id: string; name: string } | undefined,
-    quantity: number,
-    totalKobo: number,
-  ) {
-    return {
-      productId: existingProduct?.id,
-      productName: existingProduct?.name ?? action.productName!,
-      quantity,
-      unitPriceKobo: Math.floor(totalKobo / quantity),
-      lineTotalKobo: totalKobo,
-    };
+  private validateSaleAction(action: ParsedAction): string | null {
+    if (!action.productName) return "What product did you sell?";
+    if (!action.quantity) return "How many units did you sell?";
+    if (!action.amountNaira) return "What was the total selling amount?";
+    return null;
   }
 
-  private formatSaleResponse(
-    action: ParsedAction,
-    quantity: number,
-    amountNaira: number,
-    result: { id: string; balanceKobo: number },
-  ): string {
-    const paymentText = action.paid ? "paid" : "on credit";
-    const balanceText = result.balanceKobo > 0
-      ? ` Outstanding: ₦${(result.balanceKobo / 100).toLocaleString("en-NG")}.`
-      : "";
-
-    return `Recorded ${quantity} × ${action.productName} for ₦${amountNaira.toLocaleString("en-NG")} ${paymentText}.${balanceText} Order ${result.id.slice(0, 8)}.`;
+  private async findCustomerId(organizationId: string, name?: string): Promise<string | null> {
+    if (!name) return null;
+    const [customer] = await this.db.db.select({ id: contact.id }).from(contact).where(and(eq(contact.organizationId, organizationId), ilike(contact.name, name))).limit(1);
+    return customer?.id ?? null;
   }
 
+  private async findProduct(organizationId: string, name: string) {
+    const [item] = await this.db.db.select({ id: product.id, name: product.name }).from(product).where(and(eq(product.organizationId, organizationId), ilike(product.name, name))).limit(1);
+    return item;
+  }
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "Which customer should I check?";
 
@@ -660,76 +434,20 @@ Rules:
   }
 
   private async summary(organizationId: string): Promise<string> {
-    const report = await this.reports.getSummary(
-      organizationId,
-      this.reports.getDefaultRange(),
-    );
+    const orders = await this.db.db
+      .select({ totalKobo: order.totalKobo })
+      .from(order)
+      .where(and(eq(order.organizationId, organizationId), eq(order.status, "paid")));
 
-    return `Last 30 days: ₦${this.formatMoney(report.salesKobo)} in sales, ₦${this.formatMoney(report.collectedKobo)} collected, ₦${this.formatMoney(report.expensesKobo)} in expenses and ₦${this.formatMoney(report.outstandingCreditKobo)} outstanding. Approximate profit is ₦${this.formatMoney(report.profitApproxKobo)} and net cash flow is ₦${this.formatMoney(report.netCashflowKobo)}.`;
-  }
+    const expenses = await this.db.db
+      .select({ amountKobo: expense.amountKobo })
+      .from(expense)
+      .where(eq(expense.organizationId, organizationId));
 
-  private async salesReport(organizationId: string): Promise<string> {
-    const range = this.reports.getDefaultRange();
-    const [summary, trend] = await Promise.all([
-      this.reports.getSummary(organizationId, range),
-      this.reports.getSalesTrend(organizationId, range),
-    ]);
-    const latest = trend.at(-1);
+    const revenue = orders.reduce((sum, row) => sum + row.totalKobo, 0);
+    const spending = expenses.reduce((sum, row) => sum + row.amountKobo, 0);
 
-    return `Last 30 days sales: ₦${this.formatMoney(summary.salesKobo)} across ${summary.salesCount} sales. Collected ₦${this.formatMoney(summary.collectedKobo)}. ${latest ? `Latest day: ₦${this.formatMoney(latest.salesKobo)} from ${latest.saleCount} sales.` : "No sales were recorded in this period."}`;
-  }
-
-  private async expenseReport(organizationId: string): Promise<string> {
-    const rows = await this.reports.getExpenseBreakdown(
-      organizationId,
-      this.reports.getDefaultRange(),
-    );
-
-    if (rows.length === 0) return "No expenses were recorded in the last 30 days.";
-
-    return `Last 30 days expenses: ${rows
-      .slice(0, 5)
-      .map((row) => `${row.category}: ₦${this.formatMoney(row.amountKobo)}`)
-      .join(", ")}.`;
-  }
-
-  private async topProductsReport(organizationId: string): Promise<string> {
-    const rows = await this.reports.getTopProducts(
-      organizationId,
-      this.reports.getDefaultRange(),
-      5,
-    );
-
-    if (rows.length === 0) return "No product sales were recorded in the last 30 days.";
-
-    return `Top products in the last 30 days: ${rows
-      .map((row, index) => `${index + 1}. ${row.productName} (${row.quantity} units, ₦${this.formatMoney(row.salesKobo)})`)
-      .join("; ")}.`;
-  }
-
-  private async customerBalancesReport(organizationId: string): Promise<string> {
-    const rows = await this.reports.getCustomerBalances(organizationId, 5);
-
-    if (rows.length === 0) return "No customers currently have outstanding balances.";
-
-    return `Outstanding customer balances: ${rows
-      .map((row) => `${row.customerName}: ₦${this.formatMoney(row.balanceKobo)}`)
-      .join(", ")}.`;
-  }
-
-  private async inventoryReport(organizationId: string): Promise<string> {
-    const report = await this.reports.getInventoryHealth(organizationId);
-
-    if (report.productCount === 0) return "You have no products in inventory.";
-
-    const lowStockNames = report.lowStock.slice(0, 5).map((item) => item.name).join(", ");
-    const suffix = lowStockNames ? ` Low-stock items: ${lowStockNames}.` : "";
-
-    return `Inventory: ${report.productCount} products worth about ₦${this.formatMoney(report.inventoryValueKobo)}, ${report.lowStockCount} low-stock and ${report.outOfStockCount} out of stock.${suffix}`;
-  }
-
-  private formatMoney(kobo: number): string {
-    return (kobo / 100).toLocaleString("en-NG");
+    return `Business summary: ₦${(revenue / 100).toLocaleString("en-NG")} paid sales and ₦${(spending / 100).toLocaleString("en-NG")} recorded expenses. Outstanding credit is available by asking "who owes me?"`;
   }
 
   private getOpenAiKey(): string {
