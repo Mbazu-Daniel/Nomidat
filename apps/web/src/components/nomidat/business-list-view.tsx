@@ -144,9 +144,14 @@ function CustomerRow({ row }: { row: Row }) {
 }
 
 function InventoryRow({ row }: { row: Row }) {
-  const stock = row.stockQuantity ?? 0;
-  const unit = row.unit ?? "units";
-  return <RowShell title={row.name ?? "Unnamed product"} detail={stock + " " + unit + " in stock"} value={"Reorder at " + (row.lowStockThreshold ?? 0) + " " + unit} />;
+  const stock = withDefault(row.stockQuantity, 0);
+  const unit = withDefault(row.unit, "units");
+  const threshold = withDefault(row.lowStockThreshold, 0);
+  return <RowShell title={withDefault(row.name, "Unnamed product")} detail={stock + " " + unit + " in stock"} value={"Reorder at " + threshold + " " + unit} />;
+}
+
+function withDefault<T>(value: T | null | undefined, fallback: T): T {
+  return value ?? fallback;
 }
 
 function ExpenseRow({ row }: { row: Row }) {

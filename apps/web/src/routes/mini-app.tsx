@@ -108,9 +108,13 @@ function applyOrganizations(
   setOrganizationId: Dispatch<SetStateAction<string>>,
 ) {
   if (cancelled || !items) return;
-  const options = items.map((organization) => ({ id: organization.id, name: organization.name }));
+  const options = items.map(toOrganizationOption);
   setOrganizations(options);
   setOrganizationId(options[0]?.id ?? "");
+}
+
+function toOrganizationOption(organization: OrganizationOption): OrganizationOption {
+  return { id: organization.id, name: organization.name };
 }
 
 function handleOrganizationLoadError(cancelled: boolean, setMessage: Dispatch<SetStateAction<string>>) {
@@ -164,15 +168,7 @@ function setBusinessData(
   setData: Dispatch<SetStateAction<BusinessData>>,
   result: Partial<Omit<BusinessData, "message">>,
 ) {
-  setData((current) => ({
-    ...current,
-    ...(result.summary !== undefined ? { summary: result.summary } : {}),
-    ...(result.sales !== undefined ? { sales: result.sales } : {}),
-    ...(result.customers !== undefined ? { customers: result.customers } : {}),
-    ...(result.products !== undefined ? { products: result.products } : {}),
-    ...(result.expenses !== undefined ? { expenses: result.expenses } : {}),
-    message: "",
-  }));
+  setData((current) => ({ ...current, ...result, message: "" }));
 }
 
 function TelegramError({ message }: { message: string }) {
@@ -275,11 +271,15 @@ function StockRow({ product }: { product: BusinessRow[number] }) {
 }
 
 function getStockDetail(product: BusinessRow[number]) {
-  const stock = product.stockQuantity ?? 0;
-  const threshold = product.lowStockThreshold ?? 0;
-  const unit = product.unit ?? "units";
+  const stock = withDefault(product.stockQuantity, 0);
+  const threshold = withDefault(product.lowStockThreshold, 0);
+  const unit = withDefault(product.unit, "units");
   const status = stock <= threshold ? "Low stock" : "Healthy";
   return `${stock} ${unit} · ${status}`;
+}
+
+function withDefault<T>(value: T | null | undefined, fallback: T): T {
+  return value ?? fallback;
 }
 
 function ExpensesView({ rows }: { rows: BusinessRow }) {
