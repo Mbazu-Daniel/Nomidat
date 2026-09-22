@@ -23,6 +23,7 @@ export class BusinessController {
     return this.businessService.getSummary(organizationId);
   }
 
+
   @Get("sales")
   @ApiOperation({ summary: "Get recent sales for an organization" })
   @ApiParam({ name: "organizationId", type: "string", format: "uuid" })
