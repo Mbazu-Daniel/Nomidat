@@ -75,7 +75,7 @@ export class ExpensesController {
   @ApiOperation({ summary: "List expense categories" })
   async listCategories(@Param("organizationId") organizationId: string, @Req() req: Request) {
     await this.authorize(req, organizationId);
-    return this.expenses.listCategories(organizationId);
+    return this.expenses.listCategories();
   }
 
   @Post("expense-categories")
@@ -86,7 +86,7 @@ export class ExpensesController {
     @Req() req: Request,
   ) {
     await this.authorize(req, organizationId);
-    return this.expenses.createCategory(organizationId, body);
+    return this.expenses.createCategory(body);
   }
 
   private authorize(req: Request, organizationId: string) {
