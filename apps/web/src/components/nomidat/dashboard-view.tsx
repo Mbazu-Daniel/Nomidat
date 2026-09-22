@@ -379,3 +379,4 @@ function Loading() {
 function EmptyText({ text }: { text: string }) {
   return <p className="py-8 text-sm text-muted-foreground">{text}</p>;
 }
+
