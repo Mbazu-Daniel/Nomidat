@@ -50,16 +50,7 @@ export class InvoicesService {
         })
         .returning({ id: invoice.id });
 
-      await tx.insert(invoiceItem).values(
-        input.items.map((item) => ({
-          invoiceId: created.id,
-          productId: item.productId,
-          description: item.description,
-          quantity: item.quantity,
-          unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.quantity * item.unitPriceKobo,
-        })),
-      );
+      await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, input.items));
 
       return this.getInvoiceTx(tx, organizationId, created.id);
     });
@@ -123,16 +114,7 @@ export class InvoicesService {
         })
         .returning({ id: invoice.id });
 
-      await tx.insert(invoiceItem).values(
-        items.map((item) => ({
-          invoiceId: created.id,
-          productId: item.productId,
-          description: item.productName,
-          quantity: item.quantity,
-          unitPriceKobo: item.unitPriceKobo,
-          totalKobo: item.totalKobo,
-        })),
-      );
+      await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, items));
 
       return this.getInvoiceTx(tx, organizationId, created.id);
     });
@@ -214,6 +196,27 @@ export class InvoicesService {
       paidKobo,
       balanceKobo: Math.max(0, sale.totalKobo - paidKobo),
     };
+  }
+
+  private buildInvoiceItems(
+    invoiceId: string,
+    items: Array<{
+      productId?: string | null;
+      description?: string | null;
+      productName?: string | null;
+      quantity: number;
+      unitPriceKobo: number;
+      totalKobo: number;
+    }>,
+  ) {
+    return items.map((item) => ({
+      invoiceId,
+      productId: item.productId ?? null,
+      description: item.description ?? item.productName ?? "Item",
+      quantity: item.quantity,
+      unitPriceKobo: item.unitPriceKobo,
+      totalKobo: item.totalKobo,
+    }));
   }
 
   private async resolveCustomerId(
