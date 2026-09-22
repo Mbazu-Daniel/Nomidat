@@ -14,6 +14,7 @@ import { BusinessModule } from "./modules/business/business.module";
 import { ConversationalModule } from "./modules/conversational/conversational.module";
 import { SalesModule } from "./modules/sales/sales.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
+import { PaymentsModule } from "./modules/payments/payments.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
 import { ExpensesModule } from "./modules/expenses/expenses.module";
@@ -34,6 +35,7 @@ import { ExpensesModule } from "./modules/expenses/expenses.module";
     BusinessModule,
     SalesModule,
     InvoicesModule,
+    PaymentsModule,
     InventoryModule,
     ExpensesModule,
     ReportsModule,
