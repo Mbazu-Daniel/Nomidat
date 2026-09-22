@@ -111,7 +111,7 @@ export class ConversationalService {
     const reply = await this.executeAction(action, organizationId);
 
     await this.persistAssistantMessage(conversationId, inbound, action, reply);
-    await this.db.db
+    await this.db
       .update(conversation)
       .set({ lastMessageAt: new Date(), updatedAt: new Date() })
       .where(eq(conversation.id, conversationId));
@@ -120,7 +120,7 @@ export class ConversationalService {
   }
 
   private async getConversationHistory(conversationId: string) {
-    const history = await this.db.db
+    const history = await this.db
       .select({ role: message.role, content: message.content })
       .from(message)
       .where(eq(message.conversationId, conversationId))
@@ -136,7 +136,7 @@ export class ConversationalService {
     action: ParsedAction,
     reply: string,
   ) {
-    await this.db.db.insert(message).values({
+    await this.db.insert(message).values({
       conversationId,
       role: "assistant",
       content: reply,
@@ -146,7 +146,7 @@ export class ConversationalService {
 
     if (!inbound.rawUpdateId) return;
 
-    await this.db.db
+    await this.db
       .update(message)
       .set({ inboundResponse: reply })
       .where(
@@ -176,7 +176,7 @@ export class ConversationalService {
   }
 
   private async insertInboundMessage(conversationId: string, content: string) {
-    await this.db.db.insert(message).values({ conversationId, role: "user", content });
+    await this.db.insert(message).values({ conversationId, role: "user", content });
     return { claimed: true, response: "" };
   }
 
@@ -185,7 +185,7 @@ export class ConversationalService {
     inbound: InboundMessage,
     content: string,
   ) {
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(message)
       .values({
         conversationId,
@@ -200,7 +200,7 @@ export class ConversationalService {
   }
 
   private async getInboundResponse(inbound: InboundMessage) {
-    const [existing] = await this.db.db
+    const [existing] = await this.db
       .select({ inboundResponse: message.inboundResponse })
       .from(message)
       .where(
@@ -220,7 +220,7 @@ export class ConversationalService {
     organizationId: string,
     channelIdentityId: string,
   ) {
-    const existing = await this.db.db
+    const existing = await this.db
       .select()
       .from(conversation)
       .where(
@@ -233,7 +233,7 @@ export class ConversationalService {
 
     if (existing[0]) return existing[0];
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(conversation)
       .values({
         organizationId,
@@ -363,7 +363,7 @@ Rules:
   private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "What is the customer's name?";
 
-    const existing = await this.db.db
+    const existing = await this.db
       .select()
       .from(contact)
       .where(
@@ -376,7 +376,7 @@ Rules:
 
     if (existing[0]) return `${existing[0].name} is already in your contacts.`;
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(contact)
       .values({
         organizationId,
@@ -395,7 +395,7 @@ Rules:
       return "How much was the expense?";
     }
 
-    const categories = await this.db.db
+    const categories = await this.db
       .select()
       .from(expenseCategory)
       .where(eq(expenseCategory.isDefault, true));
@@ -404,7 +404,7 @@ Rules:
       ? categories.find((item) => item.name.toLowerCase() === action.category?.toLowerCase())
       : categories.find((item) => item.name.toLowerCase().includes("other"));
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(expense)
       .values({
         organizationId,
@@ -438,7 +438,7 @@ Rules:
     customerName?: string,
   ): Promise<string | null> {
     if (!customerName) return null;
-    const rows = await this.db.db
+    const rows = await this.db
       .select()
       .from(contact)
       .where(
@@ -452,7 +452,7 @@ Rules:
   }
 
   private async findProduct(organizationId: string, productName: string) {
-    const rows = await this.db.db
+    const rows = await this.db
       .select()
       .from(product)
       .where(
@@ -533,7 +533,7 @@ Rules:
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "Which customer should I check?";
 
-    const customers = await this.db.db
+    const customers = await this.db
       .select()
       .from(contact)
       .where(
@@ -544,7 +544,7 @@ Rules:
     const customer = customers[0];
     if (!customer) return `I couldn't find ${action.customerName} in your customers.`;
 
-    const rows = await this.db.db
+    const rows = await this.db
       .select({ totalKobo: order.totalKobo })
       .from(order)
       .where(
@@ -562,7 +562,7 @@ Rules:
   private async checkInventory(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.productName) return "Which product should I check?";
 
-    const rows = await this.db.db
+    const rows = await this.db
       .select()
       .from(product)
       .where(
