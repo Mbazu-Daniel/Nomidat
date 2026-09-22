@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
-import { formatNaira, getBusinessData, getOrganizations } from "@/data/nomidat";
+import type { OrganizationOption } from "@/components/nomidat/organization-switcher";
+import { getBusinessData, getOrganizations } from "@/data/nomidat";
 import { BusinessListView } from "./business-list-view";
 
 type Section = "sales" | "customers" | "inventory" | "expenses";

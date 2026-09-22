@@ -1,12 +1,11 @@
 import { BadRequestException, Inject, Injectable, ServiceUnavailableException } from "@nestjs/common";
-import { and, desc, eq, ilike, sql } from "@nomidat/db";
+import { and, desc, eq, ilike } from "@nomidat/db";
 import {
   contact,
   conversation,
   expense,
   expenseCategory,
   order,
-  orderItem,
   product,
   message,
 } from "@nomidat/db/schema";
@@ -17,6 +16,9 @@ import type { ChannelAdapter, InboundMessage } from "../channel/types";
 import { inboundUpdate } from "@nomidat/db/schema";
 import { z } from "zod";
 import { SalesService } from "../sales/sales.service";
+
+type AiProvider = "openai" | "gemini";
+type TranscriptionProvider = "deepgram" | "whisper";
 
 type Intent =
   | "create_contact"
@@ -95,13 +97,13 @@ export class ConversationalService {
       return reply;
     }
 
-    await this.db.db.insert(message).values({
+    await this.db.insert(message).values({
       conversationId: conversationRow.id,
       role: "user",
       content,
     });
 
-    const history = await this.db.db
+    const history = await this.db
       .select({ role: message.role, content: message.content })
       .from(message)
       .where(eq(message.conversationId, conversationRow.id))
@@ -111,7 +113,7 @@ export class ConversationalService {
     const action = await this.understand(history.reverse());
     const reply = await this.executeAction(action, organizationId);
 
-    await this.db.db.insert(message).values({
+    await this.db.insert(message).values({
       conversationId: conversationRow.id,
       role: "assistant",
       content: reply,
@@ -119,7 +121,7 @@ export class ConversationalService {
       toolArgs: action,
     });
 
-    await this.db.db
+    await this.db
       .update(conversation)
       .set({ lastMessageAt: new Date(), updatedAt: new Date() })
       .where(eq(conversation.id, conversationRow.id));
@@ -134,9 +136,9 @@ export class ConversationalService {
 
   private async beginInboundUpdate(inbound: InboundMessage, organizationId: string): Promise<{ status: "new"; id: string } | { status: "completed"; response: string } | { status: "processing" }> {
     if (!inbound.rawUpdateId) return { status: "new", id: "" };
-    const [created] = await this.db.db.insert(inboundUpdate).values({ organizationId, provider: inbound.provider, rawUpdateId: inbound.rawUpdateId }).onConflictDoNothing().returning({ id: inboundUpdate.id });
+    const [created] = await this.db.insert(inboundUpdate).values({ organizationId, provider: inbound.provider, rawUpdateId: inbound.rawUpdateId }).onConflictDoNothing().returning({ id: inboundUpdate.id });
     if (created) return { status: "new", id: created.id };
-    const existing = await this.db.db.select({ id: inboundUpdate.id, response: inboundUpdate.response }).from(inboundUpdate).where(and(
+    const existing = await this.db.select({ id: inboundUpdate.id, response: inboundUpdate.response }).from(inboundUpdate).where(and(
       eq(inboundUpdate.organizationId, organizationId), eq(inboundUpdate.provider, inbound.provider), eq(inboundUpdate.rawUpdateId, inbound.rawUpdateId),
     )).limit(1);
     if (existing[0]?.response !== null && existing[0]?.response !== undefined) return { status: "completed", response: existing[0].response };
@@ -145,13 +147,19 @@ export class ConversationalService {
 
   private async completeInboundUpdate(id: string, response: string): Promise<void> {
     if (!id) return;
-    await this.db.db.update(inboundUpdate).set({ response, completedAt: new Date() }).where(eq(inboundUpdate.id, id));
+    await this.db.update(inboundUpdate).set({ response, completedAt: new Date() }).where(eq(inboundUpdate.id, id));
   }
+
+  private async releaseInboundUpdate(id: string): Promise<void> {
+    if (!id) return;
+    await this.db.delete(inboundUpdate).where(eq(inboundUpdate.id, id));
+  }
+
   private async getOrCreateConversation(
     organizationId: string,
     channelIdentityId: string,
   ) {
-    const existing = await this.db.db
+    const existing = await this.db
       .select()
       .from(conversation)
       .where(
@@ -164,7 +172,7 @@ export class ConversationalService {
 
     if (existing[0]) return existing[0];
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(conversation)
       .values({
         organizationId,
@@ -185,14 +193,86 @@ export class ConversationalService {
     }
 
     const media = await adapter.getInboundMedia(inbound.mediaUrl);
-    const form = new FormData();
-    const audioBuffer = media.data.buffer.slice(media.data.byteOffset, media.data.byteOffset + media.data.byteLength) as ArrayBuffer;
-    form.append(
-      "file",
-      new Blob([audioBuffer], { type: media.mimeType ?? inbound.mediaMimeType ?? "audio/ogg" }),
-      "voice.ogg",
+    const audioBuffer = media.data.buffer.slice(
+      media.data.byteOffset,
+      media.data.byteOffset + media.data.byteLength,
+    ) as ArrayBuffer;
+    const mimeType = media.mimeType ?? inbound.mediaMimeType ?? "audio/ogg";
+    const provider = this.env.TRANSCRIPTION_PROVIDER;
+
+    if (!this.isTranscriptionProviderConfigured(provider)) {
+      throw new ServiceUnavailableException(
+        `${provider.toUpperCase()} transcription provider is not configured.`,
+      );
+    }
+
+    try {
+      const transcript = await this.transcribeWithProvider(
+        provider,
+        audioBuffer,
+        mimeType,
+      );
+
+      if (!transcript.trim()) {
+        throw new BadRequestException("No speech was detected in that voice note.");
+      }
+
+      return transcript.trim();
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new ServiceUnavailableException("Voice transcription failed.");
+    }
+  }
+
+  private transcribeWithProvider(
+    provider: TranscriptionProvider,
+    audioBuffer: ArrayBuffer,
+    mimeType: string,
+  ): Promise<string> {
+    return provider === "deepgram"
+      ? this.transcribeWithDeepgram(audioBuffer, mimeType)
+      : this.transcribeWithWhisper(audioBuffer, mimeType);
+  }
+
+  private async transcribeWithDeepgram(
+    audioBuffer: ArrayBuffer,
+    mimeType: string,
+  ): Promise<string> {
+    const response = await fetch(
+      `https://api.deepgram.com/v1/listen?model=${encodeURIComponent(this.env.DEEPGRAM_MODEL)}&smart_format=true`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${this.getDeepgramKey()}`,
+          "Content-Type": mimeType,
+        },
+        body: audioBuffer,
+        signal: AbortSignal.timeout(30_000),
+      },
     );
-    form.append("model", this.env.OPENAI_TRANSCRIPTION_MODEL);
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException("Deepgram transcription failed.");
+    }
+
+    const body = (await response.json()) as {
+      results?: {
+        channels?: Array<{
+          alternatives?: Array<{ transcript?: string }>;
+        }>;
+      };
+    };
+
+    return body.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
+  }
+
+  private async transcribeWithWhisper(
+    audioBuffer: ArrayBuffer,
+    mimeType: string,
+  ): Promise<string> {
+    const form = new FormData();
+    form.append("file", new Blob([audioBuffer], { type: mimeType }), "voice.ogg");
+    form.append("model", this.env.WHISPER_MODEL);
     form.append(
       "prompt",
       "Transcribe faithfully. The speaker may use Nigerian English, Nigerian Pidgin, Yoruba, Igbo, Hausa, or a mixture. Preserve names, numbers, currencies and business terms.",
@@ -200,20 +280,17 @@ export class ConversationalService {
 
     const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
+      headers: { Authorization: `Bearer ${this.getWhisperKey()}` },
       body: form,
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (!response.ok) {
-      throw new ServiceUnavailableException("Voice transcription failed.");
+      throw new ServiceUnavailableException("Whisper transcription failed.");
     }
 
     const body = (await response.json()) as { text?: string };
-    if (!body.text?.trim()) {
-      throw new BadRequestException("No speech was detected in that voice note.");
-    }
-
-    return body.text.trim();
+    return body.text ?? "";
   }
 
   private async understand(
@@ -253,6 +330,37 @@ Rules:
 - "summary" means a general business summary.
 `;
 
+    const provider = this.env.AI_PROVIDER;
+
+    if (!this.isAiProviderConfigured(provider)) {
+      throw new ServiceUnavailableException(
+        `${provider.toUpperCase()} AI provider is not configured.`,
+      );
+    }
+
+    try {
+      const raw = await this.generateAiResponse(provider, system, messages);
+      return this.parseAiAction(raw);
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) throw error;
+      throw new ServiceUnavailableException("AI processing failed.");
+    }
+  }
+
+  private generateAiResponse(
+    provider: AiProvider,
+    system: string,
+    messages: Array<{ role: "assistant" | "user"; content: string }>,
+  ): Promise<string> {
+    return provider === "gemini"
+      ? this.generateGeminiResponse(system, messages)
+      : this.generateOpenAiResponse(system, messages);
+  }
+
+  private async generateOpenAiResponse(
+    system: string,
+    messages: Array<{ role: "assistant" | "user"; content: string }>,
+  ): Promise<string> {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -269,24 +377,96 @@ Rules:
     });
 
     if (!response.ok) {
-      throw new ServiceUnavailableException("AI processing failed.");
+      throw new ServiceUnavailableException("OpenAI AI processing failed.");
     }
 
     const body = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
     const raw = body.choices?.[0]?.message?.content;
-    if (!raw) throw new ServiceUnavailableException("AI returned no result.");
+    if (!raw) throw new ServiceUnavailableException("OpenAI returned no result.");
+    return raw;
+  }
+
+  private async generateGeminiResponse(
+    system: string,
+    messages: Array<{ role: "assistant" | "user"; content: string }>,
+  ): Promise<string> {
+    const contents = messages.map((item) => ({
+      role: item.role === "assistant" ? "model" : "user",
+      parts: [{ text: item.content }],
+    }));
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.env.GEMINI_MODEL)}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": this.getGeminiKey(),
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(15_000),
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: system }],
+          },
+          contents,
+          generationConfig: {
+            temperature: 0,
+            responseMimeType: "application/json",
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException("Gemini AI processing failed.");
+    }
+
+    const body = (await response.json()) as {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+    };
+    const raw = body.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text ?? "")
+      .join("")
+      .trim();
+
+    if (!raw) throw new ServiceUnavailableException("Gemini returned no result.");
+    return raw;
+  }
+
+  private parseAiAction(raw: string): ParsedAction {
+    const normalized = raw
+      .trim()
+      .replace(/^\`\`\`(?:json)?\s*/i, "")
+      .replace(/\s*\`\`\`$/i, "");
 
     try {
-      const parsed = parsedActionSchema.safeParse(JSON.parse(raw));
-      if (!parsed.success) throw new ServiceUnavailableException("AI returned an invalid action.");
+      const parsed = parsedActionSchema.safeParse(JSON.parse(normalized));
+      if (!parsed.success) {
+        throw new ServiceUnavailableException("AI returned an invalid action.");
+      }
       return parsed.data;
     } catch {
       throw new ServiceUnavailableException("AI returned an invalid action.");
     }
   }
 
+  private isAiProviderConfigured(provider: AiProvider): boolean {
+    return provider === "gemini"
+      ? Boolean(this.env.GEMINI_API_KEY)
+      : Boolean(this.env.OPENAI_API_KEY);
+  }
+
+  private isTranscriptionProviderConfigured(
+    provider: TranscriptionProvider,
+  ): boolean {
+    return provider === "deepgram"
+      ? Boolean(this.env.DEEPGRAM_API_KEY)
+      : Boolean(this.env.WHISPER_API_KEY);
+  }
   private executeAction(action: ParsedAction, organizationId: string): Promise<string> {
     return this.actionHandlers[action.intent](action, organizationId);
   }
@@ -294,7 +474,7 @@ Rules:
   private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "What is the customer's name?";
 
-    const existing = await this.db.db
+    const existing = await this.db
       .select()
       .from(contact)
       .where(
@@ -307,7 +487,7 @@ Rules:
 
     if (existing[0]) return `${existing[0].name} is already in your contacts.`;
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(contact)
       .values({
         organizationId,
@@ -326,7 +506,7 @@ Rules:
       return "How much was the expense?";
     }
 
-    const categories = await this.db.db
+    const categories = await this.db
       .select()
       .from(expenseCategory)
       .where(eq(expenseCategory.isDefault, true));
@@ -335,7 +515,7 @@ Rules:
       ? categories.find((item) => item.name.toLowerCase() === action.category?.toLowerCase())
       : categories.find((item) => item.name.toLowerCase().includes("other"));
 
-    const [created] = await this.db.db
+    const [created] = await this.db
       .insert(expense)
       .values({
         organizationId,
@@ -379,18 +559,18 @@ Rules:
 
   private async findCustomerId(organizationId: string, name?: string): Promise<string | null> {
     if (!name) return null;
-    const [customer] = await this.db.db.select({ id: contact.id }).from(contact).where(and(eq(contact.organizationId, organizationId), ilike(contact.name, name))).limit(1);
+    const [customer] = await this.db.select({ id: contact.id }).from(contact).where(and(eq(contact.organizationId, organizationId), ilike(contact.name, name))).limit(1);
     return customer?.id ?? null;
   }
 
   private async findProduct(organizationId: string, name: string) {
-    const [item] = await this.db.db.select({ id: product.id, name: product.name }).from(product).where(and(eq(product.organizationId, organizationId), ilike(product.name, name))).limit(1);
+    const [item] = await this.db.select({ id: product.id, name: product.name }).from(product).where(and(eq(product.organizationId, organizationId), ilike(product.name, name))).limit(1);
     return item;
   }
   private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.customerName) return "Which customer should I check?";
 
-    const customers = await this.db.db
+    const customers = await this.db
       .select()
       .from(contact)
       .where(
@@ -401,7 +581,7 @@ Rules:
     const customer = customers[0];
     if (!customer) return `I couldn't find ${action.customerName} in your customers.`;
 
-    const rows = await this.db.db
+    const rows = await this.db
       .select({ totalKobo: order.totalKobo })
       .from(order)
       .where(
@@ -419,7 +599,7 @@ Rules:
   private async checkInventory(action: ParsedAction, organizationId: string): Promise<string> {
     if (!action.productName) return "Which product should I check?";
 
-    const rows = await this.db.db
+    const rows = await this.db
       .select()
       .from(product)
       .where(
@@ -434,12 +614,12 @@ Rules:
   }
 
   private async summary(organizationId: string): Promise<string> {
-    const orders = await this.db.db
+    const orders = await this.db
       .select({ totalKobo: order.totalKobo })
       .from(order)
       .where(and(eq(order.organizationId, organizationId), eq(order.status, "paid")));
 
-    const expenses = await this.db.db
+    const expenses = await this.db
       .select({ amountKobo: expense.amountKobo })
       .from(expense)
       .where(eq(expense.organizationId, organizationId));
@@ -447,7 +627,7 @@ Rules:
     const revenue = orders.reduce((sum, row) => sum + row.totalKobo, 0);
     const spending = expenses.reduce((sum, row) => sum + row.amountKobo, 0);
 
-    return `Business summary: ₦${(revenue / 100).toLocaleString("en-NG")} paid sales and ₦${(spending / 100).toLocaleString("en-NG")} recorded expenses. Outstanding credit is available by asking "who owes me?"`;
+    return `Business summary: ₦${(revenue / 100).toLocaleString("en-NG")} paid sales and ₦${(spending / 100).toLocaleString("en-NG")} recorded expenses. Outstanding credit is available by asking "who owes me?".`;
   }
 
   private getOpenAiKey(): string {
@@ -455,5 +635,26 @@ Rules:
       throw new ServiceUnavailableException("OPENAI_API_KEY is not configured.");
     }
     return this.env.OPENAI_API_KEY;
+  }
+
+  private getGeminiKey(): string {
+    if (!this.env.GEMINI_API_KEY) {
+      throw new ServiceUnavailableException("GEMINI_API_KEY is not configured.");
+    }
+    return this.env.GEMINI_API_KEY;
+  }
+
+  private getDeepgramKey(): string {
+    if (!this.env.DEEPGRAM_API_KEY) {
+      throw new ServiceUnavailableException("DEEPGRAM_API_KEY is not configured.");
+    }
+    return this.env.DEEPGRAM_API_KEY;
+  }
+
+  private getWhisperKey(): string {
+    if (!this.env.WHISPER_API_KEY) {
+      throw new ServiceUnavailableException("WHISPER_API_KEY is not configured.");
+    }
+    return this.env.WHISPER_API_KEY;
   }
 }
