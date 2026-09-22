@@ -32,7 +32,7 @@ const parsedActionSchema = z.object({
   productName: z.string().min(1).optional(), quantity: z.number().finite().int().positive().optional(),
   amountNaira: z.number().finite().positive().optional(), paid: z.boolean().optional(),
   description: z.string().min(1).optional(), category: z.string().min(1).optional(),
-  date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).optional(),
+  date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).refine((value) => !Number.isNaN(Date.parse(value + "T12:00:00")), "Invalid date").optional(),
 }).strict();
 
 type ParsedAction = {
