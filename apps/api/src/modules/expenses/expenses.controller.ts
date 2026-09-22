@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
-import { extractHeaders } from "../../common/helpers/auth-http";
+import { authorizeOrganization } from "../../common/helpers/organization-auth";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { CreateExpenseCategoryDto, CreateExpenseDto, UpdateExpenseDto } from "./dto";
 import { ExpensesService } from "./expenses.service";
@@ -21,8 +21,8 @@ export class ExpensesController {
     @Body() body: CreateExpenseDto,
     @Req() req: Request,
   ) {
-    const session = await this.auth.getSession(extractHeaders(req), organizationId);
-    return this.expenses.create(organizationId, session.userId, body);
+    await authorizeOrganization(this.auth, req, organizationId);
+    return this.expenses.create(organizationId, null, body);
   }
 
   @Get("expenses")
@@ -90,6 +90,6 @@ export class ExpensesController {
   }
 
   private authorize(req: Request, organizationId: string) {
-    return this.auth.authorize(extractHeaders(req), organizationId);
+    return authorizeOrganization(this.auth, req, organizationId);
   }
 }
