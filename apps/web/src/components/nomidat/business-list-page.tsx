@@ -283,6 +283,27 @@ function StockStatus({ low }: { low: boolean }) {
 }
 
 
+function ExpensesSection({ rows }: { rows: Rows }) {
+  return (
+    <div className="mt-6 overflow-hidden rounded-2xl border border-orange-100 bg-white">
+      <div className="grid grid-cols-2 gap-3 border-b border-orange-100 p-4">
+        <Metric label="Recent expenses" value={String(rows.length)} />
+        <Metric
+          label="Total spent"
+          value={formatMoney(rows.reduce((sum, row) => sum + (row.amountKobo ?? 0), 0))}
+        />
+      </div>
+      <div className="divide-y divide-orange-100">
+        {rows.length === 0 ? (
+          <EmptyState label="No expenses recorded yet." action="Record expense" />
+        ) : (
+          rows.map((expense) => <ExpenseRow key={expense.id} expense={expense} />)
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ExpenseRow({ expense }: { expense: Rows[number] }) {
   return (
     <div className="flex items-center gap-3 px-4 py-4">

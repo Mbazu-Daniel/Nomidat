@@ -79,6 +79,12 @@ export class ConversationalService {
       organizationId,
       channelIdentityId,
     );
+
+    if (inbound.rawUpdateId) {
+      const existingResponse = await this.getStoredInboundResponse(inbound);
+      if (existingResponse) return existingResponse;
+    }
+
     const content = await this.getInboundContent(inbound, adapter);
 
     if (!content) {
@@ -106,17 +112,22 @@ export class ConversationalService {
     organizationId: string,
     inbound: InboundMessage,
   ): Promise<string> {
-    const history = await this.getConversationHistory(conversationId);
-    const action = await this.understand(history);
-    const reply = await this.executeAction(action, organizationId);
+    try {
+      const history = await this.getConversationHistory(conversationId);
+      const action = await this.understand(history);
+      const reply = await this.executeAction(action, organizationId);
 
-    await this.persistAssistantMessage(conversationId, inbound, action, reply);
-    await this.db.db
-      .update(conversation)
-      .set({ lastMessageAt: new Date(), updatedAt: new Date() })
-      .where(eq(conversation.id, conversationId));
+      await this.persistAssistantMessage(conversationId, inbound, action, reply);
+      await this.db.db
+        .update(conversation)
+        .set({ lastMessageAt: new Date(), updatedAt: new Date() })
+        .where(eq(conversation.id, conversationId));
 
-    return reply;
+      return reply;
+    } catch (error) {
+      await this.persistInboundFailure(conversationId, inbound);
+      throw error;
+    }
   }
 
   private async getConversationHistory(conversationId: string) {
@@ -199,7 +210,7 @@ export class ConversationalService {
     return Boolean(created);
   }
 
-  private async getInboundResponse(inbound: InboundMessage) {
+  private async getStoredInboundResponse(inbound: InboundMessage): Promise<string | null> {
     const [existing] = await this.db.db
       .select({ inboundResponse: message.inboundResponse })
       .from(message)
@@ -212,7 +223,30 @@ export class ConversationalService {
       )
       .limit(1);
 
-    return existing?.inboundResponse ??
+    return existing?.inboundResponse ?? null;
+  }
+
+  private async persistInboundFailure(
+    conversationId: string,
+    inbound: InboundMessage,
+  ): Promise<void> {
+    if (!inbound.rawUpdateId) return;
+
+    await this.db.db
+      .update(message)
+      .set({ inboundResponse: "I couldn't process that message. Please try again." })
+      .where(
+        and(
+          eq(message.conversationId, conversationId),
+          eq(message.provider, inbound.provider),
+          eq(message.rawUpdateId, inbound.rawUpdateId),
+          eq(message.role, "user"),
+        ),
+      );
+  }
+
+  private async getInboundResponse(inbound: InboundMessage) {
+    return (await this.getStoredInboundResponse(inbound)) ??
       "That message is already being processed. Please wait for the response.";
   }
 
@@ -350,10 +384,20 @@ Rules:
     if (!raw) throw new ServiceUnavailableException("AI returned no result.");
 
     try {
-      return JSON.parse(raw) as ParsedAction;
+      const parsed: unknown = JSON.parse(raw);
+      if (!this.isParsedAction(parsed)) {
+        return { intent: "unknown" };
+      }
+      return parsed;
     } catch {
       throw new ServiceUnavailableException("AI returned an invalid action.");
     }
+  }
+
+  private isParsedAction(value: unknown): value is ParsedAction {
+    if (!value || typeof value !== "object") return false;
+    const intent = (value as { intent?: unknown }).intent;
+    return typeof intent === "string" && intent in this.actionHandlers;
   }
 
   private async executeAction(action: ParsedAction, organizationId: string): Promise<string> {
