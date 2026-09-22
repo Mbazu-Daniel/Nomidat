@@ -15,7 +15,7 @@ export class InvoicesService {
     const totals = this.getInvoiceTotals(input);
     this.validateInvoiceTotals(input, totals);
 
-    return this.db.db.transaction(async (tx) => {
+    return this.db.transaction(async (tx) => {
       const customerId = await this.resolveCustomerId(tx, organizationId, input.customerId);
       await this.validateProducts(tx, organizationId, input.items.map((item) => item.productId));
       const number = await this.nextInvoiceNumber(tx, organizationId);
@@ -74,7 +74,7 @@ export class InvoicesService {
   }
 
   async createFromSale(organizationId: string, saleId: string) {
-    return this.db.db.transaction(async (tx) => {
+    return this.db.transaction(async (tx) => {
       const [sale] = await tx
         .select({
           id: order.id,
@@ -138,7 +138,7 @@ export class InvoicesService {
   }
 
   async listInvoices(organizationId: string, limit = 20) {
-    const rows = await this.db.db
+    const rows = await this.db
       .select({
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
@@ -160,11 +160,11 @@ export class InvoicesService {
   }
 
   async getInvoice(organizationId: string, invoiceId: string) {
-    return this.getInvoiceTx(this.db.db, organizationId, invoiceId);
+    return this.getInvoiceTx(this.db, organizationId, invoiceId);
   }
 
   async getReceipt(organizationId: string, saleId: string) {
-    const [sale] = await this.db.db
+    const [sale] = await this.db
       .select({
         id: order.id,
         customerId: contact.id,
@@ -180,7 +180,7 @@ export class InvoicesService {
 
     if (!sale) throw new NotFoundException("Sale not found.");
 
-    const items = await this.db.db
+    const items = await this.db
       .select({
         id: orderItem.id,
         description: orderItem.productName,
@@ -191,7 +191,7 @@ export class InvoicesService {
       .from(orderItem)
       .where(eq(orderItem.orderId, saleId));
 
-    const payments = await this.db.db
+    const payments = await this.db
       .select({
         id: payment.id,
         amountKobo: payment.amountKobo,
@@ -238,7 +238,7 @@ export class InvoicesService {
   }
 
   private async resolveCustomerId(
-    tx: Pick<DbHandle["db"], "select">,
+    tx: Pick<DbHandle, "select">,
     organizationId: string,
     customerId?: string,
   ) {
@@ -255,7 +255,7 @@ export class InvoicesService {
   }
 
   private async validateProducts(
-    tx: Pick<DbHandle["db"], "select">,
+    tx: Pick<DbHandle, "select">,
     organizationId: string,
     productIds: Array<string | undefined>,
   ) {
@@ -271,7 +271,7 @@ export class InvoicesService {
   }
 
   private async nextInvoiceNumber(
-    _tx: Pick<DbHandle["db"], "select">,
+    _tx: Pick<DbHandle, "select">,
     _organizationId: string,
   ) {
     const stamp = Date.now().toString(36).toUpperCase();
@@ -280,7 +280,7 @@ export class InvoicesService {
   }
 
   private async getInvoiceTx(
-    tx: Pick<DbHandle["db"], "select">,
+    tx: Pick<DbHandle, "select">,
     organizationId: string,
     invoiceId: string,
   ) {

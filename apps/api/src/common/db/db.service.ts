@@ -6,6 +6,6 @@ export class DbService implements OnApplicationShutdown {
   constructor(@Inject(DATABASE) private readonly handle: DbHandle) {}
 
   async onApplicationShutdown(): Promise<void> {
-    await this.handle.client.end({ timeout: 5 });
+    await this.handle.close();
   }
 }
