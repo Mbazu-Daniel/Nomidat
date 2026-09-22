@@ -9,7 +9,7 @@ import {
   ValidateNested,
 } from "class-validator";
 
-export class CreateSaleItemDto {
+class CreateSaleItemDto {
   @IsOptional()
   @IsUUID()
   productId?: string;
