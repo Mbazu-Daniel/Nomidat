@@ -330,32 +330,21 @@ Rules:
 - "summary" means a general business summary.
 `;
 
-    const providers: AiProvider[] = [this.env.AI_PROVIDER];
-    if (
-      this.env.AI_FALLBACK_PROVIDER !== this.env.AI_PROVIDER
-    ) {
-      providers.push(this.env.AI_FALLBACK_PROVIDER);
+    const provider = this.env.AI_PROVIDER;
+
+    if (!this.isAiProviderConfigured(provider)) {
+      throw new ServiceUnavailableException(
+        `${provider.toUpperCase()} AI provider is not configured.`,
+      );
     }
 
-    let lastError: unknown;
-    for (const provider of providers) {
-      if (!this.isAiProviderConfigured(provider)) continue;
-
-      try {
-        const raw = await this.generateAiResponse(provider, system, messages);
-        return this.parseAiAction(raw);
-      } catch (error) {
-        lastError = error;
-      }
+    try {
+      const raw = await this.generateAiResponse(provider, system, messages);
+      return this.parseAiAction(raw);
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) throw error;
+      throw new ServiceUnavailableException("AI processing failed.");
     }
-
-    if (lastError instanceof ServiceUnavailableException) {
-      throw lastError;
-    }
-
-    throw new ServiceUnavailableException(
-      "AI processing failed. Configure at least one AI provider API key.",
-    );
   }
 
   private generateAiResponse(
