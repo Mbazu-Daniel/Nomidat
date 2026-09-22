@@ -249,19 +249,32 @@ export class ConversationalService {
     inbound: InboundMessage,
     adapter: ChannelAdapter,
   ): Promise<string> {
+    const media = await this.getVoiceMedia(inbound, adapter);
+    const form = this.createTranscriptionForm(media.data, media.mimeType, inbound.mediaMimeType);
+    const response = await this.requestTranscription(form);
+    return this.extractTranscript(response);
+  }
+
+  private async getVoiceMedia(inbound: InboundMessage, adapter: ChannelAdapter) {
     if (!inbound.mediaUrl || !adapter.getInboundMedia) {
       throw new BadRequestException("Voice messages are not supported by this channel yet.");
     }
+    return adapter.getInboundMedia(inbound.mediaUrl);
+  }
 
-    const media = await adapter.getInboundMedia(inbound.mediaUrl);
+  private createTranscriptionForm(
+    data: Uint8Array,
+    mediaMimeType: string | undefined,
+    inboundMimeType: string | undefined,
+  ): FormData {
     const form = new FormData();
-    const audioBuffer = media.data.buffer.slice(
-      media.data.byteOffset,
-      media.data.byteOffset + media.data.byteLength,
+    const audioBuffer = data.buffer.slice(
+      data.byteOffset,
+      data.byteOffset + data.byteLength,
     ) as ArrayBuffer;
     form.append(
       "file",
-      new Blob([audioBuffer], { type: media.mimeType ?? inbound.mediaMimeType ?? "audio/ogg" }),
+      new Blob([audioBuffer], { type: mediaMimeType ?? inboundMimeType ?? "audio/ogg" }),
       "voice.ogg",
     );
     form.append("model", this.env.OPENAI_TRANSCRIPTION_MODEL);
@@ -269,22 +282,22 @@ export class ConversationalService {
       "prompt",
       "Transcribe faithfully. The speaker may use Nigerian English, Nigerian Pidgin, Yoruba, Igbo, Hausa, or a mixture. Preserve names, numbers, currencies and business terms.",
     );
+    return form;
+  }
 
+  private async requestTranscription(form: FormData): Promise<Response> {
     const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
       headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
       body: form,
     });
+    if (!response.ok) throw new ServiceUnavailableException("Voice transcription failed.");
+    return response;
+  }
 
-    if (!response.ok) {
-      throw new ServiceUnavailableException("Voice transcription failed.");
-    }
-
+  private async extractTranscript(response: Response): Promise<string> {
     const body = (await response.json()) as { text?: string };
-    if (!body.text?.trim()) {
-      throw new BadRequestException("No speech was detected in that voice note.");
-    }
-
+    if (!body.text?.trim()) throw new BadRequestException("No speech was detected in that voice note.");
     return body.text.trim();
   }
 
