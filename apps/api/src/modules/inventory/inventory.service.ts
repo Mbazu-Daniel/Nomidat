@@ -50,26 +50,28 @@ export class InventoryService {
   }
 
   async createProduct(organizationId: string, input: CreateProductDto) {
-    const values = this.buildCreateValues(organizationId, input);
-    if (!values.name) throw new BadRequestException("Product name is required.");
-    if (values.sku) await this.ensureSkuAvailable(organizationId, values.sku);
+    const name = input.name.trim();
+    if (!name) throw new BadRequestException("Product name is required.");
 
-    const [created] = await this.db.db.insert(product).values(values).returning();
+    const sku = input.sku?.trim() || null;
+    if (sku) await this.ensureSkuAvailable(organizationId, sku);
+
+    const [created] = await this.db.db
+      .insert(product)
+      .values({
+        organizationId,
+        name,
+        sku,
+        description: input.description?.trim() || null,
+        priceKobo: input.priceKobo,
+        costKobo: input.costKobo ?? 0,
+        stockQuantity: input.stockQuantity ?? 0,
+        lowStockThreshold: input.lowStockThreshold ?? 5,
+        unit: input.unit?.trim() || "pcs",
+      })
+      .returning();
+
     return created;
-  }
-
-  private buildCreateValues(organizationId: string, input: CreateProductDto) {
-    return {
-      organizationId,
-      name: input.name.trim(),
-      sku: input.sku?.trim() || null,
-      description: input.description?.trim() || null,
-      priceKobo: input.priceKobo,
-      costKobo: input.costKobo ?? 0,
-      stockQuantity: input.stockQuantity ?? 0,
-      lowStockThreshold: input.lowStockThreshold ?? 5,
-      unit: input.unit?.trim() || "pcs",
-    };
   }
 
   async updateProduct(organizationId: string, productId: string, input: UpdateProductDto) {
@@ -79,29 +81,22 @@ export class InventoryService {
 
     const [updated] = await this.db.db
       .update(product)
-      .set(this.buildUpdateValues(existing, input, sku))
+      .set({
+        name: input.name?.trim() ?? existing.name,
+        sku,
+        description: input.description?.trim() ?? existing.description,
+        priceKobo: input.priceKobo ?? existing.priceKobo,
+        costKobo: input.costKobo ?? existing.costKobo,
+        lowStockThreshold: input.lowStockThreshold ?? existing.lowStockThreshold,
+        unit: input.unit?.trim() ?? existing.unit,
+        updatedAt: new Date(),
+      })
       .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
       .returning();
 
     return updated;
   }
 
-  private buildUpdateValues(
-    existing: Awaited<ReturnType<InventoryService["getProduct"]>>,
-    input: UpdateProductDto,
-    sku: string | null,
-  ) {
-    return {
-      name: input.name === undefined ? existing.name : input.name.trim(),
-      sku,
-      description: input.description === undefined ? existing.description : input.description.trim() || null,
-      priceKobo: input.priceKobo ?? existing.priceKobo,
-      costKobo: input.costKobo ?? existing.costKobo,
-      lowStockThreshold: input.lowStockThreshold ?? existing.lowStockThreshold,
-      unit: input.unit === undefined ? existing.unit : input.unit.trim() || existing.unit,
-      updatedAt: new Date(),
-    };
-  }
 
   async archiveProduct(organizationId: string, productId: string) {
     await this.getProduct(organizationId, productId);

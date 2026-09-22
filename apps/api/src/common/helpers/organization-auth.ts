@@ -11,5 +11,5 @@ export function authorizeOrganization(
   req: Request,
   organizationId: string,
 ) {
-  return auth.authorize(extractHeaders(req), organizationId);
+  return auth.getSession(extractHeaders(req), organizationId);
 }
