@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { IconChartDonut, IconChevronRight, IconCreditCard, IconPackage, IconReceipt, IconSparkles, IconUsers, IconWallet } from "@tabler/icons-react";
+import { IconChartDonut, IconChevronRight, IconPackage, IconReceipt, IconSparkles, IconUsers, IconWallet } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { MiniAppHome } from "@/components/nomidat/mini-app-home";
 import { loadMiniAppData } from "@/components/nomidat/mini-app-loader";
