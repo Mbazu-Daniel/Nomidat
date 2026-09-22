@@ -15,7 +15,7 @@ export class BusinessAuthService {
     const session = await this.auth.api.getSession({ headers });
     if (!session?.user?.id) throw new UnauthorizedException("Authentication required");
 
-    const rows = await this.db.db
+    const rows = await this.db
       .select({ id: member.id })
       .from(member)
       .where(and(eq(member.organizationId, organizationId), eq(member.userId, session.user.id)))
