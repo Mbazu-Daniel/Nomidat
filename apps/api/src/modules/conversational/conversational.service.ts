@@ -180,6 +180,65 @@ export class ConversationalService {
       }));
   }
 
+  private async requestAiResponse(
+    messages: Array<{ role: "assistant" | "user"; content: string }>,
+  ): Promise<string> {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.getOpenAiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: this.env.OPENAI_MODEL,
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [{ role: "system", content: this.buildAiSystemPrompt() }, ...messages],
+      }),
+    });
+    if (!response.ok) throw new ServiceUnavailableException("AI processing failed.");
+    const body = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const raw = body.choices?.[0]?.message?.content;
+    if (!raw) throw new ServiceUnavailableException("AI returned no result.");
+    return raw;
+  }
+
+  private buildAiSystemPrompt(): string {
+    return `You are Nomidat, an SME business assistant for Nigerian businesses.
+Understand natural English, Nigerian Pidgin, Yoruba, Igbo and Hausa, including mixed language.
+Do not translate for the user. Extract business intent and structured facts.
+
+Return ONLY JSON:
+{
+  "intent": "create_contact|record_sale|record_expense|check_balance|check_inventory|summary|unknown",
+  "customerName": string?,
+  "customerPhone": string?,
+  "productName": string?,
+  "quantity": number?,
+  "amountNaira": number?,
+  "paid": boolean?,
+  "description": string?,
+  "category": string?,
+  "date": "YYYY-MM-DD"?
+}
+
+Rules:
+- A sale on credit means paid=false.
+- Preserve the numeric amount as naira, not kobo.
+- Never invent missing names, amounts, quantities or dates.
+- For "how much", "what is", "show me", use a query intent.
+- "summary" means a general business summary.
+`;
+  }
+
+  private parseAiAction(raw: string): ParsedAction {
+    try {
+      return JSON.parse(raw) as ParsedAction;
+    } catch {
+      throw new ServiceUnavailableException("AI returned an invalid action.");
+    }
+  }
+
   private readonly actionHandlers: Record<Intent, (action: ParsedAction, organizationId: string) => Promise<string>> = {
     create_contact: (action, id) => this.createContact(action, id),
     record_sale: (action, id) => this.recordSale(action, id),
