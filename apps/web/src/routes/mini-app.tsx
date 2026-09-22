@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { IconChartDonut, IconChevronRight, IconCreditCard, IconPackage, IconReceipt, IconSparkles, IconUsers, IconWallet } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { MiniAppHome } from "@/components/nomidat/mini-app-home";
+import { loadMiniAppData } from "@/components/nomidat/mini-app-loader";
 import { OrganizationSwitcher, type OrganizationOption } from "@/components/nomidat/organization-switcher";
 import { StatCard } from "@/components/nomidat/stat-card";
 import { formatNaira, getBusinessData, getBusinessSummary, getOrganizations, type BusinessSummary } from "@/data/nomidat";
@@ -56,20 +57,16 @@ function MiniAppPage() {
   useEffect(() => {
     if (!organizationId) { setLoading(false); setSummary(null); setSales([]); setCustomers([]); setProducts([]); setExpenses([]); return; }
     let cancelled = false;
-    const load = async () => {
-      try {
-        if (view === "home") {
-          const [nextSummary, nextSales, nextExpenses] = await Promise.all([getBusinessSummary(organizationId), getBusinessData(organizationId, "sales"), getBusinessData(organizationId, "expenses")]);
-          if (!cancelled) { setSummary(nextSummary); setSales(nextSales); setExpenses(nextExpenses); }
-        } else if (view === "sales") setSales(await getBusinessData(organizationId, "sales"));
-        else if (view === "customers") setCustomers(await getBusinessData(organizationId, "customers"));
-        else if (view === "stock") setProducts(await getBusinessData(organizationId, "inventory"));
-        else if (view === "expenses") setExpenses(await getBusinessData(organizationId, "expenses"));
-      } catch {
-        if (!cancelled) setMessage("Could not load this business data.");
-      }
-    };
-    void load();
+    void loadMiniAppData(view, organizationId).then((data) => {
+      if (cancelled) return;
+      if (data.summary) setSummary(data.summary);
+      if (data.sales) setSales(data.sales);
+      if (data.customers) setCustomers(data.customers);
+      if (data.products) setProducts(data.products);
+      if (data.expenses) setExpenses(data.expenses);
+    }).catch(() => {
+      if (!cancelled) setMessage("Could not load this business data.");
+    });
     return () => { cancelled = true; };
   }, [organizationId, view]);
 
