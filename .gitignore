@@ -5,13 +5,13 @@ dist/
 .turbo/
 .env
 .env.*
-!.env.example
-!README.md
 apps/web/src/routeTree.gen.ts
 inventory-bot-backend
 
 # Local-only agent / docs / tooling (work on disk; not for GitHub)
 *.md
+!.env.example
+!README.md
 .agents/
 .cursor/
 .scratch/
