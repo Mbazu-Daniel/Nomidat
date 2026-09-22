@@ -158,7 +158,7 @@ export class SalesService {
   }
 
   private async createSaleTransaction(
-    tx: Pick<DbHandle["db"], "select" | "insert" | "update" | "transaction">,
+    tx: Pick<DbHandle["db"], "select" | "insert" | "update">,
     organizationId: string,
     userId: string,
     input: CreateSaleDto,
