@@ -7,7 +7,7 @@ export async function createApiRequest<T>(path: string, init?: RequestInit): Pro
     ...init,
     headers: {
       "Content-Type": "application/json",
-      ...init?.headers,
+      ...(init?.headers ?? {}),
     },
   });
 

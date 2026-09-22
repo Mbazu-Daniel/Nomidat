@@ -64,7 +64,11 @@ export function createBetterAuth(options: CreateBetterAuthOptions) {
       },
     },
     plugins: [
-      organization(options.sendInvitationEmail ? { sendInvitationEmail: options.sendInvitationEmail } : {}),
+      organization({
+        ...(options.sendInvitationEmail
+          ? { sendInvitationEmail: options.sendInvitationEmail }
+          : {}),
+      }),
       ...(options.telegramBotToken
         ? [telegramMiniApp({ botToken: options.telegramBotToken })]
         : []),

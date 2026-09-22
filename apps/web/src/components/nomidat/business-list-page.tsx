@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { OrganizationOption } from "@/components/nomidat/organization-switcher";
 import { getBusinessData, getOrganizations } from "@/data/nomidat";
 import { BusinessListView } from "./business-list-view";
 
