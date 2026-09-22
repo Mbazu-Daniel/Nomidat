@@ -33,6 +33,17 @@ const apiEnvSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-5-mini"),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-4o-mini-transcribe"),
+  AI_PROVIDER: z.enum(["openai", "gemini"]).default("openai"),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
+  TRANSCRIPTION_PROVIDER: z.enum(["deepgram", "whisper"]).default("deepgram"),
+  DEEPGRAM_API_KEY: z.string().optional(),
+  DEEPGRAM_MODEL: z.string().default("nova-3"),
+  WHISPER_API_KEY: z.string().optional(),
+  WHISPER_MODEL: z.string().default("whisper-1"),
+  PAYSTACK_SECRET_KEY: z.string().min(1),
+  PAYSTACK_API_URL: z.string().url().default("https://api.paystack.co"),
+  PAYSTACK_CALLBACK_URL: z.string().url().optional(),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

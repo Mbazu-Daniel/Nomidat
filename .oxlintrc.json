@@ -5,5 +5,15 @@
     "**/.output/**",
     "**/.tanstack/**",
     "**/routeTree.gen.ts"
-  ]
+  ],
+  "rules": {
+    "eslint/max-lines": [
+      "warn",
+      {
+        "max": 300,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ]
+  }
 }
