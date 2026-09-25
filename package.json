@@ -28,7 +28,8 @@
     "oxlint": "^1.82.0",
     "reflect-metadata": "^0.2.2",
     "turbo": "^2.10.12",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "happy-dom": "^20.14.5"
   },
   "engines": {
     "node": ">=24"

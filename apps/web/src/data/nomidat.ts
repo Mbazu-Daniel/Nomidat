@@ -34,16 +34,72 @@ export type Expense = {
 
 export const businessData = {
   sales: [
-    { id: "sale-1", customer: "Chinedu", item: "Cement", quantity: 5, amount: 42500, status: "Credit", date: "Today, 10:42 AM" },
-    { id: "sale-2", customer: "Amaka", item: "Iron rods", quantity: 10, amount: 78000, status: "Paid", date: "Today, 9:18 AM" },
-    { id: "sale-3", customer: "Emeka", item: "Diesel", quantity: 48, amount: 62400, status: "Paid", date: "Yesterday, 4:30 PM" },
-    { id: "sale-4", customer: "Ngozi", item: "Cement", quantity: 8, amount: 68000, status: "Credit", date: "Yesterday, 1:12 PM" },
+    {
+      id: "sale-1",
+      customer: "Chinedu",
+      item: "Cement",
+      quantity: 5,
+      amount: 42500,
+      status: "Credit",
+      date: "Today, 10:42 AM",
+    },
+    {
+      id: "sale-2",
+      customer: "Amaka",
+      item: "Iron rods",
+      quantity: 10,
+      amount: 78000,
+      status: "Paid",
+      date: "Today, 9:18 AM",
+    },
+    {
+      id: "sale-3",
+      customer: "Emeka",
+      item: "Diesel",
+      quantity: 48,
+      amount: 62400,
+      status: "Paid",
+      date: "Yesterday, 4:30 PM",
+    },
+    {
+      id: "sale-4",
+      customer: "Ngozi",
+      item: "Cement",
+      quantity: 8,
+      amount: 68000,
+      status: "Credit",
+      date: "Yesterday, 1:12 PM",
+    },
   ] satisfies Sale[],
   customers: [
-    { id: "customer-1", name: "Chinedu", phone: "0803 000 0001", outstanding: 42500, lastPurchase: "Today" },
-    { id: "customer-2", name: "Amaka", phone: "0803 000 0002", outstanding: 0, lastPurchase: "Today" },
-    { id: "customer-3", name: "Emeka", phone: "0803 000 0003", outstanding: 0, lastPurchase: "Yesterday" },
-    { id: "customer-4", name: "Ngozi", phone: "0803 000 0004", outstanding: 68000, lastPurchase: "Yesterday" },
+    {
+      id: "customer-1",
+      name: "Chinedu",
+      phone: "0803 000 0001",
+      outstanding: 42500,
+      lastPurchase: "Today",
+    },
+    {
+      id: "customer-2",
+      name: "Amaka",
+      phone: "0803 000 0002",
+      outstanding: 0,
+      lastPurchase: "Today",
+    },
+    {
+      id: "customer-3",
+      name: "Emeka",
+      phone: "0803 000 0003",
+      outstanding: 0,
+      lastPurchase: "Yesterday",
+    },
+    {
+      id: "customer-4",
+      name: "Ngozi",
+      phone: "0803 000 0004",
+      outstanding: 68000,
+      lastPurchase: "Yesterday",
+    },
   ] satisfies Customer[],
   products: [
     { id: "product-1", name: "Cement", quantity: 12, unit: "bags", reorderLevel: 20 },
@@ -52,9 +108,27 @@ export const businessData = {
     { id: "product-4", name: "Paint", quantity: 31, unit: "cans", reorderLevel: 10 },
   ] satisfies Product[],
   expenses: [
-    { id: "expense-1", description: "Fuel", category: "Transport", amount: 18000, date: "Today, 8:15 AM" },
-    { id: "expense-2", description: "Shop electricity", category: "Utilities", amount: 12500, date: "Yesterday" },
-    { id: "expense-3", description: "Packaging", category: "Operations", amount: 8400, date: "Yesterday" },
+    {
+      id: "expense-1",
+      description: "Fuel",
+      category: "Transport",
+      amount: 18000,
+      date: "Today, 8:15 AM",
+    },
+    {
+      id: "expense-2",
+      description: "Shop electricity",
+      category: "Utilities",
+      amount: 12500,
+      date: "Yesterday",
+    },
+    {
+      id: "expense-3",
+      description: "Packaging",
+      category: "Operations",
+      amount: 8400,
+      date: "Yesterday",
+    },
   ] satisfies Expense[],
 } as const;
 
@@ -62,32 +136,31 @@ import { createApiRequest } from "@/lib/api";
 
 export type BusinessResource = "sales" | "customers" | "inventory" | "expenses";
 
-export async function getBusinessData(
-  organizationId: string,
-  resource: BusinessResource,
-) {
+export async function getBusinessData(organizationId: string, resource: BusinessResource) {
   const apiResource = resource === "inventory" ? "products" : resource;
-  return createApiRequest<Array<{
-    id: string;
-    name?: string | null;
-    customer?: string | null;
-    phone?: string | null;
-    kind?: string | null;
-    status?: string | null;
-    totalKobo?: number | null;
-    paidKobo?: number | null;
-    balanceKobo?: number | null;
-    outstandingKobo?: number | null;
-    stockQuantity?: number | null;
-    lowStockThreshold?: number | null;
-    unit?: string | null;
-    priceKobo?: number | null;
-    description?: string | null;
-    amountKobo?: number | null;
-    category?: string | null;
-    spentAt?: string | null;
-    createdAt?: string | null;
-  }>>(`/organizations/${encodeURIComponent(organizationId)}/${apiResource}`);
+  return createApiRequest<
+    Array<{
+      id: string;
+      name?: string | null;
+      customer?: string | null;
+      phone?: string | null;
+      kind?: string | null;
+      status?: string | null;
+      totalKobo?: number | null;
+      paidKobo?: number | null;
+      balanceKobo?: number | null;
+      outstandingKobo?: number | null;
+      stockQuantity?: number | null;
+      lowStockThreshold?: number | null;
+      unit?: string | null;
+      priceKobo?: number | null;
+      description?: string | null;
+      amountKobo?: number | null;
+      category?: string | null;
+      spentAt?: string | null;
+      createdAt?: string | null;
+    }>
+  >(`/organizations/${encodeURIComponent(organizationId)}/${apiResource}`);
 }
 
 export async function getOrganizations() {
@@ -95,7 +168,11 @@ export async function getOrganizations() {
 }
 
 export function formatNaira(amount: number) {
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(amount);
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 export type BusinessSummary = {
@@ -108,9 +185,10 @@ export type BusinessSummary = {
 };
 
 export function getBusinessSummary(organizationId: string) {
-  return createApiRequest<BusinessSummary>(`/organizations/${encodeURIComponent(organizationId)}/summary`);
+  return createApiRequest<BusinessSummary>(
+    `/organizations/${encodeURIComponent(organizationId)}/summary`,
+  );
 }
-
 
 export type InvoiceRow = {
   id: string;
@@ -130,83 +208,13 @@ export function getInvoices(organizationId: string) {
   );
 }
 
-export type ReportSummary = {
-  from: string;
-  to: string;
-  salesKobo: number;
-  collectedKobo: number;
-  outstandingCreditKobo: number;
-  expensesKobo: number;
-  netCashflowKobo: number;
-  salesCount: number;
-  paymentCount: number;
-  expenseCount: number;
-  profitApproxKobo: number;
-};
+export {
+  getReportSummary,
+  getReportSales,
+  getReportExpenseBreakdown,
+  getReportProducts,
+  getReportCustomerBalances,
+  getReportInventory,
+} from "./reports";
 
-type SalesReportRow = {
-  date: string;
-  salesKobo: number;
-  saleCount: number;
-};
-
-type ExpenseReportRow = {
-  category: string;
-  amountKobo: number;
-  expenseCount: number;
-};
-
-type ProductReportRow = {
-  productId: string | null;
-  productName: string;
-  quantity: number;
-  salesKobo: number;
-};
-
-type CustomerBalanceReportRow = {
-  customerId: string;
-  customerName: string;
-  balanceKobo: number;
-};
-
-type InventoryReport = {
-  productCount: number;
-  lowStockCount: number;
-  outOfStockCount: number;
-  inventoryValueKobo: number;
-  lowStock: Array<{
-    id: string;
-    name: string;
-    stockQuantity: number;
-    lowStockThreshold: number;
-    unit: string;
-  }>;
-};
-
-function reportsPath(organizationId: string, resource: string) {
-  return `/organizations/${encodeURIComponent(organizationId)}/reports/${resource}`;
-}
-
-export function getReportSummary(organizationId: string) {
-  return createApiRequest<ReportSummary>(reportsPath(organizationId, "summary"));
-}
-
-export function getReportSales(organizationId: string) {
-  return createApiRequest<SalesReportRow[]>(reportsPath(organizationId, "sales"));
-}
-
-export function getReportExpenseBreakdown(organizationId: string) {
-  return createApiRequest<ExpenseReportRow[]>(reportsPath(organizationId, "expenses"));
-}
-
-export function getReportProducts(organizationId: string) {
-  return createApiRequest<ProductReportRow[]>(reportsPath(organizationId, "products"));
-}
-
-export function getReportCustomerBalances(organizationId: string) {
-  return createApiRequest<CustomerBalanceReportRow[]>(reportsPath(organizationId, "customers"));
-}
-
-export function getReportInventory(organizationId: string) {
-  return createApiRequest<InventoryReport>(reportsPath(organizationId, "inventory"));
-}
+export type { ReportSummary } from "./reports";
