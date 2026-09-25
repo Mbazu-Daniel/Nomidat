@@ -40,6 +40,105 @@ export function SettingsPanel({ organizationId }: { organizationId: string }) {
       cancelled = true;
     };
   }, [organizationId, path]);
+  function renderPaymentSettings() {
+    if (!canManage) return null;
+    return (
+      <form
+        className="workspace-card workspace-form"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const secretKey = new FormData(form).get("key");
+          setBusy(true);
+          setError("");
+          setSaved(false);
+          try {
+            await createApiRequest(path + "/payment-key", {
+              method: "PUT",
+              body: JSON.stringify({ secretKey }),
+            });
+            setConnected(true);
+            setSaved(true);
+            form.reset();
+          } catch (reason) {
+            setError((reason as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <h2>
+          Paystack{" "}
+          <span className="workspace-badge">{connected ? "Connected" : "Not connected"}</span>
+        </h2>
+        <p className="workspace-readonly">
+          Only a business owner or admin can update these credentials.
+        </p>
+        <label>
+          Secret key
+          <input
+            type="password"
+            name="key"
+            autoComplete="off"
+            required
+            pattern="sk_(test|live)_[A-Za-z0-9]+"
+            placeholder="sk_test_…"
+            maxLength={200}
+          />
+          <small>Your key is encrypted and never shown again.</small>
+        </label>
+        {error && (
+          <p role="alert" className="workspace-error">
+            {error}
+          </p>
+        )}
+        {saved && <p role="status">Paystack key saved.</p>}
+        <div className="workspace-actions">
+          <button className="workspace-primary" disabled={busy}>
+            {busy ? "Saving…" : "Save payment settings"}
+          </button>
+        </div>
+      </form>
+    );
+  }
+  function renderSection() {
+    if (section === "account") return <AccountPanel />;
+    if (!organizationId) return null;
+    switch (section) {
+      case "profile":
+        return (
+          <BusinessProfileEditor
+            key={`profile-${organizationId}`}
+            organizationId={organizationId}
+            canManage={canManage}
+          />
+        );
+      case "staff":
+        return <StaffPanel key={organizationId} organizationId={organizationId} />;
+      case "categories":
+        return (
+          <ExpenseCategories
+            organizationId={organizationId}
+            canWrite={canWriteArea(role, "expenses")}
+          />
+        );
+      case "payments":
+        return renderPaymentSettings();
+      case "verification":
+        return canWrite && <PaymentVerification organizationId={organizationId} />;
+      case "access":
+        return (
+          role && (
+            <BusinessAccessActions
+              organizationId={organizationId}
+              owner={role.split(",").includes("owner")}
+            />
+          )
+        );
+      default:
+        return null;
+    }
+  }
   return (
     <>
       <div className="workspace-heading">
@@ -62,90 +161,7 @@ export function SettingsPanel({ organizationId }: { organizationId: string }) {
           {error}
         </p>
       )}
-      {section === "profile" && organizationId && (
-        <BusinessProfileEditor
-          key={`profile-${organizationId}`}
-          organizationId={organizationId}
-          canManage={canManage}
-        />
-      )}
-      {section === "staff" && organizationId && (
-        <StaffPanel key={organizationId} organizationId={organizationId} />
-      )}
-      {section === "categories" && organizationId && (
-        <ExpenseCategories
-          organizationId={organizationId}
-          canWrite={canWriteArea(role, "expenses")}
-        />
-      )}
-      {section === "payments" && canManage && (
-        <form
-          className="workspace-card workspace-form"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const form = event.currentTarget;
-            const secretKey = new FormData(form).get("key");
-            setBusy(true);
-            setError("");
-            setSaved(false);
-            try {
-              await createApiRequest(path + "/payment-key", {
-                method: "PUT",
-                body: JSON.stringify({ secretKey }),
-              });
-              setConnected(true);
-              setSaved(true);
-              form.reset();
-            } catch (reason) {
-              setError((reason as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <h2>
-            Paystack{" "}
-            <span className="workspace-badge">{connected ? "Connected" : "Not connected"}</span>
-          </h2>
-          <p className="workspace-readonly">
-            Only a business owner or admin can update these credentials.
-          </p>
-          <label>
-            Secret key
-            <input
-              type="password"
-              name="key"
-              autoComplete="off"
-              required
-              pattern="sk_(test|live)_[A-Za-z0-9]+"
-              placeholder="sk_test_…"
-              maxLength={200}
-            />
-            <small>Your key is encrypted and never shown again.</small>
-          </label>
-          {error && (
-            <p role="alert" className="workspace-error">
-              {error}
-            </p>
-          )}
-          {saved && <p role="status">Paystack key saved.</p>}
-          <div className="workspace-actions">
-            <button className="workspace-primary" disabled={busy}>
-              {busy ? "Saving…" : "Save payment settings"}
-            </button>
-          </div>
-        </form>
-      )}
-      {section === "verification" && canWrite && (
-        <PaymentVerification organizationId={organizationId} />
-      )}
-      {section === "access" && role && (
-        <BusinessAccessActions
-          organizationId={organizationId}
-          owner={role.split(",").includes("owner")}
-        />
-      )}
-      {section === "account" && <AccountPanel />}
+      {renderSection()}
     </>
   );
 }

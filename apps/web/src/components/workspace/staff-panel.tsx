@@ -1,57 +1,37 @@
+import { useAsyncResource } from "@/lib/use-api-resource";
+import { StaffInviteForm } from "./staff-invite-form";
 import { StaffRoleGuide } from "./staff-role-guide";
 import { PhoneStaff } from "./phone-staff";
-import { StaffPermissions } from "./staff-permissions";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { IconUsers, IconPlus } from "@tabler/icons-react";
 import { createApiRequest } from "@/lib/api";
-import { staffRoles } from "./staff-roles";
 import { StaffMemberRow } from "./staff-member-row";
-import type { StaffAccess, StaffInvitation, StaffMember } from "./types/staff.type";
+import type {
+  StaffAccess,
+  StaffInvitation,
+  StaffMember,
+  StaffResource,
+  PendingStaffInvitationsProps,
+} from "./types/staff.type";
 export function StaffPanel({ organizationId }: { organizationId: string }) {
   const path = `/organizations/${organizationId}`;
-  const [access, setAccess] = useState<StaffAccess>();
-  const [members, setMembers] = useState<StaffMember[]>([]);
-  const [invitations, setInvitations] = useState<StaffInvitation[]>([]);
   const [page, setPage] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [adding, setAdding] = useState(false);
-  const [mode, setMode] = useState("userId");
-  const [role, setRole] = useState("staff");
   const [revision, setRevision] = useState(0);
+  const { data, loading, error, setError } = useAsyncResource<StaffResource>(
+    loadStaff,
+    `${path}?page=${page}`,
+    { current: undefined, people: { members: [], total: 0 }, pending: [] },
+    revision,
+  );
+  const {
+    current: access,
+    people: { members, total },
+    pending: invitations,
+  } = data;
   const canManage = access?.role.split(",").some((value) => ["owner", "admin"].includes(value));
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    void (async () => {
-      const current = await createApiRequest<StaffAccess>(path + "/access");
-      const manager = current.role.split(",").some((value) => ["owner", "admin"].includes(value));
-      const [people, pending] = await Promise.all([
-        createApiRequest<{ members: StaffMember[]; total: number }>(
-          `${path}/members?limit=20&offset=${page * 20}`,
-        ),
-        manager ? createApiRequest<StaffInvitation[]>(path + "/invitations") : Promise.resolve([]),
-      ]);
-      if (cancelled) return;
-      setAccess(current);
-      setMembers(people.members);
-      setTotal(people.total);
-      setInvitations(pending);
-    })()
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [path, page, revision]);
   async function mutate(url: string, method: string, body: unknown, message: string) {
     setBusy(true);
     setError("");
@@ -67,6 +47,44 @@ export function StaffPanel({ organizationId }: { organizationId: string }) {
     } finally {
       setBusy(false);
     }
+  }
+  function renderMembers() {
+    return (
+      <>
+        {access &&
+          members.map((member) => (
+            <StaffMemberRow
+              key={`${member.id}-${member.role}`}
+              member={member}
+              access={access}
+              busy={busy}
+              onChange={(id, nextRole) =>
+                void mutate(
+                  `${path}/members/${id}`,
+                  "PATCH",
+                  { role: nextRole.split(",") },
+                  "Role updated.",
+                )
+              }
+              onRemove={(id) =>
+                void mutate(`${path}/members/${id}`, "DELETE", undefined, "Access removed.")
+              }
+            />
+          ))}
+        {!members.length && !error && <p>No staff members to show.</p>}
+        {total > 20 && (
+          <div className="workspace-actions">
+            <button disabled={page === 0 || busy} onClick={() => setPage(page - 1)}>
+              Previous
+            </button>
+            <span>Page {page + 1}</span>
+            <button disabled={(page + 1) * 20 >= total || busy} onClick={() => setPage(page + 1)}>
+              Next
+            </button>
+          </div>
+        )}
+      </>
+    );
   }
   return (
     <section className="workspace-card staff-panel">
@@ -103,198 +121,102 @@ export function StaffPanel({ organizationId }: { organizationId: string }) {
       )}
       {canManage && <PhoneStaff organizationId={organizationId} />}
       {adding && canManage && (
-        <form
-          className="staff-add-form"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const form = event.currentTarget;
-            const data = new FormData(form);
-            const email = String(data.get("email") ?? "").trim();
-            const userId = String(data.get("userId") ?? "").trim();
-            const ok = await mutate(
-              path + (mode === "email" ? "/invitations" : "/members"),
-              "POST",
-              mode === "email"
-                ? { email, role: role.split(",") }
-                : { userId, role: role.split(",") },
-              mode === "email"
-                ? "Invitation created. You can copy its link below. Email delivery requires configured email settings."
-                : "Staff member added.",
-            );
-            if (ok) {
-              form.reset();
-              setAdding(false);
-            }
-          }}
-        >
-          <div className="staff-form-grid">
-            <label>
-              Add by
-              <select
-                value={mode}
-                disabled={busy}
-                onChange={(event) => setMode(event.target.value)}
-              >
-                <option value="email">Email invitation</option>
-                <option value="userId">Existing account ID</option>
-              </select>
-            </label>
-            {mode === "email" ? (
-              <label>
-                Email address
-                <input
-                  name="email"
-                  type="email"
-                  required
-                  disabled={busy}
-                  placeholder="staff@example.com"
-                />
-              </label>
-            ) : (
-              <label>
-                Account ID
-                <input
-                  name="userId"
-                  required
-                  disabled={busy}
-                  pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-                  placeholder="Paste their account ID"
-                />
-              </label>
-            )}
-            <label>
-              Role
-              <select
-                value={role.split(",")[0]}
-                disabled={busy}
-                onChange={(event) => setRole(event.target.value)}
-              >
-                {staffRoles.map((item) => (
-                  <option value={item.value} key={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {role.startsWith("staff") && (
-            <StaffPermissions value={role} onChange={setRole} disabled={busy} />
-          )}
-          <p className="staff-role-description">
-            {staffRoles.find((item) => item.value === role)?.description}
-          </p>
-          <div className="workspace-actions">
-            <button type="button" disabled={busy} onClick={() => setAdding(false)}>
-              Cancel
-            </button>
-            <button className="workspace-primary" disabled={busy}>
-              {busy ? "Saving…" : mode === "email" ? "Create invitation" : "Add staff member"}
-            </button>
-          </div>
-        </form>
+        <StaffInviteForm
+          path={path}
+          busy={busy}
+          mutate={mutate}
+          onCancel={() => setAdding(false)}
+        />
       )}
       <p className="staff-role-description">
         Add an existing account by ID, or invite a verified email account. Email delivery requires
         configured email settings; you can also copy the invitation link.
       </p>
       <StaffRoleGuide />
-      {loading ? (
-        <p role="status">Loading staff…</p>
-      ) : (
-        <>
-          {access &&
-            members.map((member) => (
-              <StaffMemberRow
-                key={`${member.id}-${member.role}`}
-                member={member}
-                access={access}
-                busy={busy}
-                onChange={(id, nextRole) =>
-                  void mutate(
-                    `${path}/members/${id}`,
-                    "PATCH",
-                    { role: nextRole.split(",") },
-                    "Role updated.",
-                  )
-                }
-                onRemove={(id) =>
-                  void mutate(`${path}/members/${id}`, "DELETE", undefined, "Access removed.")
-                }
-              />
-            ))}
-          {!members.length && !error && <p>No staff members to show.</p>}
-          {total > 20 && (
-            <div className="workspace-actions">
-              <button disabled={page === 0 || busy} onClick={() => setPage(page - 1)}>
-                Previous
-              </button>
-              <span>Page {page + 1}</span>
-              <button disabled={(page + 1) * 20 >= total || busy} onClick={() => setPage(page + 1)}>
-                Next
-              </button>
-            </div>
-          )}
-        </>
+      {loading ? <p role="status">Loading staff…</p> : renderMembers()}
+      {canManage && (
+        <PendingStaffInvitations
+          invitations={invitations}
+          busy={busy}
+          mutate={mutate}
+          setNotice={setNotice}
+          setError={setError}
+        />
       )}
-      {canManage &&
-        invitations.some(
-          (item) => item.status === "pending" && new Date(item.expiresAt) > new Date(),
-        ) && (
-          <div className="staff-invitations">
-            <h3>Pending invitations</h3>
-            {invitations
-              .filter((item) => item.status === "pending" && new Date(item.expiresAt) > new Date())
-              .map((item) => (
-                <div className="staff-member-row" key={item.id}>
-                  <div>
-                    <strong>{item.email}</strong>
-                    <p>
-                      {item.role} · Expires {new Date(item.expiresAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="staff-member-actions">
-                    <button
-                      disabled={busy}
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(
-                            `${window.location.origin}/accept-invitation/${item.id}`,
-                          );
-                          setNotice(
-                            "Invitation link copied. The recipient must sign in with the invited email address.",
-                          );
-                        } catch {
-                          setError(
-                            "Could not copy the link. Check clipboard permissions and try again.",
-                          );
-                        }
-                      }}
-                    >
-                      Copy invite link
-                    </button>
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        void mutate(
-                          `/invitations/${item.id}/cancel`,
-                          "POST",
-                          {},
-                          "Invitation cancelled.",
-                        )
-                      }
-                    >
-                      Cancel invitation
-                    </button>
-                  </div>
-                </div>
-              ))}
-          </div>
-        )}
       {access && (
         <p className="staff-account-id">
           Your account ID: <code>{access.userId}</code>
         </p>
       )}
     </section>
+  );
+}
+
+async function loadStaff(key: string) {
+  const [path, query] = key.split("?");
+  const page = Number(new URLSearchParams(query).get("page"));
+  const current = await createApiRequest<StaffAccess>(path + "/access");
+  const manager = current.role.split(",").some((value) => ["owner", "admin"].includes(value));
+  const [people, pending] = await Promise.all([
+    createApiRequest<{ members: StaffMember[]; total: number }>(
+      `${path}/members?limit=20&offset=${page * 20}`,
+    ),
+    manager ? createApiRequest<StaffInvitation[]>(path + "/invitations") : Promise.resolve([]),
+  ]);
+  return { current, people, pending };
+}
+
+function PendingStaffInvitations({
+  invitations,
+  busy,
+  mutate,
+  setNotice,
+  setError,
+}: PendingStaffInvitationsProps) {
+  const pending = invitations.filter(
+    (item) => item.status === "pending" && new Date(item.expiresAt) > new Date(),
+  );
+  if (!pending.length) return null;
+  return (
+    <div className="staff-invitations">
+      <h3>Pending invitations</h3>
+      {pending.map((item) => (
+        <div className="staff-member-row" key={item.id}>
+          <div>
+            <strong>{item.email}</strong>
+            <p>
+              {item.role} · Expires {new Date(item.expiresAt).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="staff-member-actions">
+            <button
+              disabled={busy}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    `${window.location.origin}/accept-invitation/${item.id}`,
+                  );
+                  setNotice(
+                    "Invitation link copied. The recipient must sign in with the invited email address.",
+                  );
+                } catch {
+                  setError("Could not copy the link. Check clipboard permissions and try again.");
+                }
+              }}
+            >
+              Copy invite link
+            </button>
+            <button
+              disabled={busy}
+              onClick={() =>
+                void mutate(`/invitations/${item.id}/cancel`, "POST", {}, "Invitation cancelled.")
+              }
+            >
+              Cancel invitation
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 import { createApiRequest } from "@/lib/api";
 import type { ReportRange } from "@/components/workspace/types/reports.type";
 
-export type ReportSummary = {
+type ReportSummary = {
   from: string;
   to: string;
   salesKobo: number;
