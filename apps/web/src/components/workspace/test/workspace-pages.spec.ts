@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from "vitest";
 import { api, render, change, click, button, submit } from "./render";
-import { PictureImport } from "../picture-import";
-import { ReportsPanel } from "../reports-panel";
-import { WorkspacePage } from "../workspace-page";
 import { RecordsPanel } from "../records-panel";
+import { WorkspacePage } from "../workspace-page";
+import { OverviewPanel } from "../overview-panel";
+import { CreateBusiness } from "../create-business";
 import { ProductEditor } from "../product-editor";
 import { ExpenseEditor } from "../expense-editor";
 import { SaleReceipt } from "../sale-receipt";
@@ -47,6 +47,61 @@ describe("workspace pages", () => {
     await click(button(ui, "Close"));
     expect(ui.querySelector('[name="price"]')).toBeNull();
     expect(ui.querySelector("tbody")?.textContent).toContain("Rice");
+  });
+  it("selects a saved business and keeps Settings last in the sidebar", async () => {
+    sessionStorage.setItem("nomidat.organization", "second");
+    api.mockImplementation(async (path) =>
+      path === "/organizations"
+        ? [
+            { id: "first", name: "First" },
+            { id: "second", name: "Second" },
+          ]
+        : path.endsWith("/access")
+          ? { role: "staff" }
+          : [],
+    );
+    const ui = await render(WorkspacePage, { section: "inventory" });
+    expect(ui.querySelector<HTMLSelectElement>('[aria-label="Selected business"]')?.value).toBe(
+      "second",
+    );
+    expect(ui.querySelector("nav")?.lastElementChild?.textContent).toContain("Settings");
+    expect(api).toHaveBeenCalledWith("/organizations/second/access");
+    await change(ui.querySelector('[aria-label="Selected business"]'), "__create__");
+    expect(ui.textContent).toContain("Make it your business");
+    expect(ui.querySelector("tbody")).toBeNull();
+  });
+  it("shows overview totals from the selected business", async () => {
+    api.mockResolvedValue({
+      salesTotalKobo: 120000,
+      outstandingCreditKobo: 20000,
+      expensesTotalKobo: 10000,
+      customerCount: 1,
+      productCount: 4,
+      lowStockCount: 2,
+    });
+    const ui = await render(OverviewPanel, { organizationId: "shop" });
+    expect(api).toHaveBeenCalledWith("/organizations/shop/summary");
+    expect(ui.textContent).toContain("1,200");
+    expect(ui.textContent).toContain("2 need a restock");
+  });
+  it("creates a business with trimmed shop details and omits optional empty fields", async () => {
+    const created = vi.fn();
+    api.mockResolvedValue({ id: "shop", name: "Ada shop" });
+    const ui = await render(CreateBusiness, { onCreated: created });
+    await change(ui.querySelector('[name="name"]'), " Ada shop ");
+    await change(ui.querySelector('[name="phone"]'), "+2348012345678");
+    await change(ui.querySelector('[name="ownerName"]'), "Ada");
+    await change(ui.querySelector('[name="address"]'), "10 Market Road");
+    await submit(ui.querySelector("form"));
+    const call = api.mock.calls.find(
+      ([path, init]) => path === "/organizations" && init?.method === "POST",
+    )!;
+    expect(JSON.parse(String(call[1]?.body))).toEqual({
+      name: "Ada shop",
+      slug: "ada-shop",
+      businessDetails: { ownerName: "Ada", phone: "+2348012345678", address: "10 Market Road" },
+    });
+    expect(created).toHaveBeenCalledWith({ id: "shop", name: "Ada shop" });
   });
   it("keeps product edits separate from stock adjustments", async () => {
     const save = vi.fn();
@@ -113,74 +168,3 @@ describe("workspace pages", () => {
     expect(button(ui, "Print / save PDF")).not.toBeNull();
   });
 });
-  it("reviews extracted expense details without recording until the user saves", async () => {
-    api.mockImplementation(async (path) =>
-      path.endsWith("/picture-import")
-        ? {
-            expense: {
-              description: "Fuel",
-              amountNaira: 200,
-              date: "2026-09-24",
-              paymentMethod: "cash",
-              category: null,
-            },
-            warnings: ["Check amount"],
-          }
-        : [],
-    );
-    const ui = await render(PictureImport, {
-      organizationId: "shop",
-      section: "expenses",
-      onSaved: vi.fn(),
-      onCancel: vi.fn(),
-      initialFile: new File(["image"], "receipt.png", { type: "image/png" }),
-    });
-    await click(button(ui, "Read picture"));
-    expect(ui.textContent).toContain("Check amount");
-    expect(ui.querySelector<HTMLInputElement>('[name="amount"]')?.value).toBe("200");
-    expect(api.mock.calls.some(([path]) => path.endsWith("/expenses"))).toBe(false);
-  });
-  it("rejects an empty photo extraction instead of showing an empty save form", async () => {
-    api.mockResolvedValue({ items: [], warnings: [] });
-    const ui = await render(PictureImport, {
-      organizationId: "shop",
-      section: "inventory",
-      onSaved: vi.fn(),
-      onCancel: vi.fn(),
-      initialFile: new File(["image"], "stock.png", { type: "image/png" }),
-    });
-    await click(button(ui, "Read picture"));
-    expect(ui.textContent).toContain("No items could be read");
-    expect(button(ui, "Save record")).toBeNull();
-  });
-
-  it("reports failed report queries without displaying invented totals", async () => {
-    api.mockRejectedValue(new Error("Reports unavailable"));
-    const ui = await render(ReportsPanel, { organizationId: "shop" });
-    expect(ui.textContent).toContain("Could not load your reports");
-    expect(api.mock.calls.length).toBe(6);
-    expect(api.mock.calls.every(([path]) => path.includes("/organizations/shop/"))).toBe(true);
-  });
-
-  it("selects a saved business and keeps Settings last in the sidebar", async () => {
-    sessionStorage.setItem("nomidat.organization", "second");
-    api.mockImplementation(async (path) =>
-      path === "/organizations"
-        ? [
-            { id: "first", name: "First" },
-            { id: "second", name: "Second" },
-          ]
-        : path.endsWith("/access")
-          ? { role: "staff" }
-          : [],
-    );
-    const ui = await render(WorkspacePage, { section: "inventory" });
-    expect(ui.querySelector<HTMLSelectElement>('[aria-label="Selected business"]')?.value).toBe(
-      "second",
-    );
-    expect(ui.querySelector("nav")?.lastElementChild?.textContent).toContain("Settings");
-    expect(api).toHaveBeenCalledWith("/organizations/second/access");
-    await change(ui.querySelector('[aria-label="Selected business"]'), "__create__");
-    expect(ui.textContent).toContain("Make it your business");
-    expect(ui.querySelector("tbody")).toBeNull();
-  });

@@ -15,4 +15,7 @@ inventory-bot-backend
 .agents/
 .cursor/
 .scratch/
+.data/
+
+# Generated test coverage
 coverage/
