@@ -1,3 +1,4 @@
+import "./invoice.css";
 import { formatInvoiceMoney } from "./invoice-format";
 import type { InvoiceDocumentProps } from "./types";
 

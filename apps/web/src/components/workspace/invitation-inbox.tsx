@@ -1,31 +1,16 @@
-import { useEffect, useState } from "react";
+import { useApiResource } from "@/lib/use-api-resource";
+import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
 import type { StaffInvitation } from "./types/staff.type";
 export function InvitationInbox({ verified }: { verified: boolean }) {
-  const [rows, setRows] = useState<StaffInvitation[]>([]);
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    let cancelled = false;
-    if (!verified) {
-      setLoading(false);
-      return;
-    }
-    void createApiRequest<StaffInvitation[]>("/invitations")
-      .then((data) => {
-        if (!cancelled) setRows(data);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [verified]);
+  const {
+    data: rows,
+    setData: setRows,
+    error,
+    setError,
+    loading,
+  } = useApiResource<StaffInvitation[]>(verified ? "/invitations" : null, [], 0);
   async function respond(id: string, action: string) {
     setBusy(true);
     setError("");
