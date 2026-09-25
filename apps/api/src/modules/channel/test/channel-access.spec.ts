@@ -1,3 +1,4 @@
+import { TelegramClient } from "../../telegram/telegram.client";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { createDbStub } from "../../../common/db/test/db.stub";
 import { ChannelService } from "../channel.service";
@@ -70,5 +71,32 @@ describe("channel access", () => {
     expect([...media.data]).toEqual([1, 2, 3]);
     expect(media.mimeType).toBe("image/png");
     expect(fetch.mock.calls[1][1].redirect).toBe("error");
+  });
+});
+
+
+describe("Telegram delivery and photo downloads", () => {
+  it("sends document metadata and downloads a bounded photo", async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: { file_path: "photos/image.jpg" } })))
+      .mockResolvedValueOnce(new Response(new Uint8Array([1, 2]), { headers: { "content-type": "image/jpeg" } }));
+    vi.stubGlobal("fetch", fetch);
+    const client = new TelegramClient({ TELEGRAM_BOT_TOKEN: "test" } as ApiEnv);
+    await client.createOutboundMessage({ provider: ChannelProvider.Telegram, externalId: "chat", kind: "document", documentUrl: "https://shop.test/invoice.pdf", text: "Invoice" });
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ chat_id: "chat", document: "https://shop.test/invoice.pdf" });
+    const media = await client.getInboundMedia("file-id");
+    expect([...media.data]).toEqual([1, 2]);
+    expect(media.mimeType).toBe("image/jpeg");
+    expect(fetch.mock.calls[2][1].redirect).toBe("error");
+  });
+  it("rejects unresolved files and unsuccessful media downloads", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ result: {} })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: { file_path: "photo.jpg" } })))
+      .mockResolvedValueOnce(new Response("denied", { status: 403 }));
+    vi.stubGlobal("fetch", fetch);
+    const client = new TelegramClient({ TELEGRAM_BOT_TOKEN: "test" } as ApiEnv);
+    await expect(client.getInboundMedia("missing")).rejects.toThrow("resolved");
+    await expect(client.getInboundMedia("blocked")).rejects.toThrow("downloaded");
   });
 });
