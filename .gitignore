@@ -15,4 +15,4 @@ inventory-bot-backend
 .agents/
 .cursor/
 .scratch/
-.data/
+coverage/

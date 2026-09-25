@@ -1,27 +1,16 @@
-import { useEffect, useState } from "react";
+import { useApiResource } from "@/lib/use-api-resource";
+import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
 import type { PhoneInvitation } from "./types/staff.type";
 export function PhoneInbox() {
-  const [rows, setRows] = useState<PhoneInvitation[]>([]);
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    let cancelled = false;
-    void createApiRequest<PhoneInvitation[]>("/phone-invitations")
-      .then((data) => {
-        if (!cancelled) setRows(data);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const {
+    data: rows,
+    setData: setRows,
+    error,
+    setError,
+    loading,
+  } = useApiResource<PhoneInvitation[]>("/phone-invitations", [], 0);
   async function respond(id: string, action: string) {
     setBusy(true);
     setError("");
