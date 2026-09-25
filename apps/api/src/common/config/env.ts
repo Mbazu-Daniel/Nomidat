@@ -51,7 +51,6 @@ const apiEnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-6"),
   DEEPGRAM_API_KEY: z.string().optional(),
-  PAYSTACK_SECRET_KEY: z.string().min(1),
   PAYSTACK_API_URL: z.string().url().default("https://api.paystack.co"),
   PAYSTACK_CALLBACK_URL: z.string().url().optional(),
 });

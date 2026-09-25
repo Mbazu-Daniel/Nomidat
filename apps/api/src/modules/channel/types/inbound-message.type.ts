@@ -1,6 +1,6 @@
 import type { ChannelProvider } from "./channel-provider.enum";
 
-export type InboundMessageKind = "text" | "image" | "voice" | "document" | "unknown";
+export type InboundMessageKind = "text" | "voice" | "document" | "unknown";
 
 export type InboundMessage = {
   provider: ChannelProvider;
