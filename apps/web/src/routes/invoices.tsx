@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { InvoicesPage } from "@/components/nomidat/invoices-page";
+import { WorkspacePage } from "@/components/workspace/workspace-page";
 
 export const Route = createFileRoute("/invoices")({
-  component: InvoicesPage,
+  component: () => <WorkspacePage section="invoices" />,
 });
