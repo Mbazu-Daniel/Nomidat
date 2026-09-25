@@ -40,3 +40,11 @@ export type TransactionLineItemProps = {
   canRemove: boolean;
   onRemove: () => void;
 };
+
+export type PicturePickerProps = {
+  section: PictureImportProps["section"];
+  file: File | null;
+  busy: boolean;
+  setFile(file: File | null): void;
+  setError(error: string): void;
+};

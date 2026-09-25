@@ -107,3 +107,30 @@ describe("reviewed records", () => {
     expect(api.mock.calls.every((call) => !call[1])).toBe(true);
   });
 });
+
+it.each(["sales", "invoices"] as const)(
+  "saves a %s with the selected stock product and exact money",
+  async (section) => {
+    api.mockImplementation(async (path) =>
+      path.includes("/products")
+        ? [{ id: "rice", name: "Rice", priceKobo: 12345, stockQuantity: 10 }]
+        : [],
+    );
+    const saved = vi.fn();
+    const ui = await render(TransactionForm, { ...base, section, onSaved: saved });
+    await change(ui.querySelector(".workspace-line-item select"), "rice");
+    await submit(ui.querySelector("form"));
+    const body = JSON.parse(String(api.mock.calls.at(-1)?.[1]?.body));
+    expect(body.items).toEqual([
+      {
+        productId: "rice",
+        [section === "sales" ? "productName" : "description"]: "Rice",
+        quantity: 1,
+        unitPriceKobo: 12345,
+      },
+    ]);
+    expect(body.taxKobo).toBe(0);
+    expect(body.discountKobo).toBe(0);
+    expect(saved).toHaveBeenCalledOnce();
+  },
+);

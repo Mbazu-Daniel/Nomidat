@@ -14,7 +14,7 @@
     "db:migrate": "pnpm --filter @nomidat/db db:migrate",
     "db:seed": "pnpm --filter @nomidat/db db:seed",
     "db:studio": "pnpm --filter @nomidat/db db:studio",
-    "fallow:audit": "npx fallow audit --format json --quiet",
+    "fallow:audit": "pnpm test --coverage && fallow audit --format human --quiet",
     "ci:local": "act -P ubuntu-latest=catthehacker/ubuntu:act-22.04 --pull=false --bind -v",
     "prepare": "husky",
     "test": "vitest run",
@@ -32,7 +32,8 @@
     "oxlint": "^1.82.0",
     "reflect-metadata": "^0.2.2",
     "turbo": "^2.10.12",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "happy-dom": "^20.14.5"
   },
   "engines": {
     "node": ">=24"

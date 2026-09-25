@@ -32,3 +32,23 @@ export type PhoneInvitation = {
   organizationName?: string;
   expiresAt: string;
 };
+
+export type StaffInviteFormProps = {
+  path: string;
+  busy: boolean;
+  onCancel: () => void;
+  mutate: (url: string, method: string, body: unknown, message: string) => Promise<boolean>;
+};
+
+export type PendingStaffInvitationsProps = {
+  invitations: StaffInvitation[];
+  busy: boolean;
+  mutate: StaffInviteFormProps["mutate"];
+  setNotice(value: string): void;
+  setError(value: string): void;
+};
+export type StaffResource = {
+  current?: StaffAccess;
+  people: { members: StaffMember[]; total: number };
+  pending: StaffInvitation[];
+};
