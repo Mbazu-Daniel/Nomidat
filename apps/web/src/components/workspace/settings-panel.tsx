@@ -101,6 +101,44 @@ export function SettingsPanel({ organizationId }: { organizationId: string }) {
       </form>
     );
   }
+  function renderSection() {
+    if (section === "account") return <AccountPanel />;
+    if (!organizationId) return null;
+    switch (section) {
+      case "profile":
+        return (
+          <BusinessProfileEditor
+            key={`profile-${organizationId}`}
+            organizationId={organizationId}
+            canManage={canManage}
+          />
+        );
+      case "staff":
+        return <StaffPanel key={organizationId} organizationId={organizationId} />;
+      case "categories":
+        return (
+          <ExpenseCategories
+            organizationId={organizationId}
+            canWrite={canWriteArea(role, "expenses")}
+          />
+        );
+      case "payments":
+        return renderPaymentSettings();
+      case "verification":
+        return canWrite && <PaymentVerification organizationId={organizationId} />;
+      case "access":
+        return (
+          role && (
+            <BusinessAccessActions
+              organizationId={organizationId}
+              owner={role.split(",").includes("owner")}
+            />
+          )
+        );
+      default:
+        return null;
+    }
+  }
   return (
     <>
       <div className="workspace-heading">
@@ -123,33 +161,7 @@ export function SettingsPanel({ organizationId }: { organizationId: string }) {
           {error}
         </p>
       )}
-      {section === "profile" && organizationId && (
-        <BusinessProfileEditor
-          key={`profile-${organizationId}`}
-          organizationId={organizationId}
-          canManage={canManage}
-        />
-      )}
-      {section === "staff" && organizationId && (
-        <StaffPanel key={organizationId} organizationId={organizationId} />
-      )}
-      {section === "categories" && organizationId && (
-        <ExpenseCategories
-          organizationId={organizationId}
-          canWrite={canWriteArea(role, "expenses")}
-        />
-      )}
-      {section === "payments" && renderPaymentSettings()}
-      {section === "verification" && canWrite && (
-        <PaymentVerification organizationId={organizationId} />
-      )}
-      {section === "access" && role && (
-        <BusinessAccessActions
-          organizationId={organizationId}
-          owner={role.split(",").includes("owner")}
-        />
-      )}
-      {section === "account" && <AccountPanel />}
+      {renderSection()}
     </>
   );
 }

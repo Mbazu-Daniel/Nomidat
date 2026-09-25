@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useApiResource } from "@/lib/use-api-resource";
+import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
 import type { ExpenseCategory } from "./types/settings.type";
 export function ExpenseCategories({
@@ -8,24 +9,15 @@ export function ExpenseCategories({
   organizationId: string;
   canWrite: boolean;
 }) {
-  const [rows, setRows] = useState<ExpenseCategory[]>([]);
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState("");
   const path = `/organizations/${organizationId}/expense-categories`;
-  useEffect(() => {
-    let cancelled = false;
-    void createApiRequest<ExpenseCategory[]>(path)
-      .then((data) => {
-        if (!cancelled) setRows(data);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [path]);
+  const {
+    data: rows,
+    setData: setRows,
+    error,
+    setError,
+  } = useApiResource<ExpenseCategory[]>(path, [], 0);
   return (
     <section className="workspace-card settings-section">
       <h2>Expense categories</h2>
