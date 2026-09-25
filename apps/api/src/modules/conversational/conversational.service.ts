@@ -17,6 +17,9 @@ import { inboundUpdate } from "@nomidat/db/schema";
 import { z } from "zod";
 import { SalesService } from "../sales/sales.service";
 
+type AiProvider = "openai" | "gemini";
+type TranscriptionProvider = "deepgram" | "whisper";
+
 type Intent =
   | "create_contact"
   | "record_sale"
@@ -190,14 +193,86 @@ export class ConversationalService {
     }
 
     const media = await adapter.getInboundMedia(inbound.mediaUrl);
-    const form = new FormData();
-    const audioBuffer = media.data.buffer.slice(media.data.byteOffset, media.data.byteOffset + media.data.byteLength) as ArrayBuffer;
-    form.append(
-      "file",
-      new Blob([audioBuffer], { type: media.mimeType ?? inbound.mediaMimeType ?? "audio/ogg" }),
-      "voice.ogg",
+    const audioBuffer = media.data.buffer.slice(
+      media.data.byteOffset,
+      media.data.byteOffset + media.data.byteLength,
+    ) as ArrayBuffer;
+    const mimeType = media.mimeType ?? inbound.mediaMimeType ?? "audio/ogg";
+    const provider = this.env.TRANSCRIPTION_PROVIDER;
+
+    if (!this.isTranscriptionProviderConfigured(provider)) {
+      throw new ServiceUnavailableException(
+        `${provider.toUpperCase()} transcription provider is not configured.`,
+      );
+    }
+
+    try {
+      const transcript = await this.transcribeWithProvider(
+        provider,
+        audioBuffer,
+        mimeType,
+      );
+
+      if (!transcript.trim()) {
+        throw new BadRequestException("No speech was detected in that voice note.");
+      }
+
+      return transcript.trim();
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new ServiceUnavailableException("Voice transcription failed.");
+    }
+  }
+
+  private transcribeWithProvider(
+    provider: TranscriptionProvider,
+    audioBuffer: ArrayBuffer,
+    mimeType: string,
+  ): Promise<string> {
+    return provider === "deepgram"
+      ? this.transcribeWithDeepgram(audioBuffer, mimeType)
+      : this.transcribeWithWhisper(audioBuffer, mimeType);
+  }
+
+  private async transcribeWithDeepgram(
+    audioBuffer: ArrayBuffer,
+    mimeType: string,
+  ): Promise<string> {
+    const response = await fetch(
+      `https://api.deepgram.com/v1/listen?model=${encodeURIComponent(this.env.DEEPGRAM_MODEL)}&smart_format=true`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${this.getDeepgramKey()}`,
+          "Content-Type": mimeType,
+        },
+        body: audioBuffer,
+        signal: AbortSignal.timeout(30_000),
+      },
     );
-    form.append("model", this.env.OPENAI_TRANSCRIPTION_MODEL);
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException("Deepgram transcription failed.");
+    }
+
+    const body = (await response.json()) as {
+      results?: {
+        channels?: Array<{
+          alternatives?: Array<{ transcript?: string }>;
+        }>;
+      };
+    };
+
+    return body.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? "";
+  }
+
+  private async transcribeWithWhisper(
+    audioBuffer: ArrayBuffer,
+    mimeType: string,
+  ): Promise<string> {
+    const form = new FormData();
+    form.append("file", new Blob([audioBuffer], { type: mimeType }), "voice.ogg");
+    form.append("model", this.env.WHISPER_MODEL);
     form.append(
       "prompt",
       "Transcribe faithfully. The speaker may use Nigerian English, Nigerian Pidgin, Yoruba, Igbo, Hausa, or a mixture. Preserve names, numbers, currencies and business terms.",
@@ -205,20 +280,17 @@ export class ConversationalService {
 
     const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
+      headers: { Authorization: `Bearer ${this.getWhisperKey()}` },
       body: form,
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (!response.ok) {
-      throw new ServiceUnavailableException("Voice transcription failed.");
+      throw new ServiceUnavailableException("Whisper transcription failed.");
     }
 
     const body = (await response.json()) as { text?: string };
-    if (!body.text?.trim()) {
-      throw new BadRequestException("No speech was detected in that voice note.");
-    }
-
-    return body.text.trim();
+    return body.text ?? "";
   }
 
   private async understand(
@@ -258,6 +330,37 @@ Rules:
 - "summary" means a general business summary.
 `;
 
+    const provider = this.env.AI_PROVIDER;
+
+    if (!this.isAiProviderConfigured(provider)) {
+      throw new ServiceUnavailableException(
+        `${provider.toUpperCase()} AI provider is not configured.`,
+      );
+    }
+
+    try {
+      const raw = await this.generateAiResponse(provider, system, messages);
+      return this.parseAiAction(raw);
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) throw error;
+      throw new ServiceUnavailableException("AI processing failed.");
+    }
+  }
+
+  private generateAiResponse(
+    provider: AiProvider,
+    system: string,
+    messages: Array<{ role: "assistant" | "user"; content: string }>,
+  ): Promise<string> {
+    return provider === "gemini"
+      ? this.generateGeminiResponse(system, messages)
+      : this.generateOpenAiResponse(system, messages);
+  }
+
+  private async generateOpenAiResponse(
+    system: string,
+    messages: Array<{ role: "assistant" | "user"; content: string }>,
+  ): Promise<string> {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -274,24 +377,96 @@ Rules:
     });
 
     if (!response.ok) {
-      throw new ServiceUnavailableException("AI processing failed.");
+      throw new ServiceUnavailableException("OpenAI AI processing failed.");
     }
 
     const body = (await response.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
     const raw = body.choices?.[0]?.message?.content;
-    if (!raw) throw new ServiceUnavailableException("AI returned no result.");
+    if (!raw) throw new ServiceUnavailableException("OpenAI returned no result.");
+    return raw;
+  }
+
+  private async generateGeminiResponse(
+    system: string,
+    messages: Array<{ role: "assistant" | "user"; content: string }>,
+  ): Promise<string> {
+    const contents = messages.map((item) => ({
+      role: item.role === "assistant" ? "model" : "user",
+      parts: [{ text: item.content }],
+    }));
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.env.GEMINI_MODEL)}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": this.getGeminiKey(),
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(15_000),
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: system }],
+          },
+          contents,
+          generationConfig: {
+            temperature: 0,
+            responseMimeType: "application/json",
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException("Gemini AI processing failed.");
+    }
+
+    const body = (await response.json()) as {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+    };
+    const raw = body.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text ?? "")
+      .join("")
+      .trim();
+
+    if (!raw) throw new ServiceUnavailableException("Gemini returned no result.");
+    return raw;
+  }
+
+  private parseAiAction(raw: string): ParsedAction {
+    const normalized = raw
+      .trim()
+      .replace(/^\`\`\`(?:json)?\s*/i, "")
+      .replace(/\s*\`\`\`$/i, "");
 
     try {
-      const parsed = parsedActionSchema.safeParse(JSON.parse(raw));
-      if (!parsed.success) throw new ServiceUnavailableException("AI returned an invalid action.");
+      const parsed = parsedActionSchema.safeParse(JSON.parse(normalized));
+      if (!parsed.success) {
+        throw new ServiceUnavailableException("AI returned an invalid action.");
+      }
       return parsed.data;
     } catch {
       throw new ServiceUnavailableException("AI returned an invalid action.");
     }
   }
 
+  private isAiProviderConfigured(provider: AiProvider): boolean {
+    return provider === "gemini"
+      ? Boolean(this.env.GEMINI_API_KEY)
+      : Boolean(this.env.OPENAI_API_KEY);
+  }
+
+  private isTranscriptionProviderConfigured(
+    provider: TranscriptionProvider,
+  ): boolean {
+    return provider === "deepgram"
+      ? Boolean(this.env.DEEPGRAM_API_KEY)
+      : Boolean(this.env.WHISPER_API_KEY);
+  }
   private executeAction(action: ParsedAction, organizationId: string): Promise<string> {
     return this.actionHandlers[action.intent](action, organizationId);
   }
@@ -460,5 +635,26 @@ Rules:
       throw new ServiceUnavailableException("OPENAI_API_KEY is not configured.");
     }
     return this.env.OPENAI_API_KEY;
+  }
+
+  private getGeminiKey(): string {
+    if (!this.env.GEMINI_API_KEY) {
+      throw new ServiceUnavailableException("GEMINI_API_KEY is not configured.");
+    }
+    return this.env.GEMINI_API_KEY;
+  }
+
+  private getDeepgramKey(): string {
+    if (!this.env.DEEPGRAM_API_KEY) {
+      throw new ServiceUnavailableException("DEEPGRAM_API_KEY is not configured.");
+    }
+    return this.env.DEEPGRAM_API_KEY;
+  }
+
+  private getWhisperKey(): string {
+    if (!this.env.WHISPER_API_KEY) {
+      throw new ServiceUnavailableException("WHISPER_API_KEY is not configured.");
+    }
+    return this.env.WHISPER_API_KEY;
   }
 }
