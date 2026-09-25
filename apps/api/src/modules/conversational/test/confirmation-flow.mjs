@@ -72,7 +72,7 @@ try {
   );
   await assert.rejects(
     chat.createMessage({ ...actor, role: "staff" }, "Record expense"),
-    /Only an owner/,
+    (error) => error.getStatus?.() === 403,
   );
   const cancelled = await chat.createMessage(actor, "Another expense");
   await chat.updateConfirmation(actor, cancelled.id, false);
