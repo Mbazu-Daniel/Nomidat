@@ -28,13 +28,16 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
 
       - name: Typecheck
         run: pnpm typecheck
