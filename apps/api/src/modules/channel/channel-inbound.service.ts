@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { HttpException, Injectable, Logger } from "@nestjs/common";
 import { ChannelService } from "./channel.service";
 import { ConversationalService } from "../conversational/conversational.service";
 import { ChannelProvider } from "./types";
@@ -30,7 +30,7 @@ export class ChannelInboundService {
         await adapter.createOutboundMessage(
           this.createTextOutbound(
             message,
-            "Linked. Send me a text or voice note describing what you want to record.",
+            "Linked. Send text, a voice note, or a picture captioned expense, sale, invoice or inventory. I’ll show the extracted details here and ask you to confirm before saving.",
           ),
         );
         return { organizationId: resolved.identity.organizationId };
@@ -46,7 +46,15 @@ export class ChannelInboundService {
 
       return { organizationId: resolved.identity.organizationId };
     } catch (error) {
-      const text = error instanceof Error ? error.message : "Could not process that message.";
+      new Logger("ChannelInbound").error({
+        event: "inbound_processing_failed",
+        provider: message.provider,
+        error: error instanceof Error ? error.name : "UnknownError",
+      });
+      const text =
+        error instanceof HttpException && error.getStatus() < 500
+          ? error.message
+          : "Could not process that message. Please try again later.";
       await adapter.createOutboundMessage(this.createTextOutbound(message, text));
       return { organizationId: null };
     }

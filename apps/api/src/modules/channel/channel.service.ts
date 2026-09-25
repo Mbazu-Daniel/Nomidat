@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { and, eq, isNull } from "@nomidat/db";
-import { channelIdentity, channelLinkCode } from "@nomidat/db/schema";
+import { channelIdentity, channelLinkCode, member } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import {
   createChannelLinkCodeValue,
@@ -123,7 +123,8 @@ export class ChannelService {
         .select()
         .from(channelLinkCode)
         .where(and(eq(channelLinkCode.code, input.code), isNull(channelLinkCode.usedAt)))
-        .limit(1);
+        .limit(1)
+        .for("update");
 
       const link = rows[0];
       if (!link) {
@@ -148,11 +149,23 @@ export class ChannelService {
         throw new ConflictException("Channel already linked");
       }
 
+      const [membership] = await tx
+        .select({ id: member.id })
+        .from(member)
+        .where(
+          and(
+            eq(member.organizationId, link.organizationId),
+            eq(member.userId, link.createdByUserId),
+          ),
+        )
+        .limit(1);
+      if (!membership) throw new BadRequestException("Membership no longer exists.");
       const now = input.receivedAt;
       const [identity] = await tx
         .insert(channelIdentity)
         .values({
           organizationId: link.organizationId,
+          userId: link.createdByUserId,
           provider: input.provider,
           externalId: input.externalId,
           displayName: input.displayName,
