@@ -1,5 +1,5 @@
 import type { StaffPermissionsProps } from "./types/staff.type";
-export const permissionAreas = [
+const permissionAreas = [
   ["inventory", "Inventory"],
   ["sales", "Sales & payments"],
   ["expenses", "Expenses"],

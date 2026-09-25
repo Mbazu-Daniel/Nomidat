@@ -1,3 +1,4 @@
+import { recordMetadata as metadata } from "./record-metadata";
 import { useEffect, useState } from "react";
 import { IconPlus, IconSearch, IconUpload } from "@tabler/icons-react";
 import { createApiRequest } from "@/lib/api";
@@ -9,39 +10,6 @@ import { PictureImport } from "./picture-import";
 import { RecordForm } from "./record-form";
 import { RecordDetail } from "./record-detail";
 import type { BusinessRecord, Section } from "./types";
-
-const metadata = {
-  inventory: {
-    title: "Inventory",
-    subtitle: "A place for every product. A clear view of every unit.",
-    action: "Add product",
-    resource: "products",
-  },
-  customers: {
-    title: "Contacts",
-    subtitle: "Build relationships that go beyond the next sale.",
-    action: "Add contact",
-    resource: "contacts",
-  },
-  expenses: {
-    title: "Expenses",
-    subtitle: "Know where your money goes, down to the last naira.",
-    action: "Record expense",
-    resource: "expenses",
-  },
-  sales: {
-    title: "Sales",
-    subtitle: "Every transaction, every payment, all accounted for.",
-    action: "Record sale",
-    resource: "sales",
-  },
-  invoices: {
-    title: "Invoices",
-    subtitle: "Clear invoices. Smoother payments. Better business.",
-    action: "Create invoice",
-    resource: "invoices",
-  },
-} as const;
 
 export function RecordsPanel({
   organizationId,
@@ -84,19 +52,105 @@ export function RecordsPanel({
       cancelled = true;
     };
   }, [organizationId, meta.resource, version, offset]);
-  const filtered = rows.filter(
-    (row) =>
-      `${row.saleReference ?? ""} ${row.saleItems?.map((item) => item.productName).join(" ") ?? ""} ${row.name ?? ""} ${row.customer ?? ""} ${row.description ?? ""} ${row.invoiceNumber ?? ""} ${row.phone ?? ""}`
-        .toLowerCase()
-        .includes(query.toLowerCase()) &&
-      (filter !== "low" || (row.stockQuantity ?? 0) <= (row.lowStockThreshold ?? 0)) &&
-      (filter !== "lead" || row.kind === "lead"),
-  );
+  const filtered = rows.filter((row) => {
+    const text = [
+      row.saleReference,
+      row.saleItems?.map((item) => item.productName).join(" "),
+      row.name,
+      row.customer,
+      row.description,
+      row.invoiceNumber,
+      row.phone,
+    ].join(" ");
+    if (!text.toLowerCase().includes(query.toLowerCase())) return false;
+    if (filter === "low") return (row.stockQuantity ?? 0) <= (row.lowStockThreshold ?? 0);
+    return filter !== "lead" || row.kind === "lead";
+  });
   function saved() {
     setCreating(false);
     setUploading(false);
     setSelected(null);
     setVersion((current) => current + 1);
+  }
+  function renderTable() {
+    if (error)
+      return (
+        <div className="workspace-error" role="alert">
+          {error}
+          <button onClick={() => setVersion((current) => current + 1)}>Try again</button>
+        </div>
+      );
+    if (loading)
+      return (
+        <div className="workspace-empty" role="status">
+          Loading {meta.title.toLowerCase()}…
+        </div>
+      );
+    if (filtered.length === 0)
+      return (
+        <div className="workspace-empty">
+          <span className="workspace-empty-symbol">{query ? "⌕" : "+"}</span>
+          <h3>{query ? "No matching records" : `Your ${meta.title.toLowerCase()} start here`}</h3>
+          <p>
+            {query
+              ? "Try another name or clear your filters."
+              : `Use “${meta.action}” to create your first record.`}
+          </p>
+        </div>
+      );
+    if (section === "invoices" || section === "sales")
+      return (
+        <Register
+          rows={filtered}
+          onSelect={(record) => {
+            setUploading(false);
+            setSelected(record);
+            setCreating(false);
+          }}
+        />
+      );
+    return (
+      <div className="workspace-table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>
+                {section === "inventory"
+                  ? "Product"
+                  : section === "customers"
+                    ? "Contact"
+                    : "Record"}
+              </th>
+              <th>{section === "inventory" ? "Stock on hand" : "Details"}</th>
+              <th>
+                {section === "inventory"
+                  ? "Unit price"
+                  : section === "customers"
+                    ? "Type"
+                    : "Amount"}
+              </th>
+              <th>
+                <span className="sr-only">View details</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row) => (
+              <RecordRow
+                key={row.id}
+                row={row}
+                section={section}
+                onSelect={(record) => {
+                  setUploading(false);
+                  setSelected(record);
+                  setCreating(false);
+                }}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   }
   return (
     <>
@@ -197,76 +251,7 @@ export function RecordsPanel({
             )}
           </div>
         </div>
-        {error ? (
-          <div className="workspace-error" role="alert">
-            {error}
-            <button onClick={() => setVersion((current) => current + 1)}>Try again</button>
-          </div>
-        ) : loading ? (
-          <div className="workspace-empty" role="status">
-            Loading {meta.title.toLowerCase()}…
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="workspace-empty">
-            <span className="workspace-empty-symbol">{query ? "⌕" : "+"}</span>
-            <h3>{query ? "No matching records" : `Your ${meta.title.toLowerCase()} start here`}</h3>
-            <p>
-              {query
-                ? "Try another name or clear your filters."
-                : `Use “${meta.action}” to create your first record.`}
-            </p>
-          </div>
-        ) : section === "invoices" || section === "sales" ? (
-          <Register
-            rows={filtered}
-            onSelect={(record) => {
-              setUploading(false);
-              setSelected(record);
-              setCreating(false);
-            }}
-          />
-        ) : (
-          <div className="workspace-table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>
-                    {section === "inventory"
-                      ? "Product"
-                      : section === "customers"
-                        ? "Contact"
-                        : "Record"}
-                  </th>
-                  <th>{section === "inventory" ? "Stock on hand" : "Details"}</th>
-                  <th>
-                    {section === "inventory"
-                      ? "Unit price"
-                      : section === "customers"
-                        ? "Type"
-                        : "Amount"}
-                  </th>
-                  <th>
-                    <span className="sr-only">View details</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((row) => (
-                  <RecordRow
-                    key={row.id}
-                    row={row}
-                    section={section}
-                    onSelect={(record) => {
-                      setUploading(false);
-                      setSelected(record);
-                      setCreating(false);
-                    }}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {renderTable()}
         <TablePagination
           page={offset / 50 + 1}
           count={filtered.length}

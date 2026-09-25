@@ -1,3 +1,4 @@
+import { createTestClient } from "./api-client.mjs";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
@@ -20,23 +21,7 @@ const auth = createBetterAuth({
     capturedCode = code;
   },
 });
-let cookie = "";
-async function request(path, method = "GET", body, expected = 200) {
-  const response = await fetch(base + path, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: cookie,
-      Origin: "http://localhost:3017",
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  const cookies = response.headers.getSetCookie();
-  if (cookies.length) cookie = cookies.map((v) => v.split(";")[0]).join("; ");
-  const text = await response.text();
-  assert.equal(response.status, expected, method + " " + path + ": " + text);
-  return text ? JSON.parse(text) : null;
-}
+const { session, request } = createTestClient(base, process.env.TEST_WEB_ORIGIN);
 async function phoneRequest(path, body, expected = 200) {
   const response = await auth.handler(
     new Request(new URL("/api/v1/auth/phone-number/" + path, base), {
@@ -48,7 +33,7 @@ async function phoneRequest(path, body, expected = 200) {
   const text = await response.text();
   assert.equal(response.status, expected, path + ": " + text);
   const cookies = response.headers.getSetCookie();
-  if (cookies.length) cookie = cookies.map((v) => v.split(";")[0]).join("; ");
+  if (cookies.length) session.cookie = cookies.map((v) => v.split(";")[0]).join("; ");
   return text ? JSON.parse(text) : null;
 }
 const stamp = Date.now();
@@ -70,7 +55,7 @@ try {
     { name: "Phone test", slug: "phone-" + stamp },
     201,
   );
-  const ownerCookie = cookie;
+  const ownerCookie = session.cookie;
   const path = "/organizations/" + org.id;
   const invite = await request(
     path + "/phone-invitations",
@@ -92,7 +77,7 @@ try {
   const wrongCode = capturedCode === "000000" ? "000001" : "000000";
   await phoneRequest("verify", { phoneNumber, code: wrongCode }, 400);
   await phoneRequest("verify", { phoneNumber, code: capturedCode });
-  const staffCookie = cookie;
+  const staffCookie = session.cookie;
   await phoneRequest("verify", { phoneNumber, code: capturedCode }, 400);
   const inbox = await request("/phone-invitations");
   assert.ok(inbox.some((row) => row.id === invite.id));
@@ -121,12 +106,12 @@ try {
   );
   await request(path + "/payments/paystack/fake/verify", "GET", undefined, 403);
   // Revocation is checked on each request, not cached in the login session.
-  cookie = ownerCookie;
+  session.cookie = ownerCookie;
   const people = await request(path + "/members");
   const staff = people.members.find((row) => row.role === "staff,expenses_writer");
   assert.ok(staff);
   await request(path + "/members/" + staff.id, "PATCH", { role: ["staff", "inventory_writer"] });
-  cookie = staffCookie;
+  session.cookie = staffCookie;
   await request(path + "/expenses", "POST", { description: "Denied now", amountKobo: 5000 }, 403);
   const product = await request(
     path + "/products",
@@ -142,16 +127,16 @@ try {
   );
   assert.equal(product.costKobo, 200);
   // Another phone cannot claim an invitation; cancelled/expired invitations cannot be used.
-  cookie = ownerCookie;
+  session.cookie = ownerCookie;
   const wrongInvite = await request(
     path + "/phone-invitations",
     "POST",
     { phoneNumber: "+2348000000002", roles: ["staff"] },
     201,
   );
-  cookie = staffCookie;
+  session.cookie = staffCookie;
   await request("/phone-invitations/" + wrongInvite.id + "/accept", "POST", {}, 403);
-  cookie = ownerCookie;
+  session.cookie = ownerCookie;
   const cancelled = await request(
     path + "/phone-invitations",
     "POST",
@@ -159,9 +144,9 @@ try {
     201,
   );
   await request(path + "/phone-invitations/" + cancelled.id + "/cancel", "POST", {}, 201);
-  cookie = staffCookie;
+  session.cookie = staffCookie;
   await request("/phone-invitations/" + cancelled.id + "/accept", "POST", {}, 400);
-  cookie = ownerCookie;
+  session.cookie = ownerCookie;
   const expired = await request(
     path + "/phone-invitations",
     "POST",
@@ -172,24 +157,24 @@ try {
     .update(phoneInvitation)
     .set({ expiresAt: new Date(0) })
     .where(eq(phoneInvitation.id, expired.id));
-  cookie = staffCookie;
+  session.cookie = staffCookie;
   await request("/phone-invitations/" + expired.id + "/accept", "POST", {}, 400);
   // A phone invite never overwrites permissions of an existing member.
-  cookie = ownerCookie;
+  session.cookie = ownerCookie;
   const again = await request(
     path + "/phone-invitations",
     "POST",
     { phoneNumber, roles: ["manager"] },
     201,
   );
-  cookie = staffCookie;
+  session.cookie = staffCookie;
   await request("/phone-invitations/" + again.id + "/accept", "POST", {}, 201);
   assert.equal((await request(path + "/access")).role, "staff,inventory_writer");
-  cookie = ownerCookie;
+  session.cookie = ownerCookie;
   await request(path + "/members/" + staff.id, "DELETE");
-  cookie = staffCookie;
+  session.cookie = staffCookie;
   await request(path + "/products", "GET", undefined, 403);
-  cookie = ownerCookie;
+  session.cookie = ownerCookie;
   await request(path, "DELETE");
   await phoneRequest("send-otp", { phoneNumber });
   await db

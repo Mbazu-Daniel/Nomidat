@@ -44,6 +44,61 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
       cancelled = true;
     };
   }, [invitationId, revision]);
+  function renderSignIn() {
+    return (
+      <form
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const fields = new FormData(event.currentTarget);
+          setBusy(true);
+          setError("");
+          try {
+            await createApiRequest(signUp ? "/auth/sign-up/email" : "/auth/sign-in/email", {
+              method: "POST",
+              body: JSON.stringify({
+                email: String(fields.get("email")).trim(),
+                password: fields.get("password"),
+                ...(signUp ? { name: fields.get("name") } : {}),
+              }),
+            });
+            setRevision((value) => value + 1);
+          } catch (reason) {
+            setError((reason as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="staff-invite-auth"
+      >
+        {signUp && (
+          <label>
+            Your name
+            <input name="name" required maxLength={100} autoComplete="name" />
+          </label>
+        )}
+        <label>
+          Email
+          <input name="email" type="email" required autoComplete="email" />
+        </label>
+        <label>
+          Password
+          <input
+            name="password"
+            type="password"
+            required
+            minLength={8}
+            autoComplete={signUp ? "new-password" : "current-password"}
+          />
+        </label>
+        <button className="workspace-primary" disabled={busy}>
+          {busy ? "Please wait…" : signUp ? "Create account" : "Sign in"}
+        </button>
+        <button type="button" disabled={busy} onClick={() => setSignUp(!signUp)}>
+          {signUp ? "Already have an account? Sign in" : "New to Nomidat? Create an account"}
+        </button>
+      </form>
+    );
+  }
   return (
     <main className="invitation-page">
       <Link to="/" className="workspace-brand">
@@ -70,57 +125,7 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
               Use the email address your invitation was sent to. Accepting an email invitation
               requires a verified account.
             </p>
-            <form
-              onSubmit={async (event) => {
-                event.preventDefault();
-                const fields = new FormData(event.currentTarget);
-                setBusy(true);
-                setError("");
-                try {
-                  await createApiRequest(signUp ? "/auth/sign-up/email" : "/auth/sign-in/email", {
-                    method: "POST",
-                    body: JSON.stringify({
-                      email: String(fields.get("email")).trim(),
-                      password: fields.get("password"),
-                      ...(signUp ? { name: fields.get("name") } : {}),
-                    }),
-                  });
-                  setRevision((value) => value + 1);
-                } catch (reason) {
-                  setError((reason as Error).message);
-                } finally {
-                  setBusy(false);
-                }
-              }}
-              className="staff-invite-auth"
-            >
-              {signUp && (
-                <label>
-                  Your name
-                  <input name="name" required maxLength={100} autoComplete="name" />
-                </label>
-              )}
-              <label>
-                Email
-                <input name="email" type="email" required autoComplete="email" />
-              </label>
-              <label>
-                Password
-                <input
-                  name="password"
-                  type="password"
-                  required
-                  minLength={8}
-                  autoComplete={signUp ? "new-password" : "current-password"}
-                />
-              </label>
-              <button className="workspace-primary" disabled={busy}>
-                {busy ? "Please wait…" : signUp ? "Create account" : "Sign in"}
-              </button>
-              <button type="button" disabled={busy} onClick={() => setSignUp(!signUp)}>
-                {signUp ? "Already have an account? Sign in" : "New to Nomidat? Create an account"}
-              </button>
-            </form>
+            {renderSignIn()}
           </>
         ) : (
           !loading &&

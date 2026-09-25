@@ -1,3 +1,4 @@
+import { initialTransactionItems, draftMoney } from "./transaction-data";
 import { TransactionLineItem } from "./transaction-line-item";
 import { useEffect, useState } from "react";
 import { createApiRequest } from "@/lib/api";
@@ -14,29 +15,10 @@ export function TransactionForm({
 }: FormProps) {
   const [contacts, setContacts] = useState<BusinessRecord[]>([]);
   const [products, setProducts] = useState<BusinessRecord[]>([]);
-  const [items, setItems] = useState<LineItem[]>(
-    () =>
-      pictureItems?.map((item, index) => ({
-        key: String(index),
-        productId: "",
-        description: item.name ?? "",
-        quantity: item.quantity,
-        unitPriceKobo: item.unitPriceNaira === null ? null : Math.round(item.unitPriceNaira * 100),
-      })) ?? [{ key: "first", productId: "", description: "", quantity: 1, unitPriceKobo: 0 }],
-  );
-  const [tax, setTax] = useState<number | null>(
-    invoiceDraft
-      ? invoiceDraft.taxNaira === null
-        ? null
-        : Math.round(invoiceDraft.taxNaira * 100)
-      : 0,
-  );
-  const [discount, setDiscount] = useState<number | null>(
-    invoiceDraft
-      ? invoiceDraft.discountNaira === null
-        ? null
-        : Math.round(invoiceDraft.discountNaira * 100)
-      : 0,
+  const [items, setItems] = useState<LineItem[]>(() => initialTransactionItems(pictureItems));
+  const [tax, setTax] = useState<number | null>(() => draftMoney(invoiceDraft?.taxNaira));
+  const [discount, setDiscount] = useState<number | null>(() =>
+    draftMoney(invoiceDraft?.discountNaira),
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -65,6 +47,78 @@ export function TransactionForm({
   }, [organizationId]);
   function updateItem(key: string, patch: Partial<LineItem>) {
     setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
+  }
+  function renderMoneyFields() {
+    return (
+      <div className="workspace-form-grid">
+        <label>
+          Tax (₦)
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={tax === null ? "" : tax / 100}
+            required
+            placeholder="Enter 0 if none"
+            onChange={(event) =>
+              setTax(
+                event.target.value === "" ? null : Math.round(Number(event.target.value) * 100),
+              )
+            }
+          />
+        </label>
+        <label>
+          Discount (₦)
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={discount === null ? "" : discount / 100}
+            required
+            placeholder="Enter 0 if none"
+            onChange={(event) =>
+              setDiscount(
+                event.target.value === "" ? null : Math.round(Number(event.target.value) * 100),
+              )
+            }
+          />
+        </label>
+        {section === "sales" && (
+          <>
+            <label>
+              Amount collected (₦)
+              <input
+                name="paid"
+                type="number"
+                min="0"
+                max={Math.max(0, total / 100)}
+                step="0.01"
+                defaultValue="0"
+                required
+              />
+              <small>Leave at zero for a credit sale.</small>
+            </label>
+            <label>
+              Payment method
+              <select name="method">
+                <option value="cash">Cash</option>
+                <option value="transfer">Bank transfer</option>
+                <option value="card">Card</option>
+              </select>
+            </label>
+          </>
+        )}
+        <label className="workspace-wide">
+          Notes
+          <textarea
+            name="notes"
+            maxLength={2000}
+            rows={2}
+            defaultValue={invoiceDraft?.notes ?? ""}
+          />
+        </label>
+      </div>
+    );
   }
   return (
     <form
@@ -195,74 +249,8 @@ export function TransactionForm({
         >
           + Add another item
         </button>
-        <div className="workspace-form-grid">
-          <label>
-            Tax (₦)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={tax === null ? "" : tax / 100}
-              required
-              placeholder="Enter 0 if none"
-              onChange={(event) =>
-                setTax(
-                  event.target.value === "" ? null : Math.round(Number(event.target.value) * 100),
-                )
-              }
-            />
-          </label>
-          <label>
-            Discount (₦)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={discount === null ? "" : discount / 100}
-              required
-              placeholder="Enter 0 if none"
-              onChange={(event) =>
-                setDiscount(
-                  event.target.value === "" ? null : Math.round(Number(event.target.value) * 100),
-                )
-              }
-            />
-          </label>
-          {section === "sales" && (
-            <>
-              <label>
-                Amount collected (₦)
-                <input
-                  name="paid"
-                  type="number"
-                  min="0"
-                  max={Math.max(0, total / 100)}
-                  step="0.01"
-                  defaultValue="0"
-                  required
-                />
-                <small>Leave at zero for a credit sale.</small>
-              </label>
-              <label>
-                Payment method
-                <select name="method">
-                  <option value="cash">Cash</option>
-                  <option value="transfer">Bank transfer</option>
-                  <option value="card">Card</option>
-                </select>
-              </label>
-            </>
-          )}
-          <label className="workspace-wide">
-            Notes
-            <textarea
-              name="notes"
-              maxLength={2000}
-              rows={2}
-              defaultValue={invoiceDraft?.notes ?? ""}
-            />
-          </label>
-        </div>
+        {renderMoneyFields()}
+
         {invoiceDraft?.totalNaira != null && (
           <p>
             Picture total: <strong>{formatNaira(invoiceDraft.totalNaira)}</strong>

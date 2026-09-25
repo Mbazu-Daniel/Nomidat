@@ -20,7 +20,7 @@ export function RecordRow({
             onSelect(row);
           }}
         >
-          {row.name ?? row.invoiceNumber ?? row.description ?? row.customer ?? "Walk-in sale"}
+          {recordTitle(row)}
         </button>
         <small>
           {new Date(row.spentAt ?? row.createdAt).toLocaleDateString("en-NG", {
@@ -65,4 +65,8 @@ export function RecordRow({
       </td>
     </tr>
   );
+}
+
+function recordTitle(row: BusinessRecord) {
+  return row.name ?? row.invoiceNumber ?? row.description ?? row.customer ?? "Walk-in sale";
 }

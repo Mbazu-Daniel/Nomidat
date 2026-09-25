@@ -1,3 +1,4 @@
+import { createTestClient } from "./api-client.mjs";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { createDb, eq } = require("@nomidat/db");
@@ -9,23 +10,7 @@ import assert from "node:assert/strict";
 const base = process.env.TEST_API_URL;
 if (!base) throw new Error("Set TEST_API_URL to an isolated API with email delivery disabled.");
 const stamp = Date.now();
-let cookie = "";
-async function request(path, method = "GET", body, expected = 200) {
-  const response = await fetch(base + path, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: cookie,
-      Origin: "http://localhost:3017",
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  const cookies = response.headers.getSetCookie();
-  if (cookies.length) cookie = cookies.map((value) => value.split(";")[0]).join("; ");
-  const text = await response.text();
-  assert.equal(response.status, expected, `${method} ${path}: ${text}`);
-  return text ? JSON.parse(text) : undefined;
-}
+const { session, request } = createTestClient(base, process.env.TEST_WEB_ORIGIN);
 const credentials = {
   name: "Staff test owner",
   email: `staff-owner-${stamp}@example.test`,
@@ -38,7 +23,7 @@ const business = await request(
   { name: "Staff test business", slug: `staff-test-${stamp}` },
   201,
 );
-const ownerCookie = cookie;
+const ownerCookie = session.cookie;
 const path = `/organizations/${business.id}`;
 const inviteEmail = `staff-invite-${stamp}@example.test`;
 const invitation = await request(
@@ -48,7 +33,7 @@ const invitation = await request(
   201,
 );
 assert.ok((await request(path + "/invitations")).some((row) => row.id === invitation.id));
-cookie = "";
+session.cookie = "";
 await request(
   "/auth/sign-up/email",
   "POST",
@@ -57,18 +42,22 @@ await request(
 );
 const wrongResponse = await fetch(base + `/invitations/${invitation.id}/accept`, {
   method: "POST",
-  headers: { Cookie: cookie, "Content-Type": "application/json", Origin: "http://localhost:3017" },
+  headers: {
+    Cookie: session.cookie,
+    "Content-Type": "application/json",
+    Origin: "http://localhost:3017",
+  },
   body: "{}",
 });
 assert.ok([400, 403].includes(wrongResponse.status));
-cookie = "";
+session.cookie = "";
 await request(
   "/auth/sign-up/email",
   "POST",
   { ...credentials, name: "Invited staff", email: inviteEmail },
   201,
 );
-const staffCookie = cookie;
+const staffCookie = session.cookie;
 assert.equal((await request("/auth/session")).user.email, inviteEmail);
 await request(`/invitations/${invitation.id}`, "GET", undefined, 403);
 // Model an already verified identity in the isolated database only.
@@ -88,16 +77,16 @@ assert.equal(list.total, 2);
 const staff = list.members.find((row) => row.user.email === inviteEmail);
 assert.ok(staff);
 await request(path + `/members/${staff.id}`, "PATCH", { role: "admin" }, 403);
-cookie = ownerCookie;
+session.cookie = ownerCookie;
 await request(path + `/members/${staff.id}`, "PATCH", { role: "manager" });
-cookie = staffCookie;
+session.cookie = staffCookie;
 assert.equal((await request(path + "/access")).role, "manager");
 await request(path + "/contacts", "POST", { name: "Allowed", kind: "customer" }, 201);
-cookie = ownerCookie;
+session.cookie = ownerCookie;
 await request(path + `/members/${staff.id}`, "DELETE");
-cookie = staffCookie;
+session.cookie = staffCookie;
 await request(path + "/access", "GET", undefined, 403);
-cookie = ownerCookie;
+session.cookie = ownerCookie;
 const cancelled = await request(
   path + "/invitations",
   "POST",
