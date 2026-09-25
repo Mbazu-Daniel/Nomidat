@@ -62,20 +62,21 @@ export class PaymentReconciliationService implements OnModuleInit, OnModuleDestr
         .orderBy(paymentLink.id)
         .limit(100);
       if (!rows.length) return;
-      for (const row of rows) {
-        try {
-          if (row.status === "pending")
-            await this.paystack.verifyPayment(row.organizationId, row.reference);
-          else await this.notifications.createNotification(row.reference);
-        } catch (error) {
-          this.logger.warn({
-            event: "payment_reconciliation_deferred",
-            paymentLinkId: row.id,
-            error: error instanceof Error ? error.name : "UnknownError",
-          });
-        }
-      }
+      for (const row of rows) await this.reconcile(row);
       cursor = rows[rows.length - 1].id;
+    }
+  }
+  private async reconcile(row: typeof paymentLink.$inferSelect) {
+    try {
+      if (row.status === "pending")
+        await this.paystack.verifyPayment(row.organizationId, row.reference);
+      else await this.notifications.createNotification(row.reference);
+    } catch (error) {
+      this.logger.warn({
+        event: "payment_reconciliation_deferred",
+        paymentLinkId: row.id,
+        error: error instanceof Error ? error.name : "UnknownError",
+      });
     }
   }
 }
