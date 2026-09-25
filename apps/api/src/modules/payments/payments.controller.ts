@@ -22,7 +22,7 @@ export class PaymentsController {
     @Body() body: InitializePaystackPaymentDto,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.auth.authorize(extractHeaders(req), organizationId, true, "sales");
     return this.paystack.initializePayment(organizationId, body);
   }
 
@@ -33,7 +33,7 @@ export class PaymentsController {
     @Param("reference") reference: string,
     @Req() req: Request,
   ) {
-    await this.auth.authorize(extractHeaders(req), organizationId);
+    await this.auth.authorize(extractHeaders(req), organizationId, true, "sales");
     return this.paystack.verifyPayment(organizationId, reference);
   }
 
