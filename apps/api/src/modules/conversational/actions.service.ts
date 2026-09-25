@@ -23,24 +23,19 @@ export class ActionsService {
   ): Promise<string> {
     if (action.intent === "create_product" || (action.intent === "record_sale" && action.items))
       return this.pictureActions.execute(action, organizationId, userId);
-    switch (action.intent) {
-      case "create_contact":
-        return this.createContact(action, organizationId);
-      case "record_sale":
-        return this.recordSale(action, organizationId);
-      case "record_expense":
-        return this.recordExpense(action, organizationId);
-      case "check_balance":
-        return this.checkBalance(action, organizationId);
-      case "check_inventory":
-        return this.checkInventory(action, organizationId);
-      case "summary":
-        return this.summary(organizationId);
-      case "unknown":
-        return "Try checking stock, recording a sale or expense, adding a customer, or asking for a summary.";
-      default:
-        return this.extended.executeAction(action, organizationId, userId);
-    }
+    const handlers: Partial<Record<ParsedAction["intent"], () => Promise<string> | string>> = {
+      create_contact: () => this.createContact(action, organizationId),
+      record_sale: () => this.recordSale(action, organizationId),
+      record_expense: () => this.recordExpense(action, organizationId),
+      check_balance: () => this.checkBalance(action, organizationId),
+      check_inventory: () => this.checkInventory(action, organizationId),
+      summary: () => this.summary(organizationId),
+      unknown: () =>
+        "Try checking stock, recording a sale or expense, adding a customer, or asking for a summary.",
+    };
+    return (
+      handlers[action.intent]?.() ?? this.extended.executeAction(action, organizationId, userId)
+    );
   }
 
   private async createContact(action: ParsedAction, organizationId: string): Promise<string> {
