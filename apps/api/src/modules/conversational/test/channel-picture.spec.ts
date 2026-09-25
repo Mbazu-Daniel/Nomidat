@@ -19,18 +19,16 @@ const adapter = {
 };
 describe("channel photo review", () => {
   it("prepares extracted expense facts without executing a business write", async () => {
-    const extract = vi
-      .fn()
-      .mockResolvedValue({
-        expense: {
-          description: "Delivery",
-          amountNaira: 500,
-          date: null,
-          category: null,
-          paymentMethod: "transfer",
-        },
-        warnings: [],
-      });
+    const extract = vi.fn().mockResolvedValue({
+      expense: {
+        description: "Delivery",
+        amountNaira: 500,
+        date: null,
+        category: null,
+        paymentMethod: "transfer",
+      },
+      warnings: [],
+    });
     const result = await new ChannelPictureReader({
       extract,
     } as unknown as PictureImportService).read(inbound, adapter);
@@ -56,16 +54,40 @@ describe("channel photo review", () => {
     expect(getInboundMedia).not.toHaveBeenCalled();
   });
   it("does not invent missing stock or selling price for a product photo", async () => {
-    const extract = vi
-      .fn()
-      .mockResolvedValue({
-        items: [{ name: "Cement", quantity: null, unitPriceNaira: null, unit: "bags" }],
-        warnings: [],
-      });
+    const extract = vi.fn().mockResolvedValue({
+      items: [{ name: "Cement", quantity: null, unitPriceNaira: null, unit: "bags" }],
+      warnings: [],
+    });
     const result = await new ChannelPictureReader({
       extract,
     } as unknown as PictureImportService).read({ ...inbound, text: "inventory" }, adapter);
     expect(result.action.stockQuantity).toBeUndefined();
     expect(result.action.unitPriceNaira).toBeUndefined();
+  });
+});
+
+it("retains extracted invoice amounts and customer for confirmation", async () => {
+  const extract = vi
+    .fn()
+    .mockResolvedValue({
+      items: [{ name: "Rice", quantity: 2, unitPriceNaira: 100, unit: "bags" }],
+      invoice: {
+        customerName: "Ada",
+        dueDate: "2026-10-01",
+        taxNaira: 5,
+        discountNaira: 2,
+        notes: "Delivery",
+      },
+      warnings: [],
+    });
+  const reader = new ChannelPictureReader({ extract } as unknown as PictureImportService);
+  const result = await reader.read({ ...inbound, text: "invoice" }, adapter);
+  expect(result.action).toMatchObject({
+    intent: "create_invoice",
+    customerName: "Ada",
+    date: "2026-10-01",
+    taxNaira: 5,
+    discountNaira: 2,
+    items: [{ description: "Rice", quantity: 2, unitPriceNaira: 100 }],
   });
 });

@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { api, render, change, submit, click, button } from "./render";
 import { SaleDetail } from "../sale-detail";
 import { RecordDetail } from "../record-detail";
+import { InvoiceRegister } from "../invoice-register";
 import { SalesRegister } from "../sales-register";
 import { InvoiceDetailPanel } from "../invoice-detail";
 import type { InvoiceDetail } from "../types";
@@ -150,4 +151,23 @@ describe("payments and customer records", () => {
     expect(ui.textContent).toContain("Delivery failed");
     expect(ui.textContent).not.toContain("Invoice delivered.");
   });
+});
+
+it("shows invoice terms and opens the selected customer invoice", async () => {
+  const onSelect = vi.fn();
+  const row = {
+    id: "invoice",
+    createdAt: "2026-09-24",
+    invoiceNumber: "INV-7",
+    customer: "Ada",
+    totalKobo: 12345,
+    dueDate: "2026-10-01",
+    status: "sent",
+  };
+  const ui = await render(InvoiceRegister, { rows: [row], onSelect });
+  expect(ui.textContent).toContain("Ada");
+  expect(ui.textContent).toContain("sent");
+  expect(ui.textContent).toContain("123.45");
+  await click(ui.querySelector('[aria-label="Open invoice INV-7"]'));
+  expect(onSelect).toHaveBeenCalledWith(row);
 });

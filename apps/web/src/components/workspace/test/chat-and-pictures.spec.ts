@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { act } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { api, render, change, click, button, submit } from "./render";
 import { ChatPanel } from "../chat-panel";
@@ -153,4 +154,21 @@ describe("chat and picture safeguards", () => {
     expect(ui.textContent).toContain("/start TESTCODE");
     expect(api).toHaveBeenCalledWith("/organizations/shop/channels/link-codes", { method: "POST" });
   });
+});
+
+it("requires a purpose and review before a chat attachment can create records", async () => {
+  api.mockResolvedValue([]);
+  const ui = await render(ChatPanel, { organizationId: "shop", canWrite: true });
+  const input = ui.querySelector<HTMLInputElement>('[aria-label="Attach a picture"]')!;
+  Object.defineProperty(input, "files", {
+    value: [new File(["picture"], "receipt.png", { type: "image/png" })],
+    configurable: true,
+  });
+  await act(async () => {
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(ui.textContent).toContain("What would you like to do with this picture?");
+  expect(api.mock.calls.every((call) => !call[1])).toBe(true);
+  await click(ui.querySelector('[aria-label="Remove attached picture"]'));
+  expect(ui.querySelector('[aria-label="Attached picture"]')).toBeNull();
 });

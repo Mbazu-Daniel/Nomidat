@@ -1,28 +1,15 @@
-import { useEffect, useState } from "react";
+import { useApiResource } from "@/lib/use-api-resource";
+import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
 import { StaffPermissions } from "./staff-permissions";
 import type { PhoneInvitation } from "./types/staff.type";
 export function PhoneStaff({ organizationId }: { organizationId: string }) {
   const path = `/organizations/${organizationId}/phone-invitations`;
-  const [rows, setRows] = useState<PhoneInvitation[]>([]);
   const [role, setRole] = useState("staff");
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  useEffect(() => {
-    let cancelled = false;
-    void createApiRequest<PhoneInvitation[]>(path)
-      .then((data) => {
-        if (!cancelled) setRows(data);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [path, revision]);
+  const { data: rows, error, setError } = useApiResource<PhoneInvitation[]>(path, [], revision);
   return (
     <details className="staff-role-guide">
       <summary>Invite staff by phone number</summary>

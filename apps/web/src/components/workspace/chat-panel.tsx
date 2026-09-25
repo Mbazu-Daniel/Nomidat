@@ -1,3 +1,4 @@
+import { useApiResource } from "@/lib/use-api-resource";
 import { ChatComposer } from "./chat-composer";
 import { useVoiceNote } from "./use-voice-note";
 import { useEffect, useRef, useState } from "react";
@@ -5,18 +6,22 @@ import { IconSparkles } from "@tabler/icons-react";
 import { createApiRequest } from "@/lib/api";
 import { ChatPicture } from "./chat-picture";
 import { getPictureFileError } from "./picture-file";
-import type { ChatPanelProps } from "./types/chat-picture.type";
+import type { ChatPanelProps, ChatHistoryProps } from "./types/chat-picture.type";
 import type { ChatMessage } from "./types";
 
 export function ChatPanel({ organizationId, canWrite }: ChatPanelProps) {
   const [attachment, setAttachment] = useState<File | null>(null);
   const attachmentInput = useRef<HTMLInputElement | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const mounted = useRef(true);
   const path = `/organizations/${organizationId}/chat`;
+  const {
+    data: messages,
+    setData: setMessages,
+    error,
+    setError,
+  } = useApiResource<ChatMessage[]>(path, []);
   const { recording, startRecording, stopRecording } = useVoiceNote({
     path,
     setText,
@@ -25,16 +30,7 @@ export function ChatPanel({ organizationId, canWrite }: ChatPanelProps) {
   });
   useEffect(() => {
     mounted.current = true;
-    let cancelled = false;
-    void createApiRequest<ChatMessage[]>(path)
-      .then((rows) => {
-        if (!cancelled) setMessages(rows);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
     return () => {
-      cancelled = true;
       mounted.current = false;
     };
   }, [path]);
@@ -57,64 +53,6 @@ export function ChatPanel({ organizationId, canWrite }: ChatPanelProps) {
       if (mounted.current) setBusy(false);
     }
   }
-  function renderHistory() {
-    return (
-      <div className="workspace-chat-messages" role="log" aria-live="polite">
-        {messages.length === 0 && (
-          <div className="workspace-chat-welcome">
-            <span className="workspace-icon">
-              <IconSparkles size={28} />
-            </span>
-            <h2>What’s happening in your business?</h2>
-            <p>I can help with stock checks, customer balances, sales and expenses.</p>
-            <div>
-              {[
-                "Show my business summary",
-                "How many bags of cement are in stock?",
-                "Record a ₦5,000 transport expense",
-              ].map((prompt) => (
-                <button
-                  className="workspace-secondary"
-                  key={prompt}
-                  onClick={() => setText(prompt)}
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {messages.map((item) => (
-          <article key={item.id} className={`workspace-chat-message ${item.role}`}>
-            <small>{item.role === "user" ? "You" : "Nomidat"}</small>
-            <p>{item.content.replace(/ Reply CONFIRM [\s\S]*$/, "")}</p>
-            {item.toolName === "pending_confirmation" && (
-              <div className="workspace-actions">
-                <button
-                  className="workspace-primary"
-                  disabled={busy}
-                  onClick={() => void send({ messageId: item.id, confirm: true })}
-                >
-                  Confirm action
-                </button>
-                <button
-                  className="workspace-secondary"
-                  disabled={busy}
-                  onClick={() => void send({ messageId: item.id, confirm: false })}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-            {["confirmed", "cancelled", "failed"].includes(item.toolName ?? "") && (
-              <span className="workspace-badge">{item.toolName}</span>
-            )}
-          </article>
-        ))}
-        {busy && <p role="status">Nomidat is working…</p>}
-      </div>
-    );
-  }
   return (
     <>
       <div className="workspace-heading">
@@ -125,7 +63,7 @@ export function ChatPanel({ organizationId, canWrite }: ChatPanelProps) {
         <span className="workspace-badge">Private to you and this business</span>
       </div>
       <section className="workspace-card workspace-chat">
-        {renderHistory()}
+        <ChatHistory messages={messages} busy={busy} setText={setText} send={send} />
 
         {error && (
           <p role="alert" className="workspace-error">
@@ -174,5 +112,60 @@ export function ChatPanel({ organizationId, canWrite }: ChatPanelProps) {
         </p>
       </section>
     </>
+  );
+}
+
+function ChatHistory({ messages, busy, setText, send }: ChatHistoryProps) {
+  return (
+    <div className="workspace-chat-messages" role="log" aria-live="polite">
+      {messages.length === 0 && (
+        <div className="workspace-chat-welcome">
+          <span className="workspace-icon">
+            <IconSparkles size={28} />
+          </span>
+          <h2>What’s happening in your business?</h2>
+          <p>I can help with stock checks, customer balances, sales and expenses.</p>
+          <div>
+            {[
+              "Show my business summary",
+              "How many bags of cement are in stock?",
+              "Record a ₦5,000 transport expense",
+            ].map((prompt) => (
+              <button className="workspace-secondary" key={prompt} onClick={() => setText(prompt)}>
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {messages.map((item) => (
+        <article key={item.id} className={`workspace-chat-message ${item.role}`}>
+          <small>{item.role === "user" ? "You" : "Nomidat"}</small>
+          <p>{item.content.replace(/ Reply CONFIRM [\s\S]*$/, "")}</p>
+          {item.toolName === "pending_confirmation" && (
+            <div className="workspace-actions">
+              <button
+                className="workspace-primary"
+                disabled={busy}
+                onClick={() => void send({ messageId: item.id, confirm: true })}
+              >
+                Confirm action
+              </button>
+              <button
+                className="workspace-secondary"
+                disabled={busy}
+                onClick={() => void send({ messageId: item.id, confirm: false })}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          {["confirmed", "cancelled", "failed"].includes(item.toolName ?? "") && (
+            <span className="workspace-badge">{item.toolName}</span>
+          )}
+        </article>
+      ))}
+      {busy && <p role="status">Nomidat is working…</p>}
+    </div>
   );
 }

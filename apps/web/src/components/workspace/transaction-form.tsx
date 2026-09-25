@@ -90,14 +90,7 @@ export function TransactionForm({
         }
       }}
     >
-      <h2>{section === "sales" ? "Record a sale" : "Create an invoice"}</h2>
-      {pictureItems && (
-        <p>
-          {section === "invoices"
-            ? "Review the customer, line items, due date, tax and discount. This creates a new invoice with a new number and today’s issue date; it does not record a payment."
-            : "Review every line, choose inventory products to deduct stock, and check customer, tax, discount and payment. Custom items do not change stock. This sale will use today’s date."}
-        </p>
-      )}
+      <TransactionHeading section={section} pictureItems={pictureItems} />
       <fieldset disabled={saving}>
         <TransactionCustomerFields
           contacts={contacts}
@@ -171,9 +164,32 @@ export function TransactionForm({
           Cancel
         </button>
         <button className="workspace-primary" disabled={saving}>
-          {saving ? "Saving…" : "Save " + (section === "sales" ? "sale" : "invoice")}
+          {saving ? "Saving…" : submitLabels[section]}
         </button>
       </div>
     </form>
   );
 }
+
+function TransactionHeading({
+  section,
+  pictureItems,
+}: Pick<FormProps, "section" | "pictureItems">) {
+  return (
+    <>
+      <h2>{section === "sales" ? "Record a sale" : "Create an invoice"}</h2>
+      {pictureItems && (
+        <p>
+          {section === "invoices"
+            ? "Review the customer, line items, due date, tax and discount. This creates a new invoice with a new number and today’s issue date; it does not record a payment."
+            : "Review every line, choose inventory products to deduct stock, and check customer, tax, discount and payment. Custom items do not change stock. This sale will use today’s date."}
+        </p>
+      )}
+    </>
+  );
+}
+
+const submitLabels: Partial<Record<FormProps["section"], string>> = {
+  sales: "Save sale",
+  invoices: "Save invoice",
+};

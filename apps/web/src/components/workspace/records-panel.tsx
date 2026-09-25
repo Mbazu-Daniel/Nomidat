@@ -1,4 +1,4 @@
-import type { RecordTableProps } from "./types/workspace.type";
+import type { RecordTableProps, RecordToolbarProps } from "./types/workspace.type";
 import { matchesRecord } from "./record-search";
 import { useApiResource } from "@/lib/use-api-resource";
 import { recordMetadata as metadata } from "./record-metadata";
@@ -119,36 +119,14 @@ export function RecordsPanel({
         />
       )}
       <section className="workspace-card workspace-records">
-        <div className="workspace-table-toolbar">
-          <div>
-            <h2>
-              All {meta.title.toLowerCase()} <span className="workspace-count">{rows.length}</span>
-            </h2>
-          </div>
-          <div className="workspace-table-filters">
-            <label className="workspace-search">
-              <IconSearch size={17} />
-              <input
-                aria-label={`Search ${meta.title.toLowerCase()}`}
-                placeholder="Search this page…"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </label>
-            {(section === "inventory" || section === "customers") && (
-              <select
-                aria-label="Filter records"
-                value={filter}
-                onChange={(event) => setFilter(event.target.value)}
-              >
-                <option value="all">All records</option>
-                <option value={section === "inventory" ? "low" : "lead"}>
-                  {section === "inventory" ? "Low stock" : "Leads"}
-                </option>
-              </select>
-            )}
-          </div>
-        </div>
+        <RecordToolbar
+          section={section}
+          count={rows.length}
+          query={query}
+          filter={filter}
+          setQuery={setQuery}
+          setFilter={setFilter}
+        />
         <RecordTable
           section={section}
           rows={filtered}
@@ -247,4 +225,40 @@ function RecordTable({ section, rows, query, error, loading, retry, onSelect }: 
     );
   }
   return renderTable();
+}
+
+function RecordToolbar({ section, count, query, filter, setQuery, setFilter }: RecordToolbarProps) {
+  const meta = metadata[section];
+  return (
+    <div className="workspace-table-toolbar">
+      <div>
+        <h2>
+          All {meta.title.toLowerCase()} <span className="workspace-count">{count}</span>
+        </h2>
+      </div>
+      <div className="workspace-table-filters">
+        <label className="workspace-search">
+          <IconSearch size={17} />
+          <input
+            aria-label={`Search ${meta.title.toLowerCase()}`}
+            placeholder="Search this page…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        {(section === "inventory" || section === "customers") && (
+          <select
+            aria-label="Filter records"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          >
+            <option value="all">All records</option>
+            <option value={section === "inventory" ? "low" : "lead"}>
+              {section === "inventory" ? "Low stock" : "Leads"}
+            </option>
+          </select>
+        )}
+      </div>
+    </div>
+  );
 }

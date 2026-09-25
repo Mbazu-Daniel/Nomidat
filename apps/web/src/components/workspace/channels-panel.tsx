@@ -1,3 +1,4 @@
+import type { ChannelLinkInstructionsProps } from "./types/workspace.type";
 import { useApiResource } from "@/lib/use-api-resource";
 import { useEffect, useState } from "react";
 import {
@@ -37,7 +38,7 @@ export function ChannelsPanel({ organizationId, canWrite }: ChannelsPanelProps) 
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [linkCode]);
-  const expired = linkCode !== null && now >= new Date(linkCode.expiresAt).getTime();
+  const expired = hasExpired(linkCode, now);
   async function createCode(selectedProvider: string) {
     setBusy(true);
     setError("");
@@ -78,79 +79,6 @@ export function ChannelsPanel({ organizationId, canWrite }: ChannelsPanelProps) 
     } catch {
       setError("Could not copy automatically. Select and copy the code below.");
     }
-  }
-  function renderLinkInstructions() {
-    if (!linkCode) return null;
-    return (
-      <section
-        className="workspace-card channel-link-panel"
-        aria-label="Channel linking instructions"
-      >
-        <div className="channel-link-heading">
-          <div>
-            <p className="workspace-eyebrow">ONE MORE STEP</p>
-            <h2>Finish connecting {provider === "telegram" ? "Telegram" : "WhatsApp"}</h2>
-          </div>
-          <button className="workspace-secondary" onClick={() => setLinkCode(null)}>
-            Dismiss
-          </button>
-        </div>
-        <div className="channel-link-content">
-          <div>
-            <span className="channel-code-label">YOUR ONE-TIME CODE</span>
-            <div className="channel-code">
-              <code>{linkCode.code}</code>
-              <button
-                className="workspace-secondary"
-                onClick={() => void copyCode()}
-                disabled={expired}
-              >
-                <IconCopy size={16} />
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-            <p className="channel-expiry" role="status">
-              {expired
-                ? "This code has expired. Generate a new code to continue."
-                : `Expires at ${new Date(linkCode.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Use it once and keep it private.`}
-            </p>
-            {expired && (
-              <button
-                className="workspace-primary"
-                disabled={busy}
-                onClick={() => void createCode(provider)}
-              >
-                Generate new code
-              </button>
-            )}
-          </div>
-          <ol className="channel-steps">
-            <li>
-              <span>1</span>Open{" "}
-              {provider === "telegram"
-                ? "your Nomidat Telegram bot in a private chat"
-                : "your business’s Nomidat WhatsApp chat"}
-              .
-            </li>
-            <li>
-              <span>2</span>
-              <div>
-                Send{" "}
-                {provider === "telegram" ? (
-                  <code>/start {linkCode.code}</code>
-                ) : (
-                  <code>{linkCode.code}</code>
-                )}{" "}
-                as a message.
-              </div>
-            </li>
-            <li>
-              <span>3</span>Wait for the confirmation, then refresh the linked accounts below.
-            </li>
-          </ol>
-        </div>
-      </section>
-    );
   }
   function renderLinkedAccounts() {
     return (
@@ -229,7 +157,18 @@ export function ChannelsPanel({ organizationId, canWrite }: ChannelsPanelProps) 
         busy={busy}
         onConnect={createCode}
       />
-      {linkCode && renderLinkInstructions()}
+      {linkCode && (
+        <ChannelLinkInstructions
+          linkCode={linkCode}
+          provider={provider}
+          expired={expired}
+          busy={busy}
+          copied={copied}
+          dismiss={() => setLinkCode(null)}
+          copyCode={copyCode}
+          createCode={createCode}
+        />
+      )}
       <section className="workspace-card channels-accounts">
         <header>
           <div>
@@ -270,4 +209,90 @@ export function ChannelsPanel({ organizationId, canWrite }: ChannelsPanelProps) 
       </p>
     </>
   );
+}
+
+function ChannelLinkInstructions({
+  linkCode,
+  provider,
+  expired,
+  busy,
+  copied,
+  dismiss,
+  copyCode,
+  createCode,
+}: ChannelLinkInstructionsProps) {
+  return (
+    <section
+      className="workspace-card channel-link-panel"
+      aria-label="Channel linking instructions"
+    >
+      <div className="channel-link-heading">
+        <div>
+          <p className="workspace-eyebrow">ONE MORE STEP</p>
+          <h2>Finish connecting {provider === "telegram" ? "Telegram" : "WhatsApp"}</h2>
+        </div>
+        <button className="workspace-secondary" onClick={dismiss}>
+          Dismiss
+        </button>
+      </div>
+      <div className="channel-link-content">
+        <div>
+          <span className="channel-code-label">YOUR ONE-TIME CODE</span>
+          <div className="channel-code">
+            <code>{linkCode.code}</code>
+            <button
+              className="workspace-secondary"
+              onClick={() => void copyCode()}
+              disabled={expired}
+            >
+              <IconCopy size={16} />
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p className="channel-expiry" role="status">
+            {expired
+              ? "This code has expired. Generate a new code to continue."
+              : `Expires at ${new Date(linkCode.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Use it once and keep it private.`}
+          </p>
+          {expired && (
+            <button
+              className="workspace-primary"
+              disabled={busy}
+              onClick={() => void createCode(provider)}
+            >
+              Generate new code
+            </button>
+          )}
+        </div>
+        <ol className="channel-steps">
+          <li>
+            <span>1</span>Open{" "}
+            {provider === "telegram"
+              ? "your Nomidat Telegram bot in a private chat"
+              : "your business’s Nomidat WhatsApp chat"}
+            .
+          </li>
+          <li>
+            <span>2</span>
+            <div>
+              Send{" "}
+              {provider === "telegram" ? (
+                <code>/start {linkCode.code}</code>
+              ) : (
+                <code>{linkCode.code}</code>
+              )}{" "}
+              as a message.
+            </div>
+          </li>
+          <li>
+            <span>3</span>Wait for the confirmation, then refresh the linked accounts below.
+          </li>
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+function hasExpired(code: ChannelLinkCode | null, now: number) {
+  return code !== null && now >= new Date(code.expiresAt).getTime();
 }

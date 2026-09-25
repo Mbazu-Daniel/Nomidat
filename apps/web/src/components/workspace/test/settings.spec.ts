@@ -101,3 +101,26 @@ describe("settings", () => {
     expect(api.mock.calls.every(([path]) => path.includes("/organizations/shop/"))).toBe(true);
   });
 });
+
+it("switches between business access, verification and category settings", async () => {
+  api.mockImplementation(async (path) =>
+    path.endsWith("/access")
+      ? { role: "owner" }
+      : path.endsWith("/expense-categories")
+        ? []
+        : profile,
+  );
+  const ui = await render(SettingsPanel, { organizationId: "shop" });
+  for (const [option, expected] of [
+    ["Business access", "Delete business"],
+    ["Verify payment", "Payment reference"],
+    ["Expense categories", "Add category"],
+  ]) {
+    await click(ui.querySelector('[role="combobox"]'));
+    const item = [...document.querySelectorAll('[role="option"]')].find((node) =>
+      node.textContent?.includes(option),
+    );
+    await click(item!);
+    expect(ui.textContent).toContain(expected);
+  }
+});

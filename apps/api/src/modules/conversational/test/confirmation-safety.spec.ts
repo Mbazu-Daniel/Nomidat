@@ -1,3 +1,4 @@
+import { ChannelProvider } from "../../channel/types";
 import { describe, it, expect, vi } from "vitest";
 import { createDbStub } from "../../../common/db/test/db.stub";
 import { ConversationalService } from "../conversational.service";
@@ -74,4 +75,39 @@ describe("chat confirmations", () => {
     expect(executeAction).not.toHaveBeenCalled();
     expect(updates).toHaveBeenCalledWith({ toolName: "cancelled" });
   });
+});
+
+it("keeps inbound text scoped to the linked member and blocks removed members", async () => {
+  const inbound = {
+    provider: ChannelProvider.Telegram,
+    externalId: "sender",
+    kind: "text" as const,
+    text: "  stock  ",
+    receivedAt: new Date(),
+  };
+  const adapter = { provider: ChannelProvider.Telegram, createOutboundMessage: vi.fn() };
+  const { service } = setup([[{ userId: "user", role: "staff" }]]);
+  vi.spyOn(service, "getConversation").mockResolvedValue({ id: "thread" } as Awaited<
+    ReturnType<ConversationalService["getConversation"]>
+  >);
+  const create = vi
+    .spyOn(service, "createMessage")
+    .mockResolvedValue({
+      id: "reply",
+      role: "assistant",
+      content: "2 bags",
+      toolName: "check_inventory",
+    });
+  await expect(service.processInbound(inbound, "shop", "identity", adapter)).resolves.toBe(
+    "2 bags",
+  );
+  expect(create).toHaveBeenCalledWith(
+    { organizationId: "shop", userId: "user", role: "staff" },
+    "stock",
+    "thread",
+  );
+  const removed = setup([[]]);
+  await expect(
+    removed.service.processInbound(inbound, "shop", "identity", adapter),
+  ).rejects.toThrow("Active membership is required");
 });
