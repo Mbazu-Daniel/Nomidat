@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { api, render, change, click, button, submit } from "./render";
 import { PictureImport } from "../picture-import";
 import { ReportsPanel } from "../reports-panel";
+import { WorkspacePage } from "../workspace-page";
 import { RecordsPanel } from "../records-panel";
 import { ProductEditor } from "../product-editor";
 import { ExpenseEditor } from "../expense-editor";
@@ -159,4 +160,27 @@ describe("workspace pages", () => {
     expect(ui.textContent).toContain("Could not load your reports");
     expect(api.mock.calls.length).toBe(6);
     expect(api.mock.calls.every(([path]) => path.includes("/organizations/shop/"))).toBe(true);
+  });
+
+  it("selects a saved business and keeps Settings last in the sidebar", async () => {
+    sessionStorage.setItem("nomidat.organization", "second");
+    api.mockImplementation(async (path) =>
+      path === "/organizations"
+        ? [
+            { id: "first", name: "First" },
+            { id: "second", name: "Second" },
+          ]
+        : path.endsWith("/access")
+          ? { role: "staff" }
+          : [],
+    );
+    const ui = await render(WorkspacePage, { section: "inventory" });
+    expect(ui.querySelector<HTMLSelectElement>('[aria-label="Selected business"]')?.value).toBe(
+      "second",
+    );
+    expect(ui.querySelector("nav")?.lastElementChild?.textContent).toContain("Settings");
+    expect(api).toHaveBeenCalledWith("/organizations/second/access");
+    await change(ui.querySelector('[aria-label="Selected business"]'), "__create__");
+    expect(ui.textContent).toContain("Make it your business");
+    expect(ui.querySelector("tbody")).toBeNull();
   });
