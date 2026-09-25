@@ -5,6 +5,8 @@ export const user = pgTable("user", {
   id: uuid("id")
     .$defaultFn(() => generateId())
     .primaryKey(),
+  phoneNumber: text("phone_number").unique(),
+  phoneNumberVerified: boolean("phone_number_verified").notNull().default(false),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
