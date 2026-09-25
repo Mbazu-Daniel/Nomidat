@@ -5,7 +5,7 @@ import { createApiRequest } from "./api";
 export function useApiResource<T>(path: string | null, initial: T, revision = 0) {
   return useAsyncResource(createApiRequest<T>, path, initial, revision);
 }
-function useAsyncResource<T>(
+export function useAsyncResource<T>(
   load: (key: string) => Promise<T>,
   key: string | null,
   initial: T,
