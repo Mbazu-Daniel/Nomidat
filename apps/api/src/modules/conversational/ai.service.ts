@@ -1,3 +1,5 @@
+import { SpeechTranscriber } from "./speech-transcriber";
+import { generateGeminiResponse } from "./gemini-response";
 import {
   BadRequestException,
   Inject,
@@ -8,7 +10,7 @@ import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
 import type { InboundMessage, ChannelAdapter } from "../channel/types";
 import { parsedActionSchema } from "./action-schema";
-import type { ParsedAction } from "./types";
+import type { AiMessage, ParsedAction } from "./types";
 
 @Injectable()
 export class AiService {
@@ -28,65 +30,7 @@ export class AiService {
   async createTranscript(data: Uint8Array, mimeType: string): Promise<string> {
     if (data.byteLength > 10 * 1024 * 1024)
       throw new BadRequestException("Voice notes must be at most 10 MB.");
-    const form = new FormData();
-    const audioBuffer = data.buffer.slice(
-      data.byteOffset,
-      data.byteOffset + data.byteLength,
-    ) as ArrayBuffer;
-    form.append(
-      "file",
-      new Blob([audioBuffer], { type: mimeType }),
-      "voice." + (mimeType.includes("mp4") ? "mp4" : mimeType.includes("webm") ? "webm" : "ogg"),
-    );
-    form.append("model", this.env.OPENAI_TRANSCRIPTION_MODEL);
-    form.append(
-      "prompt",
-      "Transcribe faithfully. The speaker may use Nigerian English, Nigerian Pidgin, Yoruba, Igbo, Hausa, or a mixture. Preserve names, numbers, currencies and business terms.",
-    );
-
-    try {
-      const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${this.getOpenAiKey()}` },
-        body: form,
-        signal: AbortSignal.timeout(30_000),
-      });
-
-      if (!response.ok) {
-        throw new ServiceUnavailableException("Voice transcription failed.");
-      }
-
-      const body = (await response.json()) as { text?: string };
-      if (!body.text?.trim()) {
-        throw new BadRequestException("No speech was detected in that voice note.");
-      }
-
-      return body.text.trim();
-    } catch (error) {
-      if (!this.env.DEEPGRAM_API_KEY) throw error;
-      const fallback = await fetch(
-        "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Token ${this.env.DEEPGRAM_API_KEY}`,
-            "Content-Type": mimeType,
-          },
-          body: new Blob([audioBuffer], { type: mimeType }),
-          signal: AbortSignal.timeout(30_000),
-        },
-      );
-      if (!fallback.ok)
-        throw new ServiceUnavailableException(
-          "Both transcription providers failed. Please try again.",
-        );
-      const result = (await fallback.json()) as {
-        results?: { channels?: { alternatives?: { transcript?: string }[] }[] };
-      };
-      const transcript = result.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim();
-      if (!transcript) throw new BadRequestException("No speech was detected.");
-      return transcript;
-    }
+    return new SpeechTranscriber(this.env).transcribe(data, mimeType);
   }
 
   async understand(
@@ -137,29 +81,10 @@ Rules:
 `;
 
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.getOpenAiKey()}`,
-          "Content-Type": "application/json",
-        },
-        signal: AbortSignal.timeout(15_000),
-        body: JSON.stringify({
-          model: this.env.OPENAI_MODEL,
-          response_format: { type: "json_object" },
-          messages: [{ role: "system", content: system }, ...messages],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new ServiceUnavailableException("AI processing failed.");
-      }
-
-      const body = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const raw = body.choices?.[0]?.message?.content;
-      if (!raw) throw new ServiceUnavailableException("AI returned no result.");
+      const raw =
+        this.env.AI_PROVIDER === "gemini"
+          ? await generateGeminiResponse(this.env, system, messages)
+          : await this.generateOpenAiResponse(system, messages);
 
       try {
         const parsed = parsedActionSchema.safeParse(JSON.parse(raw));
@@ -196,6 +121,34 @@ Rules:
         throw new ServiceUnavailableException("AI returned an invalid action.");
       }
     }
+  }
+
+  private async generateOpenAiResponse(system: string, messages: AiMessage[]) {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.getOpenAiKey()}`,
+        "Content-Type": "application/json",
+      },
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({
+        model: this.env.OPENAI_MODEL,
+        response_format: { type: "json_object" },
+        messages: [{ role: "system", content: system }, ...messages],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException("AI processing failed.");
+    }
+
+    const body = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const raw = body.choices?.[0]?.message?.content;
+    if (!raw) throw new ServiceUnavailableException("AI returned no result.");
+
+    return raw;
   }
 
   private getOpenAiKey(): string {

@@ -4,7 +4,7 @@ A business management platform tailored for small and medium-sized enterprises, 
 
 ## Project Overview
 
-Nomidat helps business owners and teams manage their daily operations by tracking sales, inventory, and expenses using natural language. Users can record transactions and check balances simply by sending a text or voice note through familiar messaging apps. The system understands the context, updates stock, records payments, and generates invoices automatically, saving teams from tedious manual data entry.
+Nomidat helps business owners and teams manage their daily operations by tracking sales, inventory, and expenses using natural language. Users can record transactions and check balances simply by sending a text or voice note through familiar messaging apps. The system understands the context, updates stock, records payments, and generates invoices automatically, saving teams from tedious manual data entry. Conversational AI can use OpenAI or Gemini, while voice transcription can use Deepgram or Whisper.
 
 ## System Architecture
 
@@ -14,7 +14,7 @@ flowchart LR
   Messaging["WhatsApp and Telegram"]
   Server["API Server"]
   Database[("PostgreSQL")]
-  AI["OpenAI Services"]
+  AI["AI Services (OpenAI / Gemini)"]
 
   WebClient --> Server
   Messaging --> Server
@@ -96,7 +96,7 @@ pnpm install
 cp .env.example .env
 ```
 
-Update the `.env` file with your database credentials, OpenAI keys, and messaging platform tokens.
+Update the `.env` file with your database credentials, selected AI/transcription provider keys, and messaging platform tokens.
 
 1. Start the required database services:
 
