@@ -18,7 +18,10 @@
     "ci:local": "act -P ubuntu-latest=catthehacker/ubuntu:act-22.04 --pull=false --bind -v",
     "prepare": "husky",
     "test": "vitest run",
-    "test:integration": "node apps/api/test/business-flow.mjs && node apps/api/src/modules/conversational/test/confirmation-flow.mjs"
+    "test:integration": "node apps/api/test/business-flow.mjs && node apps/api/src/modules/conversational/test/confirmation-flow.mjs",
+    "test:staff": "node apps/api/test/staff-flow.mjs",
+    "test:phone": "node apps/api/test/phone-permissions.mjs",
+    "test:workspace": "node apps/api/test/workspace-features.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-istanbul": "^5.0.1",
