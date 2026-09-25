@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+} from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeOrganization } from "../../common/helpers/organization-auth";
@@ -21,7 +32,7 @@ export class ExpensesController {
     @Body() body: CreateExpenseDto,
     @Req() req: Request,
   ) {
-    const session = await authorizeOrganization(this.auth, req, organizationId);
+    const session = await authorizeOrganization(this.auth, req, organizationId, "expenses");
     return this.expenses.create(organizationId, session.userId, body);
   }
 
@@ -32,9 +43,10 @@ export class ExpensesController {
     @Param("organizationId") organizationId: string,
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
+    @Query("offset", new ParseIntPipe({ optional: true })) offset?: number,
   ) {
     await this.authorize(req, organizationId);
-    return this.expenses.list(organizationId, limit);
+    return this.expenses.list(organizationId, limit, offset);
   }
 
   @Get("expenses/:expenseId")
@@ -75,7 +87,7 @@ export class ExpensesController {
   @ApiOperation({ summary: "List expense categories" })
   async listCategories(@Param("organizationId") organizationId: string, @Req() req: Request) {
     await this.authorize(req, organizationId);
-    return this.expenses.listCategories();
+    return this.expenses.listCategories(organizationId);
   }
 
   @Post("expense-categories")
@@ -86,10 +98,10 @@ export class ExpensesController {
     @Req() req: Request,
   ) {
     await this.authorize(req, organizationId);
-    return this.expenses.createCategory(body);
+    return this.expenses.createCategory(organizationId, body);
   }
 
   private authorize(req: Request, organizationId: string) {
-    return authorizeOrganization(this.auth, req, organizationId);
+    return authorizeOrganization(this.auth, req, organizationId, "expenses");
   }
 }

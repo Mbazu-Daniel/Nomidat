@@ -1,9 +1,13 @@
+import { PaymentNotificationService } from "../../payment-notification.service";
 import {
+  Logger,
   BadRequestException,
   Inject,
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
+import { PaymentLedgerService } from "../../payment-ledger.service";
+import { BusinessProfileService } from "../../../business-profile/business-profile.service";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { and, eq, sum } from "@nomidat/db";
@@ -38,21 +42,18 @@ export class PaystackService {
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
+    private readonly profiles: BusinessProfileService,
+    private readonly ledger: PaymentLedgerService,
+    private readonly notifications: PaymentNotificationService,
   ) {}
 
-  async initializePayment(
-    organizationId: string,
-    input: InitializePaystackPaymentDto,
-  ) {
+  async initializePayment(organizationId: string, input: InitializePaystackPaymentDto) {
     const sale = await this.getSale(organizationId, input.orderId);
-    const amountKobo = await this.getOutstandingAmount(
-      organizationId,
-      sale.id,
-      sale.totalKobo,
-    );
+    const amountKobo = await this.getOutstandingAmount(organizationId, sale.id, sale.totalKobo);
 
     const reference = `PAY-${generateId()}`;
     const response = await this.request<PaystackInitializeResponse>(
+      organizationId,
       "/transaction/initialize",
       {
         method: "POST",
@@ -61,8 +62,7 @@ export class PaystackService {
           amount: amountKobo,
           currency: sale.currency,
           reference,
-          callback_url:
-            input.callbackUrl ?? this.env.PAYSTACK_CALLBACK_URL,
+          callback_url: input.callbackUrl ?? this.env.PAYSTACK_CALLBACK_URL,
           channels: input.channels,
           metadata: JSON.stringify({
             organizationId,
@@ -95,10 +95,11 @@ export class PaystackService {
   }
 
   async verifyPayment(organizationId: string, reference: string) {
-    const link = await this.getPaymentLink(reference);
-    this.assertOrganization(link.organizationId, organizationId);
+    const link = await this.ledger.getPaymentLink(reference);
+    if (link.organizationId !== organizationId) throw new BadRequestException("Payment not found.");
 
     const response = await this.request<PaystackTransaction>(
+      organizationId,
       `/transaction/verify/${encodeURIComponent(reference)}`,
       { method: "GET" },
     );
@@ -108,49 +109,40 @@ export class PaystackService {
   }
 
   async handleWebhook(webhook: PaystackWebhookRequest) {
-    this.verifyWebhookSignature(webhook.signature, webhook.rawBody);
-
     if (!this.isChargeSuccessEvent(webhook.body)) {
       return { received: true };
     }
 
+    const link = await this.ledger.getPaymentLink(webhook.body.data.reference);
+    const secret = await this.profiles.getPaymentKey(link.organizationId);
+    this.verifyWebhookSignature(webhook.signature, webhook.rawBody, secret);
     await this.applyTransaction(webhook.body.data.reference, webhook.body.data);
     return { received: true };
   }
 
   private async getSale(organizationId: string, orderId: string) {
-    const sale = await this.findOrder(
-      this.db,
-      organizationId,
-      orderId,
-    );
+    const [sale] = await this.db
+      .select()
+      .from(order)
+      .where(and(eq(order.organizationId, organizationId), eq(order.id, orderId)))
+      .limit(1);
+    if (!sale) throw new BadRequestException("Sale not found.");
 
     if (sale.status === "paid") {
       throw new BadRequestException("Sale is already paid.");
     }
     if (sale.currency !== "NGN") {
-      throw new BadRequestException(
-        "Paystack payments currently support NGN sales only.",
-      );
+      throw new BadRequestException("Paystack payments currently support NGN sales only.");
     }
 
     return sale;
   }
 
-  private async getOutstandingAmount(
-    organizationId: string,
-    orderId: string,
-    totalKobo: number,
-  ) {
+  private async getOutstandingAmount(organizationId: string, orderId: string, totalKobo: number) {
     const [paid] = await this.db
       .select({ totalKobo: sum(payment.amountKobo) })
       .from(payment)
-      .where(
-        and(
-          eq(payment.organizationId, organizationId),
-          eq(payment.orderId, orderId),
-        ),
-      );
+      .where(and(eq(payment.organizationId, organizationId), eq(payment.orderId, orderId)));
 
     const amountKobo = totalKobo - Number(paid?.totalKobo ?? 0);
     if (amountKobo <= 0) {
@@ -160,11 +152,8 @@ export class PaystackService {
     return amountKobo;
   }
 
-  private async applyTransaction(
-    reference: string,
-    transaction: PaystackTransaction,
-  ) {
-    const link = await this.getPaymentLink(reference);
+  private async applyTransaction(reference: string, transaction: PaystackTransaction) {
+    const link = await this.ledger.getPaymentLink(reference);
     this.assertTransactionMatches(link, reference, transaction);
 
     if (transaction.status !== "success") {
@@ -172,11 +161,16 @@ export class PaystackService {
       return;
     }
 
-    await this.recordSuccessfulPayment(reference, transaction);
+    await this.ledger.createPayment(reference, transaction);
+    try {
+      await this.notifications.createNotification(reference);
+    } catch {
+      new Logger("Paystack").warn({ event: "payment_notification_deferred", reference });
+    }
   }
 
   private assertTransactionMatches(
-    link: Awaited<ReturnType<PaystackService["getPaymentLink"]>>,
+    link: Awaited<ReturnType<PaymentLedgerService["getPaymentLink"]>>,
     reference: string,
     transaction: PaystackTransaction,
   ) {
@@ -189,9 +183,7 @@ export class PaystackService {
     }
 
     if (!amountMatches || !currencyMatches) {
-      throw new BadRequestException(
-        "Paystack payment amount or currency mismatch.",
-      );
+      throw new BadRequestException("Paystack payment amount or currency mismatch.");
     }
   }
 
@@ -202,240 +194,21 @@ export class PaystackService {
       .where(eq(paymentLink.reference, reference));
   }
 
-  private async recordSuccessfulPayment(
-    reference: string,
-    transaction: PaystackTransaction,
-  ) {
-    await this.db.transaction((tx) =>
-      this.persistSuccessfulPayment(tx, reference, transaction),
-    );
-  }
-
-  private async persistSuccessfulPayment(
-    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
-    reference: string,
-    transaction: PaystackTransaction,
-  ) {
-    const currentLink = await this.getPaymentLinkForTransaction(tx, reference);
-    if (currentLink.status === "paid") return;
-
-    const orderId = this.requireOrderId(currentLink.orderId);
-    const now = transaction.paid_at ? new Date(transaction.paid_at) : new Date();
-
-    await this.ensurePaymentRecorded(tx, currentLink, reference, transaction, now);
-
-    const sale = await this.getOrderForPayment(
-      tx,
-      currentLink.organizationId,
-      orderId,
-    );
-    const paidKobo = await this.getOrderPaidAmount(
-      tx,
-      currentLink.organizationId,
-      orderId,
-    );
-
-    await this.updatePaidOrder(
-      tx,
-      currentLink,
-      sale.totalKobo,
-      paidKobo,
-      reference,
-      now,
-    );
-  }
-
-  private async ensurePaymentRecorded(
-    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
-    link: Awaited<ReturnType<PaystackService["getPaymentLink"]>>,
-    reference: string,
-    transaction: PaystackTransaction,
-    paidAt: Date,
-  ) {
-    const existingPayment = await this.getPaymentByReference(
-      tx,
-      link.organizationId,
-      reference,
-    );
-    if (existingPayment) return;
-
-    await tx.insert(payment).values({
-      organizationId: link.organizationId,
-      orderId: link.orderId!,
-      contactId: link.contactId,
-      amountKobo: link.amountKobo,
-      currency: link.currency,
-      method: PAYSTACK_PAYMENT_METHOD,
-      reference,
-      notes: `Paystack transaction ${transaction.id}`,
-      paidAt,
-    });
-  }
-
-  private async updatePaidOrder(
-    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
-    link: Awaited<ReturnType<PaystackService["getPaymentLink"]>>,
-    totalKobo: number,
-    paidKobo: number,
-    reference: string,
-    now: Date,
-  ) {
-    const isFullyPaid = paidKobo >= totalKobo;
-
-    await tx
-      .update(order)
-      .set({
-        status: isFullyPaid ? "paid" : "pending",
-        paidAt: isFullyPaid ? now : null,
-        paymentReference: reference,
-        updatedAt: now,
-      })
-      .where(and(eq(order.id, link.orderId!), eq(order.organizationId, link.organizationId)));
-
-    await tx
-      .update(paymentLink)
-      .set({ status: "paid", paidAt: now, updatedAt: now })
-      .where(eq(paymentLink.reference, reference));
-  }
-
-  private async getPaymentLink(reference: string) {
-    return this.findPaymentLink(this.db, reference);
-  }
-
-  private async getPaymentLinkForTransaction(
-    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
-    reference: string,
-  ) {
-    return this.findPaymentLink(tx, reference);
-  }
-
-  private async findPaymentLink(
-    db: DbHandle | Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
-    reference: string,
-  ) {
-    const [link] = await db
-      .select({
-        id: paymentLink.id,
-        organizationId: paymentLink.organizationId,
-        orderId: paymentLink.orderId,
-        contactId: paymentLink.contactId,
-        amountKobo: paymentLink.amountKobo,
-        currency: paymentLink.currency,
-        status: paymentLink.status,
-      })
-      .from(paymentLink)
-      .where(eq(paymentLink.reference, reference))
-      .limit(1);
-
-    if (!link) throw new BadRequestException("Payment reference not found.");
-    return link;
-  }
-
-  private requireOrderId(orderId: string | null) {
-    if (!orderId) {
-      throw new BadRequestException("Payment link is not attached to a sale.");
-    }
-    return orderId;
-  }
-
-  private async getPaymentByReference(
-    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
-    organizationId: string,
-    reference: string,
-  ) {
-    const [existingPayment] = await tx
-      .select({ id: payment.id })
-      .from(payment)
-      .where(
-        and(
-          eq(payment.organizationId, organizationId),
-          eq(payment.reference, reference),
-        ),
-      )
-      .limit(1);
-
-    return existingPayment;
-  }
-
-  private async getOrderForPayment(
-    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
-    organizationId: string,
-    orderId: string,
-  ) {
-    const sale = await this.findOrder(tx, organizationId, orderId);
-
-    return { totalKobo: sale.totalKobo };
-  }
-
-  private async findOrder(
-    db: DbHandle | Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
-    organizationId: string,
-    orderId: string,
-  ) {
-    const [sale] = await db
-      .select({
-        id: order.id,
-        contactId: order.contactId,
-        totalKobo: order.totalKobo,
-        currency: order.currency,
-        status: order.status,
-      })
-      .from(order)
-      .where(and(eq(order.id, orderId), eq(order.organizationId, organizationId)))
-      .limit(1);
-
-    if (!sale) throw new BadRequestException("Sale not found.");
-    return sale;
-  }
-
-  private async getOrderPaidAmount(
-    tx: Parameters<Parameters<DbHandle["transaction"]>[0]>[0],
-    organizationId: string,
-    orderId: string,
-  ) {
-    const [paid] = await tx
-      .select({ totalKobo: sum(payment.amountKobo) })
-      .from(payment)
-      .where(and(eq(payment.organizationId, organizationId), eq(payment.orderId, orderId)));
-
-    return Number(paid?.totalKobo ?? 0);
-  }
-
-  private assertOrganization(
-    actualOrganizationId: string,
-    expectedOrganizationId: string,
-  ) {
-    if (actualOrganizationId !== expectedOrganizationId) {
-      throw new BadRequestException("Payment not found.");
-    }
-  }
-
-
-  private verifyWebhookSignature(
-    signature: string | undefined,
-    rawBody: Buffer,
-  ) {
+  private verifyWebhookSignature(signature: string | undefined, rawBody: Buffer, secret: string) {
     if (!signature) {
       throw new UnauthorizedException("Missing Paystack signature.");
     }
 
-    const expected = createHmac("sha512", this.env.PAYSTACK_SECRET_KEY)
-      .update(rawBody)
-      .digest("hex");
+    const expected = createHmac("sha512", secret).update(rawBody).digest("hex");
     const provided = Buffer.from(signature, "utf8");
     const expectedBuffer = Buffer.from(expected, "utf8");
 
-    if (
-      provided.length !== expectedBuffer.length ||
-      !timingSafeEqual(provided, expectedBuffer)
-    ) {
+    if (provided.length !== expectedBuffer.length || !timingSafeEqual(provided, expectedBuffer)) {
       throw new UnauthorizedException("Invalid Paystack signature.");
     }
   }
 
-  private isChargeSuccessEvent(
-    event: unknown,
-  ): event is PaystackChargeSuccessEvent {
+  private isChargeSuccessEvent(event: unknown): event is PaystackChargeSuccessEvent {
     if (!this.isRecord(event) || event.event !== "charge.success") return false;
     return this.isValidTransaction(event.data);
   }
@@ -448,21 +221,20 @@ export class PaystackService {
     return paystackTransactionSchema.safeParse(data).success;
   }
 
-  private async request<T>(path: string, init: RequestInit) {
+  private async request<T>(organizationId: string, path: string, init: RequestInit) {
     const headers = new Headers(init.headers);
-    headers.set("Authorization", `Bearer ${this.env.PAYSTACK_SECRET_KEY}`);
+    headers.set("Authorization", `Bearer ${await this.profiles.getPaymentKey(organizationId)}`);
     headers.set("Content-Type", "application/json");
 
     const response = await fetch(`${this.env.PAYSTACK_API_URL}${path}`, {
       ...init,
       headers,
+      signal: AbortSignal.timeout(15_000),
     });
     const body = (await response.json()) as PaystackApiResponse<T>;
 
     if (!response.ok || !body.status) {
-      throw new BadRequestException(
-        body.message || "Paystack request failed.",
-      );
+      throw new BadRequestException(body.message || "Paystack request failed.");
     }
 
     return body;

@@ -1,3 +1,4 @@
+import { SalesQueriesService } from "./sales-queries.service";
 import { Module } from "@nestjs/common";
 import { BetterAuthModule } from "../../common/better-auth/better-auth.module";
 import { DbModule } from "../../common/db/db.module";
@@ -8,8 +9,7 @@ import { SalesService } from "./sales.service";
 @Module({
   imports: [BetterAuthModule, DbModule, BusinessModule],
   controllers: [SalesController],
-  providers: [SalesService],
+  providers: [SalesService, SalesQueriesService],
   exports: [SalesService],
 })
 export class SalesModule {}
-
