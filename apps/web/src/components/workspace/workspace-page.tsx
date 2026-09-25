@@ -155,6 +155,78 @@ export function WorkspacePage({ section, miniApp = false }: WorkspaceProps) {
       )
     );
   }
+  function renderBusinessCreation() {
+    if (
+      !(
+        creatingBusiness ||
+        (!organizationId &&
+          current !== "settings" &&
+          !error &&
+          organizations.length === 0 &&
+          !status.startsWith("Loading"))
+      )
+    )
+      return null;
+    return (
+      <CreateBusiness
+        onCancel={organizationId ? () => setCreatingBusiness(false) : undefined}
+        onCreated={(business) => {
+          setOrganizations((rows) => [...rows, business]);
+          setCanWrite(false);
+          sessionStorage.setItem("nomidat.organization", business.id);
+          setOrganizationId(business.id);
+          setCreatingBusiness(false);
+          setStatus("");
+          setError(false);
+        }}
+      />
+    );
+  }
+  function renderNavigation() {
+    return (
+      <nav aria-label="Business navigation">
+        {navigation
+          .filter((item) => item.section !== "settings")
+          .map((item) =>
+            miniApp ? (
+              <button
+                key={item.section}
+                type="button"
+                className={current === item.section ? "active" : ""}
+                onClick={() => setActive(item.section)}
+              >
+                <item.icon size={19} />
+                {item.label}
+              </button>
+            ) : (
+              <Link
+                key={item.section}
+                to={item.to}
+                className={current === item.section ? "active" : ""}
+              >
+                <item.icon size={19} />
+                {item.label}
+              </Link>
+            ),
+          )}
+        {miniApp ? (
+          <button
+            type="button"
+            className={current === "settings" ? "active" : ""}
+            onClick={() => setActive("settings")}
+          >
+            <IconPlug size={19} />
+            Settings
+          </button>
+        ) : (
+          <Link to="/settings" className={current === "settings" ? "active" : ""}>
+            <IconPlug size={19} />
+            Settings
+          </Link>
+        )}
+      </nav>
+    );
+  }
   return (
     <div className="workspace-shell">
       <aside className="workspace-sidebar">
@@ -162,47 +234,8 @@ export function WorkspacePage({ section, miniApp = false }: WorkspaceProps) {
           <span>n</span>nomidat<span className="workspace-brand-dot">.</span>
         </Link>
         <p className="workspace-eyebrow">YOUR BUSINESS, IN ORDER</p>
-        <nav aria-label="Business navigation">
-          {navigation
-            .filter((item) => item.section !== "settings")
-            .map((item) =>
-              miniApp ? (
-                <button
-                  key={item.section}
-                  type="button"
-                  className={current === item.section ? "active" : ""}
-                  onClick={() => setActive(item.section)}
-                >
-                  <item.icon size={19} />
-                  {item.label}
-                </button>
-              ) : (
-                <Link
-                  key={item.section}
-                  to={item.to}
-                  className={current === item.section ? "active" : ""}
-                >
-                  <item.icon size={19} />
-                  {item.label}
-                </Link>
-              ),
-            )}
-          {miniApp ? (
-            <button
-              type="button"
-              className={current === "settings" ? "active" : ""}
-              onClick={() => setActive("settings")}
-            >
-              <IconPlug size={19} />
-              Settings
-            </button>
-          ) : (
-            <Link to="/settings" className={current === "settings" ? "active" : ""}>
-              <IconPlug size={19} />
-              Settings
-            </Link>
-          )}
-        </nav>
+        {renderNavigation()}
+
         <div className="workspace-sidebar-note">
           <span className="workspace-dot" /> Made for your everyday business.
           <p>Stock, customers and money — all in one place.</p>
@@ -240,25 +273,7 @@ export function WorkspacePage({ section, miniApp = false }: WorkspaceProps) {
         </header>
         <main className="workspace-main">
           {renderStatus()}
-          {(creatingBusiness ||
-            (!organizationId &&
-              current !== "settings" &&
-              !error &&
-              organizations.length === 0 &&
-              !status.startsWith("Loading"))) && (
-            <CreateBusiness
-              onCancel={organizationId ? () => setCreatingBusiness(false) : undefined}
-              onCreated={(business) => {
-                setOrganizations((rows) => [...rows, business]);
-                setCanWrite(false);
-                sessionStorage.setItem("nomidat.organization", business.id);
-                setOrganizationId(business.id);
-                setCreatingBusiness(false);
-                setStatus("");
-                setError(false);
-              }}
-            />
-          )}
+          {renderBusinessCreation()}
           {organizationId && !creatingBusiness && current !== "settings" && (
             <div key={organizationId}>{renderBusinessSection()}</div>
           )}

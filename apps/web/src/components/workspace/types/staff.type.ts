@@ -32,3 +32,10 @@ export type PhoneInvitation = {
   organizationName?: string;
   expiresAt: string;
 };
+
+export type StaffInviteFormProps = {
+  path: string;
+  busy: boolean;
+  onCancel: () => void;
+  mutate: (url: string, method: string, body: unknown, message: string) => Promise<boolean>;
+};

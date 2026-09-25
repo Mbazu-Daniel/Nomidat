@@ -25,31 +25,20 @@ export class ExtendedActionsService {
     organizationId: string,
     userId: string,
   ): Promise<string> {
-    switch (action.intent) {
-      case "list_low_stock":
-        return this.listLowStock(organizationId);
-      case "get_order_count":
-        return this.getOrderCount(action, organizationId);
-      case "get_daily_summary":
-      case "get_expense_summary":
-        return this.getExpenseSummary(action, organizationId);
-      case "list_invoices":
-        return this.listInvoices(organizationId);
-      case "get_client_folder":
-        return this.getClientFolder(action, organizationId);
-      case "convert_lead_to_customer":
-        return this.convertLeadToCustomer(action, organizationId);
-      case "add_note":
-        return this.addNote(action, organizationId, userId);
-      case "create_invoice":
-        return this.createInvoice(action, organizationId);
-      case "create_payment_link":
-        return this.createPaymentLink(action, organizationId);
-      case "send_invoice":
-        return this.sendInvoice(action, organizationId);
-      default:
-        return "Please describe the action you want to take.";
-    }
+    const handlers: Partial<Record<ParsedAction["intent"], () => Promise<string>>> = {
+      list_low_stock: () => this.listLowStock(organizationId),
+      get_order_count: () => this.getOrderCount(action, organizationId),
+      get_daily_summary: () => this.getExpenseSummary(action, organizationId),
+      get_expense_summary: () => this.getExpenseSummary(action, organizationId),
+      list_invoices: () => this.listInvoices(organizationId),
+      get_client_folder: () => this.getClientFolder(action, organizationId),
+      convert_lead_to_customer: () => this.convertLeadToCustomer(action, organizationId),
+      add_note: () => this.addNote(action, organizationId, userId),
+      create_invoice: () => this.createInvoice(action, organizationId),
+      create_payment_link: () => this.createPaymentLink(action, organizationId),
+      send_invoice: () => this.sendInvoice(action, organizationId),
+    };
+    return handlers[action.intent]?.() ?? "Please describe the action you want to take.";
   }
 
   private async listLowStock(organizationId: string): Promise<string> {

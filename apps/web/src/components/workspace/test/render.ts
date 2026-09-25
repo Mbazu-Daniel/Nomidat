@@ -15,6 +15,7 @@ afterEach(async () => {
   if (root) await act(async () => root.unmount());
   container?.remove();
   vi.resetAllMocks();
+  vi.unstubAllGlobals();
 });
 export async function render<P extends object>(component: ComponentType<P>, props: P) {
   container = document.createElement("div");

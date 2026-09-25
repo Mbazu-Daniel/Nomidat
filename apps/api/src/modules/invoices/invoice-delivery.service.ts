@@ -51,57 +51,66 @@ export class InvoiceDeliveryService {
   async createDelivery(organizationId: string, invoiceId: string, input: SendInvoiceDto) {
     const document = await this.invoices.getInvoice(organizationId, invoiceId);
     const pdf = await this.getPdf(organizationId, invoiceId);
-    if (input.channel === "email") {
-      if (!this.email) throw new ServiceUnavailableException("Email delivery is not configured.");
-      if (!input.email) throw new BadRequestException("A recipient email is required.");
-      await this.email.send({
-        to: { address: input.email },
-        subject: `Invoice ${document.invoiceNumber}`,
-        html: "<p>Your invoice is attached.</p>",
-        attachments: [
-          {
-            name: `${document.invoiceNumber}.pdf`,
-            mimeType: "application/pdf",
-            content: pdf.toString("base64"),
-          },
-        ],
-      });
-    } else {
-      if (!input.channelIdentityId) throw new BadRequestException("Select a linked channel.");
-      const [identity] = await this.db
-        .select()
-        .from(channelIdentity)
-        .where(
-          and(
-            eq(channelIdentity.organizationId, organizationId),
-            eq(channelIdentity.id, input.channelIdentityId),
-            eq(channelIdentity.provider, input.channel),
-          ),
-        )
-        .limit(1);
-      if (!identity) throw new BadRequestException("Linked channel not found for this business.");
-      if (
-        input.channel === "whatsapp" &&
-        (!identity.lastInboundAt || Date.now() - identity.lastInboundAt.getTime() >= 86_400_000)
-      )
-        throw new BadRequestException(
-          "Ask the recipient to message your WhatsApp bot first; the 24-hour document delivery window is closed.",
-        );
-      const expires = Date.now() + 3_600_000;
-      const token = this.getSignature(organizationId, invoiceId, expires);
-      const documentUrl = `${this.env.BETTER_AUTH_URL}/api/v1/invoice-documents/${organizationId}/${invoiceId}?expires=${expires}&token=${token}`;
-      const adapter = input.channel === "telegram" ? this.telegram : this.whatsapp;
-      await adapter.createOutboundMessage({
-        provider:
-          input.channel === "telegram" ? ChannelProvider.Telegram : ChannelProvider.WhatsApp,
-        externalId: identity.externalId,
-        kind: "document",
-        documentUrl,
-        documentFilename: `${document.invoiceNumber}.pdf`,
-        text: `Invoice ${document.invoiceNumber}`,
-      });
-    }
+    if (input.channel === "email")
+      await this.deliverEmail(document.invoiceNumber, pdf, input.email);
+    else await this.deliverChannel(organizationId, invoiceId, document.invoiceNumber, input);
     return { delivered: true };
+  }
+
+  private async deliverEmail(invoiceNumber: string, pdf: Buffer, recipient?: string) {
+    if (!this.email) throw new ServiceUnavailableException("Email delivery is not configured.");
+    if (!recipient) throw new BadRequestException("A recipient email is required.");
+    await this.email.send({
+      to: { address: recipient },
+      subject: `Invoice ${invoiceNumber}`,
+      html: "<p>Your invoice is attached.</p>",
+      attachments: [
+        {
+          name: `${invoiceNumber}.pdf`,
+          mimeType: "application/pdf",
+          content: pdf.toString("base64"),
+        },
+      ],
+    });
+  }
+  private async deliverChannel(
+    organizationId: string,
+    invoiceId: string,
+    invoiceNumber: string,
+    input: SendInvoiceDto,
+  ) {
+    if (!input.channelIdentityId) throw new BadRequestException("Select a linked channel.");
+    const [identity] = await this.db
+      .select()
+      .from(channelIdentity)
+      .where(
+        and(
+          eq(channelIdentity.organizationId, organizationId),
+          eq(channelIdentity.id, input.channelIdentityId),
+          eq(channelIdentity.provider, input.channel),
+        ),
+      )
+      .limit(1);
+    if (!identity) throw new BadRequestException("Linked channel not found for this business.");
+    if (
+      input.channel === "whatsapp" &&
+      (!identity.lastInboundAt || Date.now() - identity.lastInboundAt.getTime() >= 86_400_000)
+    )
+      throw new BadRequestException(
+        "Ask the recipient to message your WhatsApp bot first; the 24-hour document delivery window is closed.",
+      );
+    const expires = Date.now() + 3_600_000;
+    const token = this.getSignature(organizationId, invoiceId, expires);
+    const documentUrl = `${this.env.BETTER_AUTH_URL}/api/v1/invoice-documents/${organizationId}/${invoiceId}?expires=${expires}&token=${token}`;
+    const adapter = input.channel === "telegram" ? this.telegram : this.whatsapp;
+    await adapter.createOutboundMessage({
+      provider: input.channel === "telegram" ? ChannelProvider.Telegram : ChannelProvider.WhatsApp,
+      externalId: identity.externalId,
+      kind: "document",
+      documentUrl,
+      documentFilename: `${invoiceNumber}.pdf`,
+      text: `Invoice ${invoiceNumber}`,
+    });
   }
 
   getSignedPdf(organizationId: string, invoiceId: string, expires: number, token: string) {

@@ -105,6 +105,74 @@ export function SaleDetail({ path, record, canWrite, onSaved }: SaleDetailProps)
       </form>
     );
   }
+  function renderWriteActions() {
+    if (!canWrite) return null;
+    return (
+      <>
+        {canCollect && renderPaymentForm()}
+        <div className="workspace-actions">
+          {canCollect && (
+            <button
+              type="submit"
+              form={paymentFormId}
+              className="workspace-primary"
+              disabled={busy}
+            >
+              {busy ? "Recording…" : "Record payment"}
+            </button>
+          )}
+          <button
+            type="button"
+            className="workspace-secondary"
+            disabled={busy}
+            onClick={() => void save(`/invoices/from-sales/${record.id}`, {})}
+          >
+            Create invoice from sale
+          </button>
+        </div>
+        {canCollect && (
+          <form
+            className="workspace-form sale-payment-link-form"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              setBusy(true);
+              setError("");
+              try {
+                const result = await createApiRequest<{ authorizationUrl: string }>(
+                  `${path}/payments/paystack/initialize`,
+                  {
+                    method: "POST",
+                    body: JSON.stringify({ orderId: record.id, email: data.get("email") }),
+                  },
+                );
+                if (!result.authorizationUrl.startsWith("https://"))
+                  throw new Error("Invalid payment URL returned.");
+                setPaymentUrl(result.authorizationUrl);
+              } catch (reason) {
+                setError((reason as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <label>
+              Customer email
+              <input type="email" name="email" required />
+            </label>
+            <button className="workspace-secondary" disabled={busy}>
+              Create Paystack payment link
+            </button>
+            {paymentUrl && (
+              <a href={paymentUrl} target="_blank" rel="noreferrer">
+                Open payment link ↗
+              </a>
+            )}
+          </form>
+        )}
+      </>
+    );
+  }
   return (
     <>
       {error && (
@@ -155,71 +223,7 @@ export function SaleDetail({ path, record, canWrite, onSaved }: SaleDetailProps)
             View receipt & payment history
           </Link>
         </div>
-        {canWrite && (
-          <>
-            {canCollect && renderPaymentForm()}
-            <div className="workspace-actions">
-              {canCollect && (
-                <button
-                  type="submit"
-                  form={paymentFormId}
-                  className="workspace-primary"
-                  disabled={busy}
-                >
-                  {busy ? "Recording…" : "Record payment"}
-                </button>
-              )}
-              <button
-                type="button"
-                className="workspace-secondary"
-                disabled={busy}
-                onClick={() => void save(`/invoices/from-sales/${record.id}`, {})}
-              >
-                Create invoice from sale
-              </button>
-            </div>
-            {canCollect && (
-              <form
-                className="workspace-form sale-payment-link-form"
-                onSubmit={async (event) => {
-                  event.preventDefault();
-                  const data = new FormData(event.currentTarget);
-                  setBusy(true);
-                  setError("");
-                  try {
-                    const result = await createApiRequest<{ authorizationUrl: string }>(
-                      `${path}/payments/paystack/initialize`,
-                      {
-                        method: "POST",
-                        body: JSON.stringify({ orderId: record.id, email: data.get("email") }),
-                      },
-                    );
-                    if (!result.authorizationUrl.startsWith("https://"))
-                      throw new Error("Invalid payment URL returned.");
-                    setPaymentUrl(result.authorizationUrl);
-                  } catch (reason) {
-                    setError((reason as Error).message);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                <label>
-                  Customer email
-                  <input type="email" name="email" required />
-                </label>
-                <button className="workspace-secondary" disabled={busy}>
-                  Create Paystack payment link
-                </button>
-                {paymentUrl && (
-                  <a href={paymentUrl} target="_blank" rel="noreferrer">
-                    Open payment link ↗
-                  </a>
-                )}
-              </form>
-            )}
-          </>
-        )}
+        {renderWriteActions()}
       </>
     </>
   );

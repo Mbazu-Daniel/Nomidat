@@ -146,3 +146,13 @@ export type SalesRegisterProps = {
   rows: BusinessRecord[];
   onSelect: (row: BusinessRecord) => void;
 };
+
+export interface RecordTableProps {
+  section: Exclude<Section, "overview" | "chat" | "settings" | "channels" | "reports">;
+  rows: BusinessRecord[];
+  query: string;
+  error: string;
+  loading: boolean;
+  retry(): void;
+  onSelect(record: BusinessRecord): void;
+}

@@ -116,6 +116,41 @@ export function RecordDetail({
       </>
     );
   }
+  function renderRecordBody() {
+    switch (section) {
+      case "customers":
+        return renderCustomerFolder();
+      case "inventory":
+        return (
+          <>
+            <p>
+              {record.stockQuantity} {record.unit} in stock · Alert at {record.lowStockThreshold}
+            </p>
+            {canWrite && <ProductEditor record={record} busy={busy} save={save} />}
+          </>
+        );
+      case "expenses":
+        return canWrite ? (
+          <ExpenseEditor path={path} expenseId={record.id} onSaved={onSaved} />
+        ) : (
+          <p>
+            {record.description} · {formatNaira((record.amountKobo ?? 0) / 100)}
+          </p>
+        );
+      case "sales":
+        return <SaleDetail path={path} record={record} canWrite={canWrite} onSaved={onSaved} />;
+      case "invoices":
+        return (
+          <InvoiceDetailPanel
+            organizationId={organizationId}
+            invoiceId={record.id}
+            canWrite={canWrite}
+          />
+        );
+      default:
+        return null;
+    }
+  }
   return (
     <section
       className={`workspace-card workspace-detail ${section === "invoices" ? "invoice-detail-card" : ""}`}
@@ -138,33 +173,7 @@ export function RecordDetail({
           {error}
         </p>
       )}
-      {section === "customers" && renderCustomerFolder()}
-      {section === "inventory" && (
-        <>
-          <p>
-            {record.stockQuantity} {record.unit} in stock · Alert at {record.lowStockThreshold}
-          </p>
-          {canWrite && <ProductEditor record={record} busy={busy} save={save} />}
-        </>
-      )}
-      {section === "expenses" &&
-        (canWrite ? (
-          <ExpenseEditor path={path} expenseId={record.id} onSaved={onSaved} />
-        ) : (
-          <p>
-            {record.description} · {formatNaira((record.amountKobo ?? 0) / 100)}
-          </p>
-        ))}
-      {section === "sales" && (
-        <SaleDetail path={path} record={record} canWrite={canWrite} onSaved={onSaved} />
-      )}
-      {section === "invoices" && (
-        <InvoiceDetailPanel
-          organizationId={organizationId}
-          invoiceId={record.id}
-          canWrite={canWrite}
-        />
-      )}
+      {renderRecordBody()}
     </section>
   );
 }

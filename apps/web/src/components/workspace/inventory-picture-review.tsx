@@ -49,6 +49,68 @@ export function InventoryPictureReview(props: InventoryPictureProps) {
     setProductId("");
     setError("");
   }
+  function renderStockAddition() {
+    return (
+      <form
+        key={`${index}-${productId}`}
+        className="workspace-form workspace-card"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          setBusy(true);
+          setError("");
+          try {
+            await createApiRequest(
+              `/organizations/${props.organizationId}/products/${productId}/stock-adjustments`,
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  quantity: Number(data.get("quantity")),
+                  reason: "Stock added from reviewed picture",
+                }),
+              },
+            );
+            next(true);
+          } catch (reason) {
+            setError((reason as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <h2>Add stock</h2>
+        <p>
+          This quantity is added to the product’s current stock. Its selling price stays the same.
+        </p>
+        <label>
+          Quantity to add
+          <input
+            name="quantity"
+            type="number"
+            min="1"
+            max="100000"
+            step="1"
+            defaultValue={item.quantity ?? ""}
+            required
+            disabled={busy}
+          />
+        </label>
+        <div className="workspace-actions">
+          <button
+            type="button"
+            className="workspace-secondary"
+            onClick={props.onSaved}
+            disabled={busy}
+          >
+            Finish
+          </button>
+          <button className="workspace-primary" disabled={busy}>
+            {busy ? "Saving…" : "Save stock addition"}
+          </button>
+        </div>
+      </form>
+    );
+  }
   return (
     <div className="picture-inventory-review">
       <div className="picture-review-heading">
@@ -93,66 +155,7 @@ export function InventoryPictureReview(props: InventoryPictureProps) {
           onCancel={props.onSaved}
         />
       )}
-      {productId && (
-        <form
-          key={`${index}-${productId}`}
-          className="workspace-form workspace-card"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            setBusy(true);
-            setError("");
-            try {
-              await createApiRequest(
-                `/organizations/${props.organizationId}/products/${productId}/stock-adjustments`,
-                {
-                  method: "POST",
-                  body: JSON.stringify({
-                    quantity: Number(data.get("quantity")),
-                    reason: "Stock added from reviewed picture",
-                  }),
-                },
-              );
-              next(true);
-            } catch (reason) {
-              setError((reason as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <h2>Add stock</h2>
-          <p>
-            This quantity is added to the product’s current stock. Its selling price stays the same.
-          </p>
-          <label>
-            Quantity to add
-            <input
-              name="quantity"
-              type="number"
-              min="1"
-              max="100000"
-              step="1"
-              defaultValue={item.quantity ?? ""}
-              required
-              disabled={busy}
-            />
-          </label>
-          <div className="workspace-actions">
-            <button
-              type="button"
-              className="workspace-secondary"
-              onClick={props.onSaved}
-              disabled={busy}
-            >
-              Finish
-            </button>
-            <button className="workspace-primary" disabled={busy}>
-              {busy ? "Saving…" : "Save stock addition"}
-            </button>
-          </div>
-        </form>
-      )}
+      {productId && renderStockAddition()}
     </div>
   );
 }

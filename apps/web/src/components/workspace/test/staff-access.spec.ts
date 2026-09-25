@@ -148,3 +148,37 @@ describe("staff access", () => {
     expect(ui.textContent).toContain("Last owner cannot leave");
   });
 });
+
+it("lets an invited guest sign in and retains errors without accepting the invitation", async () => {
+  api.mockResolvedValue(null);
+  const ui = await render(AcceptInvitation, { invitationId: "invite" });
+  await change(ui.querySelector('[name="email"]'), "ada@example.test");
+  await change(ui.querySelector('[name="password"]'), "correct-horse-battery");
+  api.mockRejectedValueOnce(new Error("Invalid credentials"));
+  await submit(ui.querySelector("form"));
+  expect(api).toHaveBeenLastCalledWith("/auth/sign-in/email", {
+    method: "POST",
+    body: JSON.stringify({ email: "ada@example.test", password: "correct-horse-battery" }),
+  });
+  expect(ui.textContent).toContain("Invalid credentials");
+  expect(button(ui, "Accept invitation")).toBeNull();
+});
+it("adds an existing account with the selected role", async () => {
+  api.mockImplementation(async (path) =>
+    path.endsWith("/access")
+      ? { userId: "owner", role: "owner" }
+      : path.includes("/members")
+        ? { members: [], total: 0 }
+        : [],
+  );
+  const ui = await render(StaffPanel, { organizationId: "shop" });
+  await click(button(ui, "Add staff"));
+  const form = ui.querySelector<HTMLFormElement>(".staff-add-form");
+  await change(form!.querySelector('[name="userId"]'), "00000000-0000-4000-8000-000000000001");
+  await submit(form);
+  expect(api).toHaveBeenCalledWith("/organizations/shop/members", {
+    method: "POST",
+    body: JSON.stringify({ userId: "00000000-0000-4000-8000-000000000001", role: ["staff"] }),
+  });
+  expect(ui.textContent).toContain("Staff member added.");
+});

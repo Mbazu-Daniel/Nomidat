@@ -23,35 +23,6 @@ export function PictureImport(props: PictureImportProps) {
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
-  function renderReview() {
-    if (!draft) return null;
-    return (
-      <>
-        <p className="picture-review-notice">
-          Only items you explicitly save are recorded. Check every detail against your picture.
-        </p>
-        {draft.warnings.length > 0 && (
-          <ul className="picture-warnings">
-            {draft.warnings.map((warning, index) => (
-              <li key={index}>{warning}</li>
-            ))}
-          </ul>
-        )}
-        {props.section === "expenses" && "expense" in draft && draft.expense && (
-          <RecordForm {...props} expenseDraft={draft.expense} />
-        )}
-        {props.section === "invoices" && "invoice" in draft && (
-          <TransactionForm {...props} pictureItems={draft.items} invoiceDraft={draft.invoice} />
-        )}
-        {props.section === "sales" && "items" in draft && (
-          <TransactionForm {...props} pictureItems={draft.items} />
-        )}
-        {props.section === "inventory" && "items" in draft && (
-          <InventoryPictureReview {...props} section="inventory" items={draft.items} />
-        )}
-      </>
-    );
-  }
   return (
     <section className="workspace-card picture-import">
       <div className="picture-review-heading">
@@ -131,13 +102,7 @@ export function PictureImport(props: PictureImportProps) {
                   `/organizations/${props.organizationId}/picture-import`,
                   { method: "POST", body: data },
                 );
-                if ("expense" in result ? !result.expense : !result.items.length)
-                  setError(
-                    props.section === "expenses"
-                      ? "No single expense could be read. Upload a clearer picture of one receipt or bill, or enter the details manually."
-                      : "No items could be read. Try a clearer picture with names and quantities, or enter them manually.",
-                  );
-                else setDraft(result);
+                setDraft(requirePictureDraft(result, props.section));
               } catch (reason) {
                 setError((reason as Error).message);
               } finally {
@@ -151,7 +116,46 @@ export function PictureImport(props: PictureImportProps) {
         </div>
       )}
       {busy && <p role="status">Reading the picture’s details. This can take up to a minute.</p>}
-      {renderReview()}
+      {draft && <PictureReview {...props} draft={draft} />}
     </section>
+  );
+}
+
+function requirePictureDraft(result: PictureDraft, section: PictureImportProps["section"]) {
+  if ("expense" in result ? Boolean(result.expense) : result.items.length > 0) return result;
+  throw new Error(
+    section === "expenses"
+      ? "No single expense could be read. Upload a clearer picture of one receipt or bill, or enter the details manually."
+      : "No items could be read. Try a clearer picture with names and quantities, or enter them manually.",
+  );
+}
+
+function PictureReview(props: PictureImportProps & { draft: PictureDraft }) {
+  const { draft } = props;
+  return (
+    <>
+      <p className="picture-review-notice">
+        Only items you explicitly save are recorded. Check every detail against your picture.
+      </p>
+      {draft.warnings.length > 0 && (
+        <ul className="picture-warnings">
+          {draft.warnings.map((warning, index) => (
+            <li key={index}>{warning}</li>
+          ))}
+        </ul>
+      )}
+      {props.section === "expenses" && "expense" in draft && draft.expense && (
+        <RecordForm {...props} expenseDraft={draft.expense} />
+      )}
+      {props.section === "invoices" && "invoice" in draft && (
+        <TransactionForm {...props} pictureItems={draft.items} invoiceDraft={draft.invoice} />
+      )}
+      {props.section === "sales" && "items" in draft && (
+        <TransactionForm {...props} pictureItems={draft.items} />
+      )}
+      {props.section === "inventory" && "items" in draft && (
+        <InventoryPictureReview {...props} section="inventory" items={draft.items} />
+      )}
+    </>
   );
 }

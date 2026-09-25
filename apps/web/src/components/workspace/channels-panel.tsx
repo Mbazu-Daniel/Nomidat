@@ -1,3 +1,4 @@
+import { useApiResource } from "@/lib/use-api-resource";
 import { useEffect, useState } from "react";
 import {
   IconBrandTelegram,
@@ -15,35 +16,22 @@ import { ChannelProviderCards } from "./channel-provider-cards";
 import "./channels.css";
 
 export function ChannelsPanel({ organizationId, canWrite }: ChannelsPanelProps) {
-  const [identities, setIdentities] = useState<ChannelIdentity[]>([]);
   const [linkCode, setLinkCode] = useState<ChannelLinkCode | null>(null);
   const [provider, setProvider] = useState("telegram");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [version, setVersion] = useState(0);
   const [copied, setCopied] = useState(false);
   const [unlinking, setUnlinking] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const path = `/organizations/${organizationId}/channels`;
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    void createApiRequest<ChannelIdentity[]>(path)
-      .then((rows) => {
-        if (!cancelled) setIdentities(rows);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [path, version]);
+  const {
+    data: identities,
+    setData: setIdentities,
+    loading,
+    error,
+    setError,
+  } = useApiResource<ChannelIdentity[]>(path, [], version);
+
   useEffect(() => {
     if (!linkCode) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -91,6 +79,134 @@ export function ChannelsPanel({ organizationId, canWrite }: ChannelsPanelProps) 
       setError("Could not copy automatically. Select and copy the code below.");
     }
   }
+  function renderLinkInstructions() {
+    if (!linkCode) return null;
+    return (
+      <section
+        className="workspace-card channel-link-panel"
+        aria-label="Channel linking instructions"
+      >
+        <div className="channel-link-heading">
+          <div>
+            <p className="workspace-eyebrow">ONE MORE STEP</p>
+            <h2>Finish connecting {provider === "telegram" ? "Telegram" : "WhatsApp"}</h2>
+          </div>
+          <button className="workspace-secondary" onClick={() => setLinkCode(null)}>
+            Dismiss
+          </button>
+        </div>
+        <div className="channel-link-content">
+          <div>
+            <span className="channel-code-label">YOUR ONE-TIME CODE</span>
+            <div className="channel-code">
+              <code>{linkCode.code}</code>
+              <button
+                className="workspace-secondary"
+                onClick={() => void copyCode()}
+                disabled={expired}
+              >
+                <IconCopy size={16} />
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <p className="channel-expiry" role="status">
+              {expired
+                ? "This code has expired. Generate a new code to continue."
+                : `Expires at ${new Date(linkCode.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Use it once and keep it private.`}
+            </p>
+            {expired && (
+              <button
+                className="workspace-primary"
+                disabled={busy}
+                onClick={() => void createCode(provider)}
+              >
+                Generate new code
+              </button>
+            )}
+          </div>
+          <ol className="channel-steps">
+            <li>
+              <span>1</span>Open{" "}
+              {provider === "telegram"
+                ? "your Nomidat Telegram bot in a private chat"
+                : "your business’s Nomidat WhatsApp chat"}
+              .
+            </li>
+            <li>
+              <span>2</span>
+              <div>
+                Send{" "}
+                {provider === "telegram" ? (
+                  <code>/start {linkCode.code}</code>
+                ) : (
+                  <code>{linkCode.code}</code>
+                )}{" "}
+                as a message.
+              </div>
+            </li>
+            <li>
+              <span>3</span>Wait for the confirmation, then refresh the linked accounts below.
+            </li>
+          </ol>
+        </div>
+      </section>
+    );
+  }
+  function renderLinkedAccounts() {
+    return (
+      <ul className="channel-account-list">
+        {identities.map((identity) => (
+          <li key={identity.id}>
+            <span className={`channel-brand small ${identity.provider}`}>
+              {identity.provider === "telegram" ? (
+                <IconBrandTelegram size={22} />
+              ) : (
+                <IconBrandWhatsapp size={22} />
+              )}
+            </span>
+            <div className="channel-account-name">
+              <strong>{identity.displayName ?? identity.externalId}</strong>
+              <p>
+                {identity.provider} ·{" "}
+                {identity.lastInboundAt
+                  ? `Last message ${new Date(identity.lastInboundAt).toLocaleDateString()}`
+                  : "No messages yet"}
+              </p>
+            </div>
+            {canWrite &&
+              (unlinking === identity.id ? (
+                <div className="channel-unlink">
+                  <span>Disconnect this account?</span>
+                  <button
+                    className="workspace-secondary"
+                    disabled={busy}
+                    onClick={() => setUnlinking(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="workspace-primary"
+                    disabled={busy}
+                    onClick={() => void unlink(identity.id)}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="workspace-secondary"
+                  disabled={busy}
+                  onClick={() => setUnlinking(identity.id)}
+                >
+                  <IconUnlink size={15} />
+                  Disconnect
+                </button>
+              ))}
+          </li>
+        ))}
+      </ul>
+    );
+  }
   return (
     <>
       <div className="workspace-heading">
@@ -113,76 +229,7 @@ export function ChannelsPanel({ organizationId, canWrite }: ChannelsPanelProps) 
         busy={busy}
         onConnect={createCode}
       />
-      {linkCode && (
-        <section
-          className="workspace-card channel-link-panel"
-          aria-label="Channel linking instructions"
-        >
-          <div className="channel-link-heading">
-            <div>
-              <p className="workspace-eyebrow">ONE MORE STEP</p>
-              <h2>Finish connecting {provider === "telegram" ? "Telegram" : "WhatsApp"}</h2>
-            </div>
-            <button className="workspace-secondary" onClick={() => setLinkCode(null)}>
-              Dismiss
-            </button>
-          </div>
-          <div className="channel-link-content">
-            <div>
-              <span className="channel-code-label">YOUR ONE-TIME CODE</span>
-              <div className="channel-code">
-                <code>{linkCode.code}</code>
-                <button
-                  className="workspace-secondary"
-                  onClick={() => void copyCode()}
-                  disabled={expired}
-                >
-                  <IconCopy size={16} />
-                  {copied ? "Copied" : "Copy"}
-                </button>
-              </div>
-              <p className="channel-expiry" role="status">
-                {expired
-                  ? "This code has expired. Generate a new code to continue."
-                  : `Expires at ${new Date(linkCode.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Use it once and keep it private.`}
-              </p>
-              {expired && (
-                <button
-                  className="workspace-primary"
-                  disabled={busy}
-                  onClick={() => void createCode(provider)}
-                >
-                  Generate new code
-                </button>
-              )}
-            </div>
-            <ol className="channel-steps">
-              <li>
-                <span>1</span>Open{" "}
-                {provider === "telegram"
-                  ? "your Nomidat Telegram bot in a private chat"
-                  : "your business’s Nomidat WhatsApp chat"}
-                .
-              </li>
-              <li>
-                <span>2</span>
-                <div>
-                  Send{" "}
-                  {provider === "telegram" ? (
-                    <code>/start {linkCode.code}</code>
-                  ) : (
-                    <code>{linkCode.code}</code>
-                  )}{" "}
-                  as a message.
-                </div>
-              </li>
-              <li>
-                <span>3</span>Wait for the confirmation, then refresh the linked accounts below.
-              </li>
-            </ol>
-          </div>
-        </section>
-      )}
+      {linkCode && renderLinkInstructions()}
       <section className="workspace-card channels-accounts">
         <header>
           <div>
@@ -213,57 +260,7 @@ export function ChannelsPanel({ organizationId, canWrite }: ChannelsPanelProps) 
             <p>Connect Telegram or WhatsApp above to manage your business from chat.</p>
           </div>
         ) : (
-          <ul className="channel-account-list">
-            {identities.map((identity) => (
-              <li key={identity.id}>
-                <span className={`channel-brand small ${identity.provider}`}>
-                  {identity.provider === "telegram" ? (
-                    <IconBrandTelegram size={22} />
-                  ) : (
-                    <IconBrandWhatsapp size={22} />
-                  )}
-                </span>
-                <div className="channel-account-name">
-                  <strong>{identity.displayName ?? identity.externalId}</strong>
-                  <p>
-                    {identity.provider} ·{" "}
-                    {identity.lastInboundAt
-                      ? `Last message ${new Date(identity.lastInboundAt).toLocaleDateString()}`
-                      : "No messages yet"}
-                  </p>
-                </div>
-                {canWrite &&
-                  (unlinking === identity.id ? (
-                    <div className="channel-unlink">
-                      <span>Disconnect this account?</span>
-                      <button
-                        className="workspace-secondary"
-                        disabled={busy}
-                        onClick={() => setUnlinking(null)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="workspace-primary"
-                        disabled={busy}
-                        onClick={() => void unlink(identity.id)}
-                      >
-                        Disconnect
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      className="workspace-secondary"
-                      disabled={busy}
-                      onClick={() => setUnlinking(identity.id)}
-                    >
-                      <IconUnlink size={15} />
-                      Disconnect
-                    </button>
-                  ))}
-              </li>
-            ))}
-          </ul>
+          renderLinkedAccounts()
         )}
       </section>
       <p className="channels-footnote">

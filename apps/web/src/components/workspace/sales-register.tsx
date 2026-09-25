@@ -25,14 +25,7 @@ export function SalesRegister({ rows, onSelect }: SalesRegisterProps) {
             const total = row.totalKobo ?? 0;
             const paid = row.paidKobo ?? 0;
             const balance = row.balanceKobo ?? Math.max(0, total - paid);
-            const status =
-              row.status === "cancelled"
-                ? "Cancelled"
-                : balance === 0
-                  ? "Paid"
-                  : paid > 0
-                    ? "Partially paid"
-                    : "Unpaid";
+            const status = paymentStatus(row.status, balance, paid);
             const reference =
               row.saleReference ?? `SALE-${row.id.replaceAll("-", "").slice(-12).toUpperCase()}`;
             return (
@@ -107,4 +100,14 @@ export function SalesRegister({ rows, onSelect }: SalesRegisterProps) {
       </table>
     </div>
   );
+}
+
+function paymentStatus(status: string | undefined, balance: number, paid: number) {
+  return status === "cancelled"
+    ? "Cancelled"
+    : balance === 0
+      ? "Paid"
+      : paid > 0
+        ? "Partially paid"
+        : "Unpaid";
 }
