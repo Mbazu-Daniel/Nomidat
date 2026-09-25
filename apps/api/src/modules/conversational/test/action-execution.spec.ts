@@ -206,3 +206,18 @@ describe("review and execution", () => {
     });
   });
 });
+
+it("asks for incomplete sale details before any write can be proposed", () => {
+  expect(getMissingActionDetails({ intent: "record_sale" })).toBeTruthy();
+  expect(
+    getMissingActionDetails({ intent: "record_sale", productName: "Rice", quantity: 1 }),
+  ).toBeTruthy();
+  expect(
+    getMissingActionDetails({
+      intent: "record_sale",
+      productName: "Rice",
+      quantity: 1,
+      amountNaira: 100,
+    }),
+  ).toBeNull();
+});

@@ -19,3 +19,10 @@ export type ChatComposerProps = {
   recordDisabled: boolean;
   recording: boolean;
 };
+
+export type ChatHistoryProps = {
+  messages: import("./workspace.type").ChatMessage[];
+  busy: boolean;
+  setText(value: string): void;
+  send(body: { messageId: string; confirm: boolean }): Promise<void>;
+};

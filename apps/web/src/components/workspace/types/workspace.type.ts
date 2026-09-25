@@ -156,3 +156,22 @@ export interface RecordTableProps {
   retry(): void;
   onSelect(record: BusinessRecord): void;
 }
+
+export type ChannelLinkInstructionsProps = {
+  linkCode: import("@/lib/types").ChannelLinkCode;
+  provider: string;
+  expired: boolean;
+  busy: boolean;
+  copied: boolean;
+  dismiss(): void;
+  copyCode(): Promise<void>;
+  createCode(provider: string): Promise<void>;
+};
+export type RecordToolbarProps = {
+  section: RecordTableProps["section"];
+  count: number;
+  query: string;
+  filter: string;
+  setQuery(value: string): void;
+  setFilter(value: string): void;
+};

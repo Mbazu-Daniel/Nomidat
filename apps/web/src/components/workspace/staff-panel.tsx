@@ -1,47 +1,37 @@
+import { useAsyncResource } from "@/lib/use-api-resource";
 import { StaffInviteForm } from "./staff-invite-form";
 import { StaffRoleGuide } from "./staff-role-guide";
 import { PhoneStaff } from "./phone-staff";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { IconUsers, IconPlus } from "@tabler/icons-react";
 import { createApiRequest } from "@/lib/api";
 import { StaffMemberRow } from "./staff-member-row";
-import type { StaffAccess, StaffInvitation, StaffMember } from "./types/staff.type";
+import type {
+  StaffAccess,
+  StaffInvitation,
+  StaffMember,
+  StaffResource,
+  PendingStaffInvitationsProps,
+} from "./types/staff.type";
 export function StaffPanel({ organizationId }: { organizationId: string }) {
   const path = `/organizations/${organizationId}`;
-  const [access, setAccess] = useState<StaffAccess>();
-  const [members, setMembers] = useState<StaffMember[]>([]);
-  const [invitations, setInvitations] = useState<StaffInvitation[]>([]);
   const [page, setPage] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [adding, setAdding] = useState(false);
   const [revision, setRevision] = useState(0);
+  const { data, loading, error, setError } = useAsyncResource<StaffResource>(
+    loadStaff,
+    `${path}?page=${page}`,
+    { current: undefined, people: { members: [], total: 0 }, pending: [] },
+    revision,
+  );
+  const {
+    current: access,
+    people: { members, total },
+    pending: invitations,
+  } = data;
   const canManage = access?.role.split(",").some((value) => ["owner", "admin"].includes(value));
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    void (async () => {
-      const { current, people, pending } = await loadStaff(path, page);
-      if (cancelled) return;
-      setAccess(current);
-      setMembers(people.members);
-      setTotal(people.total);
-      setInvitations(pending);
-    })()
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [path, page, revision]);
   async function mutate(url: string, method: string, body: unknown, message: string) {
     setBusy(true);
     setError("");
@@ -57,55 +47,6 @@ export function StaffPanel({ organizationId }: { organizationId: string }) {
     } finally {
       setBusy(false);
     }
-  }
-  function renderPendingInvitations() {
-    if (!canManage) return null;
-    const pending = invitations.filter(
-      (item) => item.status === "pending" && new Date(item.expiresAt) > new Date(),
-    );
-    if (!pending.length) return null;
-    return (
-      <div className="staff-invitations">
-        <h3>Pending invitations</h3>
-        {pending.map((item) => (
-          <div className="staff-member-row" key={item.id}>
-            <div>
-              <strong>{item.email}</strong>
-              <p>
-                {item.role} · Expires {new Date(item.expiresAt).toLocaleDateString()}
-              </p>
-            </div>
-            <div className="staff-member-actions">
-              <button
-                disabled={busy}
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(
-                      `${window.location.origin}/accept-invitation/${item.id}`,
-                    );
-                    setNotice(
-                      "Invitation link copied. The recipient must sign in with the invited email address.",
-                    );
-                  } catch {
-                    setError("Could not copy the link. Check clipboard permissions and try again.");
-                  }
-                }}
-              >
-                Copy invite link
-              </button>
-              <button
-                disabled={busy}
-                onClick={() =>
-                  void mutate(`/invitations/${item.id}/cancel`, "POST", {}, "Invitation cancelled.")
-                }
-              >
-                Cancel invitation
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
   }
   function renderMembers() {
     return (
@@ -193,7 +134,15 @@ export function StaffPanel({ organizationId }: { organizationId: string }) {
       </p>
       <StaffRoleGuide />
       {loading ? <p role="status">Loading staff…</p> : renderMembers()}
-      {renderPendingInvitations()}
+      {canManage && (
+        <PendingStaffInvitations
+          invitations={invitations}
+          busy={busy}
+          mutate={mutate}
+          setNotice={setNotice}
+          setError={setError}
+        />
+      )}
       {access && (
         <p className="staff-account-id">
           Your account ID: <code>{access.userId}</code>
@@ -203,7 +152,9 @@ export function StaffPanel({ organizationId }: { organizationId: string }) {
   );
 }
 
-async function loadStaff(path: string, page: number) {
+async function loadStaff(key: string) {
+  const [path, query] = key.split("?");
+  const page = Number(new URLSearchParams(query).get("page"));
   const current = await createApiRequest<StaffAccess>(path + "/access");
   const manager = current.role.split(",").some((value) => ["owner", "admin"].includes(value));
   const [people, pending] = await Promise.all([
@@ -213,4 +164,59 @@ async function loadStaff(path: string, page: number) {
     manager ? createApiRequest<StaffInvitation[]>(path + "/invitations") : Promise.resolve([]),
   ]);
   return { current, people, pending };
+}
+
+function PendingStaffInvitations({
+  invitations,
+  busy,
+  mutate,
+  setNotice,
+  setError,
+}: PendingStaffInvitationsProps) {
+  const pending = invitations.filter(
+    (item) => item.status === "pending" && new Date(item.expiresAt) > new Date(),
+  );
+  if (!pending.length) return null;
+  return (
+    <div className="staff-invitations">
+      <h3>Pending invitations</h3>
+      {pending.map((item) => (
+        <div className="staff-member-row" key={item.id}>
+          <div>
+            <strong>{item.email}</strong>
+            <p>
+              {item.role} · Expires {new Date(item.expiresAt).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="staff-member-actions">
+            <button
+              disabled={busy}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    `${window.location.origin}/accept-invitation/${item.id}`,
+                  );
+                  setNotice(
+                    "Invitation link copied. The recipient must sign in with the invited email address.",
+                  );
+                } catch {
+                  setError("Could not copy the link. Check clipboard permissions and try again.");
+                }
+              }}
+            >
+              Copy invite link
+            </button>
+            <button
+              disabled={busy}
+              onClick={() =>
+                void mutate(`/invitations/${item.id}/cancel`, "POST", {}, "Invitation cancelled.")
+              }
+            >
+              Cancel invitation
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
