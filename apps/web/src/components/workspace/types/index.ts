@@ -1,6 +1,4 @@
 export type {
-  ChannelsPanelProps,
-  ChannelProviderCardsProps,
   InvoiceRegisterProps,
   InvoiceDocumentProps,
   ProductEditorProps,
@@ -10,9 +8,9 @@ export type {
   Section,
   BusinessRecord,
   ClientFolder,
-  ChatMessage,
   FormProps,
-  WorkspaceProps,
   LineItem,
   InvoiceDetail,
 } from "./workspace.type";
+
+export type * from "./transaction.type";

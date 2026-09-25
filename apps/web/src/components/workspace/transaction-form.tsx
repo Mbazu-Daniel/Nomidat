@@ -1,3 +1,15 @@
+import {
+  TransactionCustomerFields,
+  TransactionMoneyFields,
+  TransactionPictureTotal,
+} from "./transaction-fields";
+import {
+  initialTransactionItems,
+  draftMoney,
+  transactionPayload,
+  transactionTotal,
+  hasIncompleteItems,
+} from "./transaction-data";
 import { TransactionLineItem } from "./transaction-line-item";
 import { useEffect, useState } from "react";
 import { createApiRequest } from "@/lib/api";
@@ -14,36 +26,14 @@ export function TransactionForm({
 }: FormProps) {
   const [contacts, setContacts] = useState<BusinessRecord[]>([]);
   const [products, setProducts] = useState<BusinessRecord[]>([]);
-  const [items, setItems] = useState<LineItem[]>(
-    () =>
-      pictureItems?.map((item, index) => ({
-        key: String(index),
-        productId: "",
-        description: item.name ?? "",
-        quantity: item.quantity,
-        unitPriceKobo: item.unitPriceNaira === null ? null : Math.round(item.unitPriceNaira * 100),
-      })) ?? [{ key: "first", productId: "", description: "", quantity: 1, unitPriceKobo: 0 }],
-  );
-  const [tax, setTax] = useState<number | null>(
-    invoiceDraft
-      ? invoiceDraft.taxNaira === null
-        ? null
-        : Math.round(invoiceDraft.taxNaira * 100)
-      : 0,
-  );
-  const [discount, setDiscount] = useState<number | null>(
-    invoiceDraft
-      ? invoiceDraft.discountNaira === null
-        ? null
-        : Math.round(invoiceDraft.discountNaira * 100)
-      : 0,
+  const [items, setItems] = useState<LineItem[]>(() => initialTransactionItems(pictureItems));
+  const [tax, setTax] = useState<number | null>(() => draftMoney(invoiceDraft?.taxNaira));
+  const [discount, setDiscount] = useState<number | null>(() =>
+    draftMoney(invoiceDraft?.discountNaira),
   );
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const total =
-    items.reduce((sum, item) => sum + (item.quantity ?? 0) * (item.unitPriceKobo ?? 0), 0) +
-    (tax ?? 0) -
-    (discount ?? 0);
+  const total = transactionTotal(items, tax, discount);
   useEffect(() => {
     let cancelled = false;
     void Promise.all([
@@ -66,21 +56,14 @@ export function TransactionForm({
   function updateItem(key: string, patch: Partial<LineItem>) {
     setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
   }
+
   return (
     <form
       className="workspace-form workspace-card"
       onSubmit={async (event) => {
         event.preventDefault();
         setError("");
-        if (
-          total <= 0 ||
-          tax === null ||
-          discount === null ||
-          items.some(
-            (item) =>
-              !item.description.trim() || item.quantity === null || item.unitPriceKobo === null,
-          )
-        ) {
+        if (total <= 0 || tax === null || discount === null || hasIncompleteItems(items)) {
           setError(
             "Add a description to every item and check that the total is greater than zero.",
           );
@@ -93,24 +76,7 @@ export function TransactionForm({
           return;
         }
         setSaving(true);
-        const body = {
-          customerId:
-            data.get("customer") === "walk-in" ? undefined : data.get("customer") || undefined,
-          items: items.map((item) => ({
-            productId: item.productId || undefined,
-            ...(section === "sales"
-              ? { productName: item.description }
-              : { description: item.description }),
-            quantity: item.quantity,
-            unitPriceKobo: item.unitPriceKobo,
-          })),
-          taxKobo: tax,
-          discountKobo: discount,
-          notes: data.get("notes") || undefined,
-          ...(section === "sales"
-            ? { paymentAmountKobo, paymentMethod: data.get("method") }
-            : { dueDate: data.get("due") || undefined }),
-        };
+        const body = transactionPayload(data, items, section, tax, discount, paymentAmountKobo);
         try {
           await createApiRequest(`/organizations/${organizationId}/${section}`, {
             method: "POST",
@@ -124,44 +90,14 @@ export function TransactionForm({
         }
       }}
     >
-      <h2>{section === "sales" ? "Record a sale" : "Create an invoice"}</h2>
-      {pictureItems && (
-        <p>
-          {section === "invoices"
-            ? "Review the customer, line items, due date, tax and discount. This creates a new invoice with a new number and today’s issue date; it does not record a payment."
-            : "Review every line, choose inventory products to deduct stock, and check customer, tax, discount and payment. Custom items do not change stock. This sale will use today’s date."}
-        </p>
-      )}
+      <TransactionHeading section={section} pictureItems={pictureItems} />
       <fieldset disabled={saving}>
-        <div className="workspace-form-grid">
-          <label>
-            Customer
-            <select name="customer" defaultValue="" required={Boolean(invoiceDraft)}>
-              {invoiceDraft && (
-                <option value="" disabled>
-                  Choose customer
-                </option>
-              )}
-              <option value={invoiceDraft ? "walk-in" : ""}>Walk-in customer</option>
-              {contacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {contact.name}
-                </option>
-              ))}
-            </select>
-            {invoiceDraft?.customerName && (
-              <small>
-                Read from picture: {invoiceDraft.customerName}. Select the correct contact.
-              </small>
-            )}
-          </label>
-          {section === "invoices" && (
-            <label>
-              Due date
-              <input name="due" type="date" defaultValue={invoiceDraft?.dueDate ?? ""} />
-            </label>
-          )}
-        </div>
+        <TransactionCustomerFields
+          contacts={contacts}
+          invoiceDraft={invoiceDraft}
+          section={section}
+        />
+
         <div className="workspace-line-items">
           {items.map((item, index) => (
             <TransactionLineItem
@@ -195,80 +131,18 @@ export function TransactionForm({
         >
           + Add another item
         </button>
-        <div className="workspace-form-grid">
-          <label>
-            Tax (₦)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={tax === null ? "" : tax / 100}
-              required
-              placeholder="Enter 0 if none"
-              onChange={(event) =>
-                setTax(
-                  event.target.value === "" ? null : Math.round(Number(event.target.value) * 100),
-                )
-              }
-            />
-          </label>
-          <label>
-            Discount (₦)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={discount === null ? "" : discount / 100}
-              required
-              placeholder="Enter 0 if none"
-              onChange={(event) =>
-                setDiscount(
-                  event.target.value === "" ? null : Math.round(Number(event.target.value) * 100),
-                )
-              }
-            />
-          </label>
-          {section === "sales" && (
-            <>
-              <label>
-                Amount collected (₦)
-                <input
-                  name="paid"
-                  type="number"
-                  min="0"
-                  max={Math.max(0, total / 100)}
-                  step="0.01"
-                  defaultValue="0"
-                  required
-                />
-                <small>Leave at zero for a credit sale.</small>
-              </label>
-              <label>
-                Payment method
-                <select name="method">
-                  <option value="cash">Cash</option>
-                  <option value="transfer">Bank transfer</option>
-                  <option value="card">Card</option>
-                </select>
-              </label>
-            </>
-          )}
-          <label className="workspace-wide">
-            Notes
-            <textarea
-              name="notes"
-              maxLength={2000}
-              rows={2}
-              defaultValue={invoiceDraft?.notes ?? ""}
-            />
-          </label>
-        </div>
+        <TransactionMoneyFields
+          tax={tax}
+          setTax={setTax}
+          discount={discount}
+          setDiscount={setDiscount}
+          total={total}
+          section={section}
+          invoiceDraft={invoiceDraft}
+        />
+
         {invoiceDraft?.totalNaira != null && (
-          <p>
-            Picture total: <strong>{formatNaira(invoiceDraft.totalNaira)}</strong>
-            {Math.round(invoiceDraft.totalNaira * 100) !== total &&
-              " · This differs from the draft total. Check line items, tax and discount."}
-          </p>
+          <TransactionPictureTotal invoiceDraft={invoiceDraft} total={total} />
         )}
         {invoiceDraft && (
           <label className="picture-confirmation">
@@ -290,9 +164,32 @@ export function TransactionForm({
           Cancel
         </button>
         <button className="workspace-primary" disabled={saving}>
-          {saving ? "Saving…" : "Save " + (section === "sales" ? "sale" : "invoice")}
+          {saving ? "Saving…" : submitLabels[section]}
         </button>
       </div>
     </form>
   );
 }
+
+function TransactionHeading({
+  section,
+  pictureItems,
+}: Pick<FormProps, "section" | "pictureItems">) {
+  return (
+    <>
+      <h2>{section === "sales" ? "Record a sale" : "Create an invoice"}</h2>
+      {pictureItems && (
+        <p>
+          {section === "invoices"
+            ? "Review the customer, line items, due date, tax and discount. This creates a new invoice with a new number and today’s issue date; it does not record a payment."
+            : "Review every line, choose inventory products to deduct stock, and check customer, tax, discount and payment. Custom items do not change stock. This sale will use today’s date."}
+        </p>
+      )}
+    </>
+  );
+}
+
+const submitLabels: Partial<Record<FormProps["section"], string>> = {
+  sales: "Save sale",
+  invoices: "Save invoice",
+};
