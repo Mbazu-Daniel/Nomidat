@@ -40,7 +40,8 @@ Copy configuration names from `.env.example`:
 
 - Set `BETTER_AUTH_SECRET` to a strong persistent secret.
 - Generate `ENCRYPTION_KEY` with `openssl rand -hex 32`, then save each business's Paystack secret through Settings. Keep this encryption key backed up; changing it prevents decrypting existing credentials.
-- Configure OpenAI for chat/transcription; Anthropic and Deepgram are optional fallbacks.
+- Choose chat with `AI_PROVIDER=openai|gemini` and configure the corresponding key/model. Anthropic remains an optional fallback. Picture extraction still uses OpenAI.
+- Choose speech with `TRANSCRIPTION_PROVIDER=deepgram|whisper|openai` (default: Deepgram). Set `DEEPGRAM_API_KEY`/`DEEPGRAM_MODEL` or `WHISPER_API_KEY`/`WHISPER_MODEL`. The `openai` option retains `OPENAI_TRANSCRIPTION_MODEL` and optional Deepgram fallback.
 - Configure Telegram bot credentials and its webhook secret. Set the Mini App URL to the publicly reachable HTTPS `/mini-app` route.
 - Configure WhatsApp Cloud API credentials, verification token and app secret. Webhooks fail closed when their verification secrets are absent. Telegram accepts private bot chats only.
 - Configure ZeptoMail to deliver invoice attachments and invitations.
@@ -73,7 +74,7 @@ The database name must end in `_test` for the confirmation checks. The API must 
 
 Verified locally: migrations and idempotent category seeding, unit tests, browser inventory creation, responsive layout, tenant and role isolation, financial totals, partial payments, stock protection, PDF generation, and confirmation/cancellation/expiry/concurrency behavior. Provider-fallback tests use mocked HTTP responses.
 
-Remaining validation: live Paystack callbacks/reconciliation, actual Telegram Mini App authentication and delivery, WhatsApp templates/delivery, ZeptoMail delivery, Nigerian-accent transcription accuracy and an SME pilot. Fallow still reports complexity/duplication findings; its CI gate remains enabled. This implementation is not a clean Fallow audit or a production pilot sign-off.
+Remaining validation: live Paystack callbacks/reconciliation, actual Telegram Mini App authentication and delivery, WhatsApp templates/delivery, ZeptoMail delivery, Nigerian-accent transcription accuracy and an SME pilot. The local Fallow gate passes with advisory warnings; its CI gate remains enabled. Live-provider and production-pilot validation are still required.
 
 ### Recording from pictures
 
