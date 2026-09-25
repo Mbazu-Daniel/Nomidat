@@ -36,14 +36,14 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Typecheck
-        run: pnpm typecheck
-
       - name: Build
         run: pnpm build
 
       - name: Unit tests and coverage
         run: pnpm test --coverage
+
+      - name: Typecheck
+        run: pnpm typecheck
 
       - uses: fallow-rs/fallow@v3
         id: fallow
