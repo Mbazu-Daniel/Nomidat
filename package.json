@@ -16,7 +16,9 @@
     "db:studio": "pnpm --filter @nomidat/db db:studio",
     "fallow:audit": "npx fallow audit --format json --quiet",
     "ci:local": "act -P ubuntu-latest=catthehacker/ubuntu:act-22.04 --pull=false --bind -v",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "vitest run",
+    "test:integration": "node apps/api/test/business-flow.mjs && node apps/api/src/modules/conversational/test/confirmation-flow.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-istanbul": "^5.0.1",

@@ -16,4 +16,19 @@ export function createDb(connectionString: string): DatabaseClient {
 export { generateId } from "./id";
 export * from "./env";
 export * as schema from "./schema";
-export { and, count, desc, eq, gte, ilike, isNull, lt, lte, sql, sum } from "drizzle-orm";
+export {
+  inArray,
+  or,
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  ilike,
+  isNull,
+  lt,
+  lte,
+  sql,
+  sum,
+} from "drizzle-orm";

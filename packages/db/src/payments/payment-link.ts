@@ -16,6 +16,7 @@ export const paymentLink = pgTable(
     providerUrl: text("provider_url"),
     status: text("status").notNull().default("pending"),
     paidAt: timestamp("paid_at"),
+    notifiedAt: timestamp("notified_at"),
     expiresAt: timestamp("expires_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
