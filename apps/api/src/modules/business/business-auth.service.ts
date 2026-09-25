@@ -1,8 +1,7 @@
+import { requireMembership } from "./organization-membership";
 import { ForbiddenException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
-import { and, eq } from "@nomidat/db";
-import { member } from "@nomidat/db/schema";
 import { BETTER_AUTH, type BetterAuthInstance } from "../../common/better-auth";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 
@@ -24,15 +23,9 @@ export class BusinessAuthService {
     const session = await this.auth.api.getSession({ headers });
     if (!session?.user?.id) throw new UnauthorizedException("Authentication required");
 
-    const rows = await this.db
-      .select({ id: member.id, role: member.role })
-      .from(member)
-      .where(and(eq(member.organizationId, organizationId), eq(member.userId, session.user.id)))
-      .limit(1);
+    const membership = await requireMembership(this.db, organizationId, session.user.id);
 
-    if (rows.length === 0) throw new ForbiddenException("Not a member of this organization");
-
-    return { userId: session.user.id, role: rows[0].role };
+    return { userId: session.user.id, role: membership.role };
   }
 
   authorizeWrite(role: string, area?: string): void {
