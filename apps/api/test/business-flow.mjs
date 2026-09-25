@@ -1,26 +1,11 @@
+import { createTestClient } from "./api-client.mjs";
 import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 
 const base = process.env.TEST_API_URL;
 if (!base)
   throw new Error("Set TEST_API_URL to an isolated running API; this check creates test records.");
-let cookie = "";
-async function request(path, method = "GET", body, expected = 200) {
-  const response = await fetch(base + path, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: cookie,
-      Origin: process.env.TEST_WEB_ORIGIN ?? "http://localhost:3017",
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  const cookies = response.headers.getSetCookie();
-  if (cookies.length) cookie = cookies.map((value) => value.split(";")[0]).join("; ");
-  const text = await response.text();
-  assert.equal(response.status, expected, `${method} ${path}: ${text}`);
-  return text ? JSON.parse(text) : undefined;
-}
+const { session, request } = createTestClient(base, process.env.TEST_WEB_ORIGIN);
 const testLogo =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAA8CAIAAAAiz+n/AAAApUlEQVR4nO3QAQnDUABEsSoa1MA0TMes10RlvPsQiIJcz/8+zuf7O86Vr4nela+J3iVatOhcviZ6l2jRonP5muhdokWLzuVroneJFi06l6+J3iVatOhcviZ6l2jRonP5muhdokWLzuVroneJFi06l6+J3iVatOhcviZ6l2jRonP5muhdokWLzuVroneJFi06l6+J3iVatOhcviZ6l2jRonP5muhdLxOswfIG/WbJAAAAAElFTkSuQmCC";
 const stamp = Date.now();
@@ -59,14 +44,14 @@ badPicture.append("purpose", "inventory");
 badPicture.append("picture", new Blob(["not an image"], { type: "image/png" }), "invalid.png");
 const pictureResponse = await fetch(base + a + "/picture-import", {
   method: "POST",
-  headers: { Cookie: cookie, Origin: "http://localhost:3017" },
+  headers: { Cookie: session.cookie, Origin: "http://localhost:3017" },
   body: badPicture,
 });
 assert.equal(pictureResponse.status, 400, await pictureResponse.text());
 badPicture.set("purpose", "expenses");
 const expensePictureResponse = await fetch(base + a + "/picture-import", {
   method: "POST",
-  headers: { Cookie: cookie, Origin: "http://localhost:3017" },
+  headers: { Cookie: session.cookie, Origin: "http://localhost:3017" },
   body: badPicture,
 });
 assert.equal(expensePictureResponse.status, 400);
@@ -74,7 +59,7 @@ assert.match((await expensePictureResponse.json()).message, /not a supported pic
 badPicture.set("purpose", "invoices");
 const invoicePictureResponse = await fetch(base + a + "/picture-import", {
   method: "POST",
-  headers: { Cookie: cookie, Origin: "http://localhost:3017" },
+  headers: { Cookie: session.cookie, Origin: "http://localhost:3017" },
   body: badPicture,
 });
 assert.equal(invoicePictureResponse.status, 400);
@@ -197,7 +182,9 @@ assert.equal(report.collectedKobo, 1000000);
 assert.equal(report.expensesKobo, 50000);
 assert.equal(report.netCashflowKobo, 950000);
 
-const pdf = await fetch(base + a + `/invoices/${invoice.id}/pdf`, { headers: { Cookie: cookie } });
+const pdf = await fetch(base + a + `/invoices/${invoice.id}/pdf`, {
+  headers: { Cookie: session.cookie },
+});
 assert.equal(pdf.status, 200);
 const bytes = Buffer.from(await pdf.arrayBuffer());
 assert.equal(bytes.subarray(0, 4).toString(), "%PDF");
@@ -250,29 +237,29 @@ assert.equal(listedSettled.paidKobo, 40000);
 assert.equal(listedSettled.balanceKobo, 0);
 assert.equal(listedSettled.saleReference, listedCredit.saleReference);
 await request(creditPath + "/payments", "POST", { amountKobo: 1, method: "cash" }, 400);
-const ownerCookie = cookie;
-cookie = "";
+const ownerCookie = session.cookie;
+session.cookie = "";
 const staff = await request(
   "/auth/sign-up/email",
   "POST",
   { name: "Staff verification", email: `staff-${stamp}@example.test`, password },
   201,
 );
-const staffCookie = cookie;
-cookie = "";
+const staffCookie = session.cookie;
+session.cookie = "";
 await request(a + "/members", "POST", { userId: staff.user.id, role: "owner" }, 401);
-cookie = ownerCookie;
+session.cookie = ownerCookie;
 await request(a + "/members", "POST", { userId: staff.user.id, role: "staff" }, 201);
-cookie = staffCookie;
+session.cookie = staffCookie;
 await request(a + "/contacts");
 await request(a + "/contacts", "POST", { name: "Forbidden", kind: "customer" }, 403);
 await request(a + "/products", "POST", { name: "Forbidden", priceKobo: 100 }, 403);
 await request(a + "/members", "POST", { userId: staff.user.id, role: ["owner"] }, 403);
-cookie = ownerCookie;
-const savedCookie = cookie;
-cookie = "";
+session.cookie = ownerCookie;
+const savedCookie = session.cookie;
+session.cookie = "";
 await request(a + "/contacts", "GET", undefined, 401);
-cookie = savedCookie;
+session.cookie = savedCookie;
 await writeFile(
   "/tmp/nomidat-local-verification.json",
   JSON.stringify({

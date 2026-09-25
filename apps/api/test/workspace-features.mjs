@@ -1,3 +1,4 @@
+import { createTestClient } from "./api-client.mjs";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
@@ -7,23 +8,7 @@ const base = process.env.TEST_API_URL;
 const databaseUrl = process.env.TEST_DATABASE_URL;
 if (!base || !databaseUrl || !new URL(databaseUrl).pathname.endsWith("_test"))
   throw new Error("Use an isolated API, email disabled, and a database ending in _test.");
-let cookie = "";
-async function request(path, method = "GET", body, expected = 200) {
-  const response = await fetch(base + path, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: cookie,
-      Origin: "http://localhost:3017",
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  const cookies = response.headers.getSetCookie();
-  if (cookies.length) cookie = cookies.map((value) => value.split(";")[0]).join("; ");
-  const text = await response.text();
-  assert.equal(response.status, expected, `${method} ${path}: ${text}`);
-  return text ? JSON.parse(text) : undefined;
-}
+const { session, request } = createTestClient(base, process.env.TEST_WEB_ORIGIN);
 const stamp = Date.now();
 const credentials = {
   name: "UI feature check",
@@ -31,7 +16,7 @@ const credentials = {
   password: "UIFeatureCheck2026!",
 };
 await request("/auth/sign-up/email", "POST", credentials, 201);
-const ownerCookie = cookie;
+const ownerCookie = session.cookie;
 const org = await request(
   "/organizations",
   "POST",
@@ -105,14 +90,14 @@ const invitation = await request(
   { email: invitedEmail, role: "staff" },
   201,
 );
-cookie = "";
+session.cookie = "";
 const invited = await request(
   "/auth/sign-up/email",
   "POST",
   { ...credentials, email: invitedEmail },
   201,
 );
-const invitedCookie = cookie;
+const invitedCookie = session.cookie;
 const db = createDb(databaseUrl);
 try {
   await db.update(user).set({ emailVerified: true }).where(eq(user.id, invited.user.id));
@@ -122,12 +107,12 @@ try {
 const inbox = await request("/invitations");
 assert.ok(inbox.some((row) => row.id === invitation.id));
 await request(`/invitations/${invitation.id}/reject`, "POST", {}, 201);
-cookie = ownerCookie;
+session.cookie = ownerCookie;
 await request(path + "/members", "POST", { userId: invited.user.id, role: "staff" }, 201);
-cookie = invitedCookie;
+session.cookie = invitedCookie;
 await request(path + "/leave", "POST", {}, 201);
 await request(path + "/access", "GET", undefined, 403);
-cookie = ownerCookie;
+session.cookie = ownerCookie;
 await request(path, "DELETE");
 await request(path + "/access", "GET", undefined, 403);
 await request("/auth/sign-out", "POST", {}, 201);
