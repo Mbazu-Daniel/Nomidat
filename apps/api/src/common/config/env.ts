@@ -8,6 +8,10 @@ function loadEnv(): void {
 }
 
 const apiEnvSchema = z.object({
+  INVOICE_STORAGE_DIR: z.string().default(".data/invoices"),
+  TERMII_API_KEY: z.string().optional(),
+  TERMII_BASE_URL: z.string().url().default("https://api.ng.termii.com"),
+  TERMII_SENDER_ID: z.string().optional(),
   API_PORT: z.coerce.number().int().positive().default(3001),
   WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
   DATABASE_URL: z.string().nonempty(),
@@ -33,7 +37,13 @@ const apiEnvSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-5-mini"),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-4o-mini-transcribe"),
-  PAYSTACK_SECRET_KEY: z.string().min(1),
+  ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[a-fA-F0-9]{64}$/)
+    .optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  ANTHROPIC_MODEL: z.string().default("claude-sonnet-4-6"),
+  DEEPGRAM_API_KEY: z.string().optional(),
   PAYSTACK_API_URL: z.string().url().default("https://api.paystack.co"),
   PAYSTACK_CALLBACK_URL: z.string().url().optional(),
 });

@@ -1,5 +1,6 @@
 import {
   Body,
+  ForbiddenException,
   Controller,
   Delete,
   Get,
@@ -14,6 +15,7 @@ import {
 import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import type { Request, Response as ExpressResponse } from "express";
 import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-http";
+import { BusinessAuthService } from "../business/business-auth.service";
 import { MemberService } from "./member.service";
 import {
   AddMemberDto,
@@ -25,7 +27,10 @@ import {
 @ApiTags("Members")
 @Controller()
 export class MemberController {
-  constructor(private readonly memberService: MemberService) {}
+  constructor(
+    private readonly memberService: MemberService,
+    private readonly auth: BusinessAuthService,
+  ) {}
 
   @Get("organizations/:organizationId/members")
   @ApiOperation({ summary: "Get organization members" })
@@ -53,6 +58,14 @@ export class MemberController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
+    const session = await this.auth.getSession(extractHeaders(req), organizationId);
+    if (!session.role.split(",").some((role) => ["owner", "admin"].includes(role.trim())))
+      throw new ForbiddenException("Only owners and admins can add members.");
+    if (
+      (Array.isArray(body.role) ? body.role : [body.role]).includes("owner") &&
+      !session.role.split(",").includes("owner")
+    )
+      throw new ForbiddenException("Only owners can create other owners.");
     const headers = body.userId ? undefined : extractHeaders(req);
     return proxyAuthResponse(
       res,

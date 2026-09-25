@@ -2,14 +2,13 @@ import type { Request } from "express";
 import { extractHeaders } from "./auth-http";
 import type { BusinessAuthService } from "../../modules/business/business-auth.service";
 
-export function getOrganizationSession(auth: BusinessAuthService, req: Request, organizationId: string) {
-  return auth.getSession(extractHeaders(req), organizationId);
-}
-
-export function authorizeOrganization(
+export async function authorizeOrganization(
   auth: BusinessAuthService,
   req: Request,
   organizationId: string,
+  area?: string,
 ) {
-  return auth.getSession(extractHeaders(req), organizationId);
+  const session = await auth.getSession(extractHeaders(req), organizationId);
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) auth.authorizeWrite(session.role, area);
+  return session;
 }
