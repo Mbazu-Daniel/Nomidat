@@ -2,7 +2,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Post, Delete, Req } from "@nestj
 import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
-import { ChannelAuthService } from "./channel-auth.service";
+import { BusinessAuthService } from "../business/business-auth.service";
 import { ChannelService } from "./channel.service";
 import { ChannelIdentityParamsDto } from "./dto";
 
@@ -11,7 +11,7 @@ import { ChannelIdentityParamsDto } from "./dto";
 export class ChannelController {
   constructor(
     private readonly channelService: ChannelService,
-    private readonly channelAuthService: ChannelAuthService,
+    private readonly channelAuthService: BusinessAuthService,
   ) {}
 
   @Get("organizations/:organizationId/channels")
@@ -21,10 +21,7 @@ export class ChannelController {
     @Param("organizationId", ParseUUIDPipe) organizationId: string,
     @Req() req: Request,
   ) {
-    await this.channelAuthService.getAuthorizedOrganizationUser(
-      extractHeaders(req),
-      organizationId,
-    );
+    await this.channelAuthService.getSession(extractHeaders(req), organizationId);
     return this.channelService.getOrganizationChannelIdentities(organizationId);
   }
 
@@ -35,7 +32,7 @@ export class ChannelController {
     @Param("organizationId", ParseUUIDPipe) organizationId: string,
     @Req() req: Request,
   ) {
-    const { userId } = await this.channelAuthService.getAuthorizedOrganizationUser(
+    const { userId } = await this.channelAuthService.getSession(
       extractHeaders(req),
       organizationId,
     );
@@ -48,10 +45,7 @@ export class ChannelController {
     @Param() params: ChannelIdentityParamsDto,
     @Req() req: Request,
   ) {
-    await this.channelAuthService.getAuthorizedOrganizationUser(
-      extractHeaders(req),
-      params.organizationId,
-    );
+    await this.channelAuthService.authorize(extractHeaders(req), params.organizationId, true, "channels");
     await this.channelService.deleteOrganizationChannelIdentity(
       params.organizationId,
       params.channelIdentityId,

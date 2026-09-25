@@ -37,7 +37,7 @@ const apiEnvSchema = z.object({
   AI_PROVIDER: z.enum(["openai", "gemini"]).default("openai"),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
-  TRANSCRIPTION_PROVIDER: z.enum(["deepgram", "whisper"]).default("deepgram"),
+  TRANSCRIPTION_PROVIDER: z.enum(["openai", "deepgram", "whisper"]).default("deepgram"),
   DEEPGRAM_MODEL: z.string().default("nova-3"),
   WHISPER_API_KEY: z.string().optional(),
   WHISPER_MODEL: z.string().default("whisper-1"),
