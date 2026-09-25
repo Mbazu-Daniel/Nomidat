@@ -1,11 +1,3 @@
-export type BusinessDetails = {
-  ownerName?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  shopNumber?: string;
-  registrationNumber?: string;
-};
 export type BusinessProfile = {
   id: string;
   name: string;
@@ -28,24 +20,6 @@ export type ExpenseDetails = {
   paymentMethod: string | null;
   receiptUrl: string | null;
 };
-export type AccountSession = {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    emailVerified: boolean;
-    phoneNumber?: string;
-    phoneNumberVerified?: boolean;
-  };
-  session: { id: string };
-};
-export type LoginSession = {
-  id: string;
-  userAgent?: string | null;
-  ipAddress?: string | null;
-  createdAt: string;
-  expiresAt: string;
-};
 export type ReceiptData = {
   receiptNumber: string;
   sale: { customer: string | null; currency: string; createdAt: string; totalKobo: number };
@@ -67,12 +41,3 @@ export type ReceiptData = {
   balanceKobo: number;
 };
 
-export interface SettingsNavigationProps {
-  value: string;
-  onChange: (value: string) => void;
-  disabled: boolean;
-  hasBusiness: boolean;
-  canManage: boolean;
-  canWrite: boolean;
-  hasAccess: boolean;
-}

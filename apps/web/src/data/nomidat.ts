@@ -216,3 +216,5 @@ export {
   getReportCustomerBalances,
   getReportInventory,
 } from "./reports";
+
+export type { ReportSummary } from "./reports";

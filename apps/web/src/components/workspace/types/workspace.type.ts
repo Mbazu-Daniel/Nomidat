@@ -1,5 +1,4 @@
 import type { ExpensePicture, InvoicePicture, PictureItem } from "./picture.type";
-import type { ChannelIdentity } from "@/lib/types";
 export type Section =
   | "overview"
   | "inventory"
@@ -46,12 +45,6 @@ export type ClientFolder = {
   notes: { id: string; body: string; createdAt: string }[];
   balanceKobo: number;
 };
-export type ChatMessage = {
-  id: string;
-  role: string;
-  content: string;
-  toolName: string | null;
-};
 export type FormProps = {
   pictureItems?: PictureItem[];
   expenseDraft?: ExpensePicture;
@@ -62,7 +55,6 @@ export type FormProps = {
   onSaved: () => void;
   onCancel: () => void;
 };
-export type WorkspaceProps = { section: Section; miniApp?: boolean };
 export type LineItem = {
   key: string;
   productId: string;
@@ -127,15 +119,6 @@ export type InvoiceRegisterProps = {
 };
 export type InvoiceDocumentProps = { invoice: InvoiceDetail };
 
-export type ChannelsPanelProps = { organizationId: string; canWrite: boolean };
-
-export type ChannelProviderCardsProps = {
-  identities: ChannelIdentity[];
-  loading: boolean;
-  busy: boolean;
-  onConnect: (provider: string) => Promise<void>;
-};
-
 export type SalePaymentSummary = {
   totalKobo: number;
   paidKobo: number;
@@ -145,4 +128,23 @@ export type SalePaymentSummary = {
 export type SalesRegisterProps = {
   rows: BusinessRecord[];
   onSelect: (row: BusinessRecord) => void;
+};
+
+export interface RecordTableProps {
+  section: Exclude<Section, "overview" | "chat" | "settings" | "channels" | "reports">;
+  rows: BusinessRecord[];
+  query: string;
+  error: string;
+  loading: boolean;
+  retry(): void;
+  onSelect(record: BusinessRecord): void;
+}
+
+export type RecordToolbarProps = {
+  section: RecordTableProps["section"];
+  count: number;
+  query: string;
+  filter: string;
+  setQuery(value: string): void;
+  setFilter(value: string): void;
 };
