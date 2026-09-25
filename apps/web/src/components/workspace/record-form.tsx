@@ -3,7 +3,9 @@ import { createApiRequest } from "@/lib/api";
 import type { FormProps } from "./types";
 import { TransactionForm } from "./transaction-form";
 import { ProductFields } from "./inventory-fields";
+import { ContactFields } from "./customers-fields";
 import { ExpenseFields } from "./expenses-fields";
+import { recordFormDefinition } from "./record-form-data";
 
 export function RecordForm(props: FormProps) {
   if (props.section === "sales" || props.section === "invoices")
@@ -67,74 +69,4 @@ function SimpleRecordForm(props: FormProps) {
       </div>
     </form>
   );
-}
-
-function ContactFields() {
-  return (
-    <>
-      <label>
-        Full name
-        <input name="name" required maxLength={160} autoFocus />
-      </label>
-      <label>
-        Contact type
-        <select name="kind">
-          <option value="customer">Customer</option>
-          <option value="lead">Lead</option>
-        </select>
-      </label>
-      <label>
-        <span className="workspace-field-heading">
-          Phone <small>Optional</small>
-        </span>
-        <input name="phone" type="tel" maxLength={40} />
-      </label>
-      <label>
-        <span className="workspace-field-heading">
-          Email <small>Optional</small>
-        </span>
-        <input name="email" type="email" />
-      </label>
-    </>
-  );
-}
-
-
-function inventory(fields: FormData) {
-  return {
-    name: fields.get("name"),
-    sku: fields.get("sku") || undefined,
-    description: fields.get("description") || undefined,
-    costKobo: Math.round(Number(fields.get("cost")) * 100),
-    unit: fields.get("unit"),
-    stockQuantity: Number(fields.get("stock")),
-    lowStockThreshold: Number(fields.get("threshold")),
-    priceKobo: Math.round(Number(fields.get("price")) * 100),
-  };
-}
-function customers(fields: FormData) {
-  return {
-    name: fields.get("name"),
-    phone: fields.get("phone") || undefined,
-    email: fields.get("email") || undefined,
-    kind: fields.get("kind"),
-  };
-}
-function expenses(fields: FormData) {
-  return {
-    description: fields.get("description"),
-    amountKobo: Math.round(Number(fields.get("amount")) * 100),
-    categoryId: fields.get("category") || undefined,
-    spentAt: new Date(`${fields.get("date")}T12:00:00+01:00`).toISOString(),
-    paymentMethod: fields.get("paymentMethod"),
-  };
-}
-
-const forms = {
-  inventory: { resource: "products", title: "Add a product", payload: inventory },
-  customers: { resource: "contacts", title: "Add a contact", payload: customers },
-  expenses: { resource: "expenses", title: "Record an expense", payload: expenses },
-};
-function recordFormDefinition(section: FormProps["section"]) {
-  return forms[section as keyof typeof forms];
 }
