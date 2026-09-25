@@ -1,0 +1,18 @@
+export type {
+  ChannelsPanelProps,
+  ChannelProviderCardsProps,
+  InvoiceRegisterProps,
+  InvoiceDocumentProps,
+  ProductEditorProps,
+  RecordDetailProps,
+  SaleDetailProps,
+  InvoiceDetailProps,
+  Section,
+  BusinessRecord,
+  ClientFolder,
+  ChatMessage,
+  FormProps,
+  WorkspaceProps,
+  LineItem,
+  InvoiceDetail,
+} from "./workspace.type";
