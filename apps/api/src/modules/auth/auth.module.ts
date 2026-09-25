@@ -13,9 +13,12 @@ import { AuthMiddleware } from "./auth.middleware";
 })
 export class AuthModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(AuthMiddleware).forRoutes({
-      path: "auth/callback/{*splat}",
-      method: RequestMethod.ALL,
-    });
+    consumer.apply(AuthMiddleware).forRoutes(
+      { path: "auth/phone-number/{*splat}", method: RequestMethod.ALL },
+      {
+        path: "auth/callback/{*splat}",
+        method: RequestMethod.ALL,
+      },
+    );
   }
 }

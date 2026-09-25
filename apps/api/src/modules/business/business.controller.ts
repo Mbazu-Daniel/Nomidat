@@ -1,7 +1,7 @@
 import { Controller, Get, Param, ParseIntPipe, Query, Req } from "@nestjs/common";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
-import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
+import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { BusinessAuthService } from "./business-auth.service";
 import { BusinessService } from "./business.service";
 
@@ -13,28 +13,16 @@ export class BusinessController {
     private readonly businessService: BusinessService,
   ) {}
 
-  @Get("summary")
-  @ApiOperation({ summary: "Get business summary for an organization" })
-  async getSummary(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-  ) {
-    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
-    return this.businessService.getSummary(organizationId);
+  @Get("access")
+  async getAccess(@Param("organizationId") organizationId: string, @Req() req: Request) {
+    return this.businessAuthService.getSession(extractHeaders(req), organizationId);
   }
 
-
-  @Get("sales")
-  @ApiOperation({ summary: "Get recent sales for an organization" })
-  @ApiParam({ name: "organizationId", type: "string", format: "uuid" })
-  @ApiQuery({ name: "limit", required: false, type: Number, maximum: 50 })
-  async getSales(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
-  ) {
+  @Get("summary")
+  @ApiOperation({ summary: "Get business summary for an organization" })
+  async getSummary(@Param("organizationId") organizationId: string, @Req() req: Request) {
     await this.businessAuthService.authorize(extractHeaders(req), organizationId);
-    return this.businessService.getSales(organizationId, limit);
+    return this.businessService.getSummary(organizationId);
   }
 
   @Get("customers")
@@ -46,27 +34,5 @@ export class BusinessController {
   ) {
     await this.businessAuthService.authorize(extractHeaders(req), organizationId);
     return this.businessService.getCustomers(organizationId, limit);
-  }
-
-  @Get("products")
-  @ApiOperation({ summary: "Get current products for an organization" })
-  async getProducts(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
-  ) {
-    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
-    return this.businessService.getProducts(organizationId, limit);
-  }
-
-  @Get("expenses")
-  @ApiOperation({ summary: "Get recent expenses for an organization" })
-  async getExpenses(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
-  ) {
-    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
-    return this.businessService.getExpenses(organizationId, limit);
   }
 }

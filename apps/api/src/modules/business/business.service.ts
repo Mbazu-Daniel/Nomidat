@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq, lte, sum } from "@nomidat/db";
-import { contact, expense, expenseCategory, order, product } from "@nomidat/db/schema";
+import { and, count, desc, eq, lte, sum, sql } from "@nomidat/db";
+import { contact, expense, expenseCategory, order, product, payment } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 
 const DEFAULT_LIMIT = 20;
@@ -29,18 +29,32 @@ export class BusinessService {
   async getCustomers(organizationId: string, limit = DEFAULT_LIMIT) {
     const safeLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
     const [customers, credit] = await Promise.all([
-      this.db.select({ id: contact.id, name: contact.name, phone: contact.phone, kind: contact.kind, createdAt: contact.createdAt })
+      this.db
+        .select({
+          id: contact.id,
+          name: contact.name,
+          phone: contact.phone,
+          kind: contact.kind,
+          createdAt: contact.createdAt,
+        })
         .from(contact)
         .where(and(eq(contact.organizationId, organizationId), eq(contact.kind, "customer")))
         .orderBy(desc(contact.createdAt))
         .limit(safeLimit),
-      this.db.select({ customerId: order.contactId, totalKobo: sum(order.totalKobo) })
+      this.db
+        .select({
+          customerId: order.contactId,
+          totalKobo: sql<number>`coalesce(sum(greatest(0, ${order.totalKobo} - coalesce((select sum(${payment.amountKobo}) from ${payment} where ${payment.orderId} = "orders"."id" and ${payment.organizationId} = ${organizationId}), 0))), 0)`,
+        })
         .from(order)
         .where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")))
         .groupBy(order.contactId),
     ]);
     const balances = new Map(credit.map((row) => [row.customerId, Number(row.totalKobo ?? 0)]));
-    return customers.map((customer) => ({ ...customer, outstandingBalanceKobo: balances.get(customer.id) ?? 0 }));
+    return customers.map((customer) => ({
+      ...customer,
+      outstandingKobo: balances.get(customer.id) ?? 0,
+    }));
   }
 
   async getProducts(organizationId: string, limit = DEFAULT_LIMIT) {
@@ -80,30 +94,52 @@ export class BusinessService {
   }
 
   private async getOrderTotal(organizationId: string): Promise<number> {
-    const [row] = await this.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(eq(order.organizationId, organizationId));
+    const [row] = await this.db
+      .select({ totalKobo: sum(order.totalKobo) })
+      .from(order)
+      .where(eq(order.organizationId, organizationId));
     return Number(row?.totalKobo ?? 0);
   }
 
   private async getPendingCredit(organizationId: string): Promise<number> {
-    const [row] = await this.db.select({ totalKobo: sum(order.totalKobo) }).from(order).where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")));
+    const [row] = await this.db
+      .select({
+        totalKobo: sql<number>`coalesce(sum(greatest(0, ${order.totalKobo} - coalesce((select sum(${payment.amountKobo}) from ${payment} where ${payment.orderId} = "orders"."id" and ${payment.organizationId} = ${organizationId}), 0))), 0)`,
+      })
+      .from(order)
+      .where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")));
     return Number(row?.totalKobo ?? 0);
   }
 
   private async getExpenseTotal(organizationId: string): Promise<number> {
-    const [row] = await this.db.select({ totalKobo: sum(expense.amountKobo) }).from(expense).where(eq(expense.organizationId, organizationId));
+    const [row] = await this.db
+      .select({ totalKobo: sum(expense.amountKobo) })
+      .from(expense)
+      .where(eq(expense.organizationId, organizationId));
     return Number(row?.totalKobo ?? 0);
   }
 
-  private async getCount(table: typeof contact | typeof product, organizationId: string): Promise<number> {
-    const [row] = await this.db.select({ count: count() }).from(table).where(eq(table.organizationId, organizationId));
+  private async getCount(
+    table: typeof contact | typeof product,
+    organizationId: string,
+  ): Promise<number> {
+    const [row] = await this.db
+      .select({ count: count() })
+      .from(table)
+      .where(eq(table.organizationId, organizationId));
     return Number(row?.count ?? 0);
   }
 
   private async getLowStockCount(organizationId: string): Promise<number> {
-    const [row] = await this.db.select({ count: count() }).from(product).where(and(
-      eq(product.organizationId, organizationId),
-      lte(product.stockQuantity, product.lowStockThreshold),
-    ));
+    const [row] = await this.db
+      .select({ count: count() })
+      .from(product)
+      .where(
+        and(
+          eq(product.organizationId, organizationId),
+          lte(product.stockQuantity, product.lowStockThreshold),
+        ),
+      );
     return Number(row?.count ?? 0);
   }
 

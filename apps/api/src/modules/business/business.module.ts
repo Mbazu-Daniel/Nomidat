@@ -9,5 +9,6 @@ import { BusinessService } from "./business.service";
   imports: [BetterAuthModule, DbModule],
   controllers: [BusinessController],
   providers: [BusinessAuthService, BusinessService],
+  exports: [BusinessAuthService, BusinessService],
 })
 export class BusinessModule {}

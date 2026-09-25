@@ -1,6 +1,5 @@
-import { ForbiddenException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
-import { and, eq } from "@nomidat/db";
-import { member } from "@nomidat/db/schema";
+import { requireMembership } from "../business/organization-membership";
+import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { BETTER_AUTH } from "../../common/better-auth/better-auth.constants";
 import type { BetterAuthInstance } from "../../common/better-auth/create-better-auth";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
@@ -21,15 +20,7 @@ export class ChannelAuthService {
       throw new UnauthorizedException("Authentication required");
     }
 
-    const rows = await this.db
-      .select({ id: member.id })
-      .from(member)
-      .where(and(eq(member.organizationId, organizationId), eq(member.userId, session.user.id)))
-      .limit(1);
-
-    if (rows.length === 0) {
-      throw new ForbiddenException("Not a member of this organization");
-    }
+    await requireMembership(this.db, organizationId, session.user.id);
 
     return { userId: session.user.id, organizationId };
   }

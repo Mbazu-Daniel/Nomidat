@@ -1,5 +1,6 @@
+import { assignableRoles } from "../../../common/better-auth/organization-permissions";
 import { Type } from "class-transformer";
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from "class-validator";
+import { IsInt, IsIn, IsNotEmpty, IsUUID, IsOptional, IsString, Min } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class ListMembersQueryDto {
@@ -59,16 +60,17 @@ export class ListMembersQueryDto {
 export class UpdateMemberRoleDto {
   @ApiProperty({ oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] })
   @IsNotEmpty()
+  @IsIn(assignableRoles, { each: true })
   role!: string | string[];
 }
 
 export class AddMemberDto {
   @ApiPropertyOptional({ nullable: true })
-  @IsOptional()
-  @IsString()
-  userId?: string | null;
+  @IsUUID()
+  userId!: string;
 
   @ApiProperty({ oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] })
   @IsNotEmpty()
+  @IsIn(assignableRoles, { each: true })
   role!: string | string[];
 }

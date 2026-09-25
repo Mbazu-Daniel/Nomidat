@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { organization } from "better-auth/plugins";
+import { businessAccess, businessRoles } from "./organization-permissions";
+import { organization, phoneNumber } from "better-auth/plugins";
 import * as schema from "@nomidat/db/schema";
 import { generateId } from "@nomidat/db";
 import { hashPassword, verifyPassword } from "../helpers/hash-password";
@@ -63,8 +65,25 @@ export function createBetterAuth(options: CreateBetterAuthOptions) {
         trustedProviders: socialProviders ? ["google", "email-password"] : ["email-password"],
       },
     },
+    rateLimit: { enabled: true },
     plugins: [
-      organization(options.sendInvitationEmail ? { sendInvitationEmail: options.sendInvitationEmail } : {}),
+      phoneNumber({
+        expiresIn: 300,
+        allowedAttempts: 3,
+        phoneNumberValidator: (value) => /^\+[1-9]\d{7,14}$/.test(value),
+        sendOTP: async (data) => {
+          if (!options.sendPhoneOTP) throw new Error("Phone sign-in is not configured.");
+          await options.sendPhoneOTP(data);
+        },
+        signUpOnVerification: { getTempEmail: () => randomUUID() + "@phone.nomidat.invalid" },
+      }),
+      organization({
+        ac: businessAccess,
+        roles: businessRoles,
+        ...(options.sendInvitationEmail
+          ? { sendInvitationEmail: options.sendInvitationEmail }
+          : {}),
+      }),
       ...(options.telegramBotToken
         ? [telegramMiniApp({ botToken: options.telegramBotToken })]
         : []),
