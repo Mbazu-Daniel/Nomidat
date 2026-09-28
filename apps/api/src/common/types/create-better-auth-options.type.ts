@@ -8,6 +8,7 @@ export type CreateBetterAuthOptions = {
   webOrigin: string;
   google?: GoogleAuthCredentials;
   telegramBotToken?: string;
+  sendPhoneOTP?: (data: { phoneNumber: string; code: string }) => Promise<void>;
   sendInvitationEmail?: (data: {
     id: string;
     email: string;

@@ -13,7 +13,7 @@ export async function seedExpenseCategories(connectionString: string) {
     const inserted = await db
       .insert(expenseCategory)
       .values(values)
-      .onConflictDoNothing({ target: expenseCategory.name })
+      .onConflictDoNothing()
       .returning({ id: expenseCategory.id });
     return { total: values.length, inserted: inserted.length };
   } finally {

@@ -1,4 +1,5 @@
-import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { assignableRoles } from "../../../common/better-auth/organization-permissions";
+import { IsIn, IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class InviteMemberDto {
@@ -12,6 +13,7 @@ export class InviteMemberDto {
     example: "member",
   })
   @IsNotEmpty()
+  @IsIn(assignableRoles, { each: true })
   role!: string | string[];
 
   @ApiPropertyOptional({ description: "Resend if already invited" })

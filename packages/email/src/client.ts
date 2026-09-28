@@ -48,6 +48,11 @@ export async function createEmailClient(config: EmailClientConfig): Promise<Emai
               ],
             }
           : {}),
+        attachments: input.attachments?.map((file) => ({
+          name: file.name,
+          mime_type: file.mimeType,
+          content: file.content,
+        })),
         subject: input.subject,
         htmlbody: input.html,
         ...(input.text ? { textbody: input.text } : {}),

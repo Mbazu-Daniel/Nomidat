@@ -1,3 +1,4 @@
+import { sendPhoneOTP } from "./send-phone-otp";
 import { Global, Module } from "@nestjs/common";
 import { createDb } from "@nomidat/db";
 import { sendOrganizationInvitationEmail, type EmailClient } from "@nomidat/email";
@@ -19,6 +20,7 @@ import { createBetterAuth, type BetterAuthInstance } from "./create-better-auth"
 
         return createBetterAuth({
           db,
+          sendPhoneOTP: (data) => sendPhoneOTP(env, data),
           secret: env.BETTER_AUTH_SECRET,
           baseURL: env.BETTER_AUTH_URL,
           webOrigin: env.WEB_ORIGIN,

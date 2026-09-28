@@ -1,0 +1,121 @@
+.picture-import {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.picture-import h2,
+.picture-import h3 {
+  margin: 0 0 8px;
+}
+.picture-import p {
+  color: #737e8e;
+  line-height: 1.6;
+}
+.picture-review-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.picture-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 20px;
+  margin: 20px 0 12px;
+  border: 1px dashed #edac8c;
+  border-radius: 14px;
+  background: #fff8f3;
+  color: #d75b25;
+  text-align: center;
+  cursor: pointer;
+}
+.picture-dropzone strong {
+  overflow-wrap: anywhere;
+}
+.picture-dropzone span,
+.picture-help {
+  font-size: 13px;
+}
+.picture-dropzone input {
+  max-width: 100%;
+  font-size: 13px;
+}
+.picture-dropzone:focus-within {
+  outline: 2px solid #ed763d;
+  outline-offset: 3px;
+}
+.picture-preview {
+  margin: 20px 0;
+  color: #637080;
+}
+.picture-preview summary {
+  cursor: pointer;
+  font-size: 14px;
+}
+.picture-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  margin-top: 12px;
+  border-radius: 10px;
+}
+.picture-review-notice,
+.picture-warnings {
+  padding: 14px 20px;
+  border-radius: 10px;
+  background: #fff3e8;
+  font-size: 14px;
+}
+.picture-warnings {
+  padding-left: 36px;
+  color: #975b33;
+}
+.picture-import .workspace-form {
+  margin-bottom: 0;
+}
+.picture-product-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.picture-product-choice select {
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid #dce2eb;
+  border-radius: 8px;
+  background: white;
+}
+@media (max-width: 640px) {
+  .picture-import {
+    padding: 16px;
+  }
+  .picture-review-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .picture-import .workspace-form {
+    padding: 16px;
+  }
+}
+
+.workspace-form .picture-confirmation {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.workspace-form .picture-confirmation input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex-shrink: 0;
+  accent-color: #eb7038;
+}

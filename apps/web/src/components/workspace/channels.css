@@ -1,0 +1,284 @@
+.channels-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-bottom: 26px;
+}
+.channels-secure,
+.channels-footnote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #879286;
+  font-size: 11px;
+}
+.channels-secure {
+  white-space: nowrap;
+}
+.channel-provider {
+  padding: 28px;
+}
+.channel-provider-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.channel-brand {
+  display: grid;
+  place-items: center;
+  width: 55px;
+  height: 55px;
+  border-radius: 15px;
+}
+.channel-brand.telegram {
+  background: #eaf5fc;
+  color: #279bd2;
+}
+.channel-brand.whatsapp {
+  background: #ebf7ef;
+  color: #329a60;
+}
+.channel-brand.small {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  flex-shrink: 0;
+}
+.channel-status {
+  border: 1px solid #e8eaee;
+  border-radius: 20px;
+  color: #969da6;
+  padding: 5px 10px;
+  font-size: 10px;
+  background: #fafbfc;
+}
+.channel-status.connected {
+  background: #ebf7ef;
+  color: #329a60;
+  border-color: #d4eddd;
+}
+.workspace-card.channel-provider h2 {
+  font-size: 23px;
+  letter-spacing: -0.6px;
+}
+.channel-description {
+  color: #8a929e;
+  font-size: 12px;
+  line-height: 1.85;
+  max-width: 370px;
+  margin: 12px 0 22px;
+}
+.channel-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 26px;
+  list-style: none;
+  padding: 0;
+}
+.channel-features li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #748171;
+  font-size: 10px;
+}
+.channel-provider > button {
+  width: 100%;
+  justify-content: center;
+}
+.channel-link-panel {
+  padding: 26px;
+  margin-bottom: 26px;
+  border-color: #f1d8c5;
+}
+.channel-link-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+.channel-link-heading h2 {
+  margin-top: 8px;
+}
+.channel-link-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+.channel-code-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #ad8468;
+}
+.channel-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff5ed;
+  border: 1px solid #f5dfcf;
+  border-radius: 10px;
+  padding: 18px;
+  margin-top: 10px;
+}
+.channel-code code {
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  color: #b45d2d;
+  overflow-wrap: anywhere;
+}
+.channel-expiry {
+  color: #98908a;
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.channel-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}
+.channel-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  color: #7f8895;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.channel-steps li > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: #f6f3ef;
+  border-radius: 50%;
+  font-size: 10px;
+  color: #a7856c;
+}
+.channel-steps code {
+  color: #a96135;
+  overflow-wrap: anywhere;
+}
+.channels-accounts header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 26px;
+  border-bottom: 1px solid #edf0f4;
+}
+.channels-accounts header p {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #98a0ab;
+}
+.channels-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 24px;
+  color: #969eaa;
+}
+.channels-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  background: #fff2e8;
+  color: #d48858;
+  border-radius: 16px;
+  margin-bottom: 17px;
+}
+.channels-empty h3 {
+  font-size: 14px;
+  font-weight: 550;
+  color: #626d7b;
+  margin-bottom: 8px;
+}
+.channels-empty p {
+  font-size: 12px;
+  line-height: 1.7;
+  max-width: 350px;
+}
+.channel-account-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 26px;
+}
+.channel-account-list > li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 21px 0;
+  border-bottom: 1px solid #edf0f4;
+}
+.channel-account-list > li:last-child {
+  border-bottom: 0;
+}
+.channel-account-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.channel-account-name strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.channel-account-name p {
+  font-size: 11px;
+  color: #929ba7;
+  margin-top: 5px;
+  text-transform: capitalize;
+}
+.channel-unlink {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.channel-unlink span {
+  font-size: 11px;
+  color: #986342;
+}
+.channels-footnote {
+  justify-content: center;
+  margin: 22px 0;
+  line-height: 1.7;
+}
+@media (max-width: 900px) {
+  .channels-grid,
+  .channel-link-content {
+    grid-template-columns: 1fr;
+  }
+  .channels-secure {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .channel-provider,
+  .channel-link-panel {
+    padding: 22px;
+  }
+  .channels-accounts header {
+    padding: 20px;
+  }
+  .channel-account-list > li {
+    flex-wrap: wrap;
+  }
+  .channel-account-list {
+    padding: 0 20px;
+  }
+  .channel-link-heading {
+    align-items: flex-start;
+  }
+}

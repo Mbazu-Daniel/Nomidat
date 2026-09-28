@@ -1,15 +1,15 @@
 import { Module } from "@nestjs/common";
 import { DbModule } from "../../common/db/db.module";
-import { ChannelAuthService } from "./channel-auth.service";
+import { BusinessModule } from "../business/business.module";
 import { ChannelController } from "./channel.controller";
 import { ConversationalModule } from "../conversational/conversational.module";
 import { ChannelInboundService } from "./channel-inbound.service";
 import { ChannelService } from "./channel.service";
 
 @Module({
-  imports: [DbModule, ConversationalModule],
+  imports: [BusinessModule, DbModule, ConversationalModule],
   controllers: [ChannelController],
-  providers: [ChannelService, ChannelAuthService, ChannelInboundService],
+  providers: [ChannelService, ChannelInboundService],
   exports: [ChannelService, ChannelInboundService],
 })
 export class ChannelModule {}

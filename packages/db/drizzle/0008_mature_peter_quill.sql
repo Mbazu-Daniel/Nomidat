@@ -1,0 +1,1 @@
+ALTER TABLE "payment_link" ADD COLUMN "notified_at" timestamp;

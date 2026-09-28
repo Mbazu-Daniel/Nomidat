@@ -1,3 +1,4 @@
+import { PhoneSignIn } from "@/components/auth/phone-sign-in";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ function LoginPage() {
         </p>
       </header>
 
+      <PhoneSignIn />
       <form className="flex flex-col gap-4" onSubmit={createEmailSession}>
         <label className="flex flex-col gap-1.5 text-sm" htmlFor="email">
           Email

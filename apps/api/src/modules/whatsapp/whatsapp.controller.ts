@@ -1,3 +1,5 @@
+import { UseGuards } from "@nestjs/common";
+import { InboundRateLimitGuard } from "../../common/rate-limit/inbound-rate-limit.guard";
 import {
   Controller,
   Get,
@@ -25,6 +27,7 @@ type RequestWithRawBody = Request & { rawBody?: Buffer };
 
 @ApiExcludeController()
 @Controller("channels/whatsapp")
+@UseGuards(InboundRateLimitGuard)
 export class WhatsAppController {
   constructor(
     @Inject(API_ENV) private readonly env: ApiEnv,
@@ -57,7 +60,9 @@ export class WhatsAppController {
     @Headers("x-hub-signature-256") signature: string | undefined,
   ) {
     const appSecret = this.env.WHATSAPP_APP_SECRET;
-    if (appSecret) {
+    if (!appSecret)
+      throw new UnauthorizedException("WhatsApp webhook verification is not configured.");
+    {
       const rawBody = req.rawBody;
       if (!rawBody || !getIsValidWhatsAppSignature(rawBody, signature, appSecret)) {
         throw new UnauthorizedException("Invalid WhatsApp signature");
@@ -98,6 +103,14 @@ export class WhatsAppController {
     if (message.type === "text" && message.text?.body) {
       return { ...base, kind: "text" as const, text: message.text.body };
     }
+    if (message.type === "image" && message.image)
+      return {
+        ...base,
+        kind: "image" as const,
+        text: message.image.caption,
+        mediaUrl: message.image.id,
+        mediaMimeType: message.image.mime_type,
+      };
     if (message.type === "audio" && message.audio) {
       return {
         ...base,
@@ -109,7 +122,9 @@ export class WhatsAppController {
     if (message.type === "document" && message.document) {
       return {
         ...base,
-        kind: "document" as const,
+        kind: message.document.mime_type?.startsWith("image/")
+          ? ("image" as const)
+          : ("document" as const),
         text: message.document.caption,
         mediaUrl: message.document.id,
         mediaMimeType: message.document.mime_type,

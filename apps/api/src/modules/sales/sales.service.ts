@@ -1,3 +1,4 @@
+import { SalesQueriesService } from "./sales-queries.service";
 import {
   BadRequestException,
   ConflictException,
@@ -5,16 +6,17 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { and, desc, eq, gte, sql, sum } from "@nomidat/db";
+import { and, eq, gte, sql } from "@nomidat/db";
 import { contact, order, orderItem, payment, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateSaleDto, RecordPaymentDto } from "./dto";
 
-const MAX_LIMIT = 50;
-
 @Injectable()
 export class SalesService {
-  constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: DbHandle,
+    private readonly queries: SalesQueriesService,
+  ) {}
 
   async createSale(organizationId: string, userId: string | null, input: CreateSaleDto) {
     this.validateSaleInput(input);
@@ -27,6 +29,15 @@ export class SalesService {
     const totalKobo = subtotalKobo - discountKobo + taxKobo;
     const paymentAmountKobo = input.paymentAmountKobo ?? 0;
 
+    if (
+      !Number.isSafeInteger(subtotalKobo) ||
+      subtotalKobo > 2147483647 ||
+      totalKobo > 2147483647
+    ) {
+      throw new BadRequestException("Sale exceeds the supported amount.");
+    }
+    if (discountKobo > subtotalKobo)
+      throw new BadRequestException("Discount cannot exceed the subtotal.");
     if (totalKobo <= 0) throw new BadRequestException("Sale total must be greater than zero.");
     if (paymentAmountKobo > totalKobo) {
       throw new BadRequestException("Payment cannot exceed the sale total.");
@@ -113,7 +124,7 @@ export class SalesService {
       });
     }
 
-    return this.getSaleByIdTx(tx, organizationId, createdOrder.id);
+    return this.queries.getSale(organizationId, createdOrder.id, tx);
   }
 
   private async resolveSaleItems(
@@ -186,37 +197,6 @@ export class SalesService {
     return resolvedItems;
   }
 
-  async listSales(organizationId: string, limit = 20) {
-    const rows = await this.db
-      .select({
-        id: order.id,
-        customerId: contact.id,
-        customer: contact.name,
-        status: order.status,
-        subtotalKobo: order.subtotalKobo,
-        discountKobo: order.discountKobo,
-        taxKobo: order.taxKobo,
-        totalKobo: order.totalKobo,
-        createdAt: order.createdAt,
-      })
-      .from(order)
-      .leftJoin(contact, eq(order.contactId, contact.id))
-      .where(eq(order.organizationId, organizationId))
-      .orderBy(desc(order.createdAt))
-      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
-
-    return Promise.all(
-      rows.map(async (sale) => ({
-        ...sale,
-        paidKobo: await this.getPaidAmount(organizationId, sale.id),
-      })),
-    );
-  }
-
-  async getSale(organizationId: string, saleId: string) {
-    return this.getSaleByIdTx(this.db, organizationId, saleId);
-  }
-
   async recordPayment(
     organizationId: string,
     userId: string | null,
@@ -228,8 +208,8 @@ export class SalesService {
         sql`SELECT id FROM ${order} WHERE id = ${saleId} AND organization_id = ${organizationId} FOR UPDATE`,
       );
 
-      const sale = await this.getSaleByIdTx(tx, organizationId, saleId);
-      const paidKobo = await this.getPaidAmountTx(tx, organizationId, saleId);
+      const sale = await this.queries.getSale(organizationId, saleId, tx);
+      const paidKobo = sale.paidKobo;
       const balanceKobo = sale.totalKobo - paidKobo;
 
       if (input.amountKobo > balanceKobo) {
@@ -270,44 +250,6 @@ export class SalesService {
     });
   }
 
-  async getCustomerBalance(organizationId: string, customerId: string) {
-    const [customer] = await this.db
-      .select({ id: contact.id, name: contact.name })
-      .from(contact)
-      .where(and(eq(contact.id, customerId), eq(contact.organizationId, organizationId)))
-      .limit(1);
-
-    if (!customer) throw new NotFoundException("Customer not found.");
-
-    const pendingSales = await this.db
-      .select({ id: order.id, totalKobo: order.totalKobo, createdAt: order.createdAt })
-      .from(order)
-      .where(
-        and(
-          eq(order.organizationId, organizationId),
-          eq(order.contactId, customerId),
-          eq(order.status, "pending"),
-        ),
-      )
-      .orderBy(desc(order.createdAt));
-
-    const balances = await Promise.all(
-      pendingSales.map(async (sale) => ({
-        ...sale,
-        paidKobo: await this.getPaidAmount(organizationId, sale.id),
-      })),
-    );
-
-    return {
-      customer,
-      outstandingKobo: Math.max(
-        0,
-        balances.reduce((total, sale) => total + sale.totalKobo - sale.paidKobo, 0),
-      ),
-      pendingSales: balances,
-    };
-  }
-
   private async resolveCustomerId(
     tx: Pick<DbHandle, "select">,
     organizationId: string,
@@ -323,88 +265,5 @@ export class SalesService {
 
     if (!customer) throw new NotFoundException("Customer not found.");
     return customer.id;
-  }
-
-  private async getSaleByIdTx(
-    tx: Pick<DbHandle, "select">,
-    organizationId: string,
-    saleId: string,
-  ) {
-    const [sale] = await tx
-      .select({
-        id: order.id,
-        customerId: contact.id,
-        customer: contact.name,
-        status: order.status,
-        subtotalKobo: order.subtotalKobo,
-        discountKobo: order.discountKobo,
-        taxKobo: order.taxKobo,
-        totalKobo: order.totalKobo,
-        currency: order.currency,
-        paidAt: order.paidAt,
-        paymentReference: order.paymentReference,
-        notes: order.notes,
-        createdAt: order.createdAt,
-      })
-      .from(order)
-      .leftJoin(contact, eq(order.contactId, contact.id))
-      .where(and(eq(order.id, saleId), eq(order.organizationId, organizationId)))
-      .limit(1);
-
-    if (!sale) throw new NotFoundException("Sale not found.");
-
-    const items = await tx
-      .select({
-        id: orderItem.id,
-        productId: orderItem.productId,
-        productName: orderItem.productName,
-        quantity: orderItem.quantity,
-        unitPriceKobo: orderItem.unitPriceKobo,
-        totalKobo: orderItem.totalKobo,
-      })
-      .from(orderItem)
-      .where(eq(orderItem.orderId, saleId));
-
-    const payments = await tx
-      .select({
-        id: payment.id,
-        amountKobo: payment.amountKobo,
-        method: payment.method,
-        reference: payment.reference,
-        notes: payment.notes,
-        paidAt: payment.paidAt,
-      })
-      .from(payment)
-      .where(
-        and(eq(payment.orderId, saleId), eq(payment.organizationId, organizationId)),
-      )
-      .orderBy(desc(payment.paidAt));
-
-    const paidKobo = payments.reduce((total, item) => total + item.amountKobo, 0);
-
-    return {
-      ...sale,
-      items,
-      payments,
-      paidKobo,
-      balanceKobo: Math.max(0, sale.totalKobo - paidKobo),
-    };
-  }
-
-  private async getPaidAmount(organizationId: string, saleId: string) {
-    return this.getPaidAmountTx(this.db, organizationId, saleId);
-  }
-
-  private async getPaidAmountTx(
-    tx: Pick<DbHandle, "select">,
-    organizationId: string,
-    saleId: string,
-  ) {
-    const [result] = await tx
-      .select({ totalKobo: sum(payment.amountKobo) })
-      .from(payment)
-      .where(and(eq(payment.organizationId, organizationId), eq(payment.orderId, saleId)));
-
-    return Number(result?.totalKobo ?? 0);
   }
 }

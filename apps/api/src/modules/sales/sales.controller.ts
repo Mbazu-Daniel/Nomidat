@@ -1,3 +1,4 @@
+import { SalesQueriesService } from "./sales-queries.service";
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req } from "@nestjs/common";
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
@@ -12,6 +13,7 @@ export class SalesController {
   constructor(
     private readonly auth: BusinessAuthService,
     private readonly sales: SalesService,
+    private readonly queries: SalesQueriesService,
   ) {}
 
   @Post("sales")
@@ -22,6 +24,7 @@ export class SalesController {
     @Req() req: Request,
   ) {
     const session = await this.auth.getSession(extractHeaders(req), organizationId);
+    this.auth.authorizeWrite(session.role, "sales");
     return this.sales.createSale(organizationId, session.userId, body);
   }
 
@@ -32,9 +35,10 @@ export class SalesController {
     @Param("organizationId") organizationId: string,
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
+    @Query("offset", new ParseIntPipe({ optional: true })) offset?: number,
   ) {
     await this.auth.authorize(extractHeaders(req), organizationId);
-    return this.sales.listSales(organizationId, limit);
+    return this.queries.listSales(organizationId, limit, offset);
   }
 
   @Get("sales/:saleId")
@@ -46,7 +50,7 @@ export class SalesController {
     @Req() req: Request,
   ) {
     await this.auth.authorize(extractHeaders(req), organizationId);
-    return this.sales.getSale(organizationId, saleId);
+    return this.queries.getSale(organizationId, saleId);
   }
 
   @Post("sales/:saleId/payments")
@@ -58,6 +62,7 @@ export class SalesController {
     @Req() req: Request,
   ) {
     const session = await this.auth.getSession(extractHeaders(req), organizationId);
+    this.auth.authorizeWrite(session.role, "sales");
     return this.sales.recordPayment(organizationId, session.userId, saleId, body);
   }
 
@@ -69,6 +74,6 @@ export class SalesController {
     @Req() req: Request,
   ) {
     await this.auth.authorize(extractHeaders(req), organizationId);
-    return this.sales.getCustomerBalance(organizationId, customerId);
+    return this.queries.getCustomerBalance(organizationId, customerId);
   }
 }

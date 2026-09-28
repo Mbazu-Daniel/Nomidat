@@ -1,3 +1,5 @@
+import { ContactsModule } from "./modules/contacts/contacts.module";
+import { PictureImportModule } from "./modules/picture-import/picture-import.module";
 import { Module } from "@nestjs/common";
 import { EnvModule } from "./common/config/env.module";
 import { DbModule } from "./common/db/db.module";
@@ -21,6 +23,8 @@ import { ExpensesModule } from "./modules/expenses/expenses.module";
 
 @Module({
   imports: [
+    PictureImportModule,
+    ContactsModule,
     EnvModule,
     DbModule,
     EmailModule,

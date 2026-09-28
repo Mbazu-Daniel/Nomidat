@@ -113,8 +113,8 @@ export class ReportsService {
     range: ReportRange,
   ) {
     return sql`${organizationColumn} = ${organizationId}
-      and ${timestamp} >= ${range.from}
-      and ${timestamp} < ${range.to}`;
+      and ${timestamp} >= ${range.from.toISOString()}
+      and ${timestamp} < ${range.to.toISOString()}`;
   }
 
   private toMetrics(

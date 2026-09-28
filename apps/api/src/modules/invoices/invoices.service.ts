@@ -1,6 +1,7 @@
+import { getInvoiceDocument } from "./invoice-document-query";
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { and, desc, eq } from "@nomidat/db";
-import { contact, invoice, invoiceItem, order, orderItem, payment, product } from "@nomidat/db/schema";
+import { contact, invoice, invoiceItem, order, orderItem, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateInvoiceDto } from "./dto";
 
@@ -17,7 +18,11 @@ export class InvoicesService {
 
     return this.db.transaction(async (tx) => {
       const customerId = await this.resolveCustomerId(tx, organizationId, input.customerId);
-      await this.validateProducts(tx, organizationId, input.items.map((item) => item.productId));
+      await this.validateProducts(
+        tx,
+        organizationId,
+        input.items.map((item) => item.productId),
+      );
       const number = await this.nextInvoiceNumber(tx, organizationId);
 
       const [created] = await tx
@@ -38,7 +43,7 @@ export class InvoicesService {
         .returning({ id: invoice.id });
 
       await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, input.items));
-      return this.getInvoiceTx(tx, organizationId, created.id);
+      return getInvoiceDocument(tx, organizationId, created.id);
     });
   }
 
@@ -64,6 +69,13 @@ export class InvoicesService {
   ) {
     if (input.items.length === 0) {
       throw new BadRequestException("At least one invoice item is required.");
+    }
+    if (
+      !Number.isSafeInteger(totals.subtotalKobo) ||
+      totals.subtotalKobo > 2147483647 ||
+      totals.totalKobo > 2147483647
+    ) {
+      throw new BadRequestException("Invoice exceeds the supported amount.");
     }
     if (totals.totalKobo <= 0) {
       throw new BadRequestException("Invoice total must be greater than zero.");
@@ -98,7 +110,8 @@ export class InvoicesService {
         .where(and(eq(invoice.organizationId, organizationId), eq(invoice.sourceSaleId, saleId)))
         .limit(1);
 
-      if (existingInvoice) throw new BadRequestException("An invoice already exists for this sale.");
+      if (existingInvoice)
+        throw new BadRequestException("An invoice already exists for this sale.");
 
       const items = await tx
         .select({
@@ -133,11 +146,11 @@ export class InvoicesService {
 
       await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, items));
 
-      return this.getInvoiceTx(tx, organizationId, created.id);
+      return getInvoiceDocument(tx, organizationId, created.id);
     });
   }
 
-  async listInvoices(organizationId: string, limit = 20) {
+  async listInvoices(organizationId: string, limit = 20, offset = 0) {
     const rows = await this.db
       .select({
         id: invoice.id,
@@ -154,65 +167,14 @@ export class InvoicesService {
       .leftJoin(contact, eq(invoice.contactId, contact.id))
       .where(eq(invoice.organizationId, organizationId))
       .orderBy(desc(invoice.createdAt))
-      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
+      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT))
+      .offset(Math.max(0, offset));
 
     return rows;
   }
 
   async getInvoice(organizationId: string, invoiceId: string) {
-    return this.getInvoiceTx(this.db, organizationId, invoiceId);
-  }
-
-  async getReceipt(organizationId: string, saleId: string) {
-    const [sale] = await this.db
-      .select({
-        id: order.id,
-        customerId: contact.id,
-        customer: contact.name,
-        totalKobo: order.totalKobo,
-        currency: order.currency,
-        createdAt: order.createdAt,
-      })
-      .from(order)
-      .leftJoin(contact, eq(order.contactId, contact.id))
-      .where(and(eq(order.id, saleId), eq(order.organizationId, organizationId)))
-      .limit(1);
-
-    if (!sale) throw new NotFoundException("Sale not found.");
-
-    const items = await this.db
-      .select({
-        id: orderItem.id,
-        description: orderItem.productName,
-        quantity: orderItem.quantity,
-        unitPriceKobo: orderItem.unitPriceKobo,
-        totalKobo: orderItem.totalKobo,
-      })
-      .from(orderItem)
-      .where(eq(orderItem.orderId, saleId));
-
-    const payments = await this.db
-      .select({
-        id: payment.id,
-        amountKobo: payment.amountKobo,
-        method: payment.method,
-        reference: payment.reference,
-        paidAt: payment.paidAt,
-      })
-      .from(payment)
-      .where(and(eq(payment.orderId, saleId), eq(payment.organizationId, organizationId)))
-      .orderBy(desc(payment.paidAt));
-
-    const paidKobo = payments.reduce((total, item) => total + item.amountKobo, 0);
-
-    return {
-      receiptNumber: `RCPT-${sale.id.slice(0, 8).toUpperCase()}`,
-      sale,
-      items,
-      payments,
-      paidKobo,
-      balanceKobo: Math.max(0, sale.totalKobo - paidKobo),
-    };
+    return getInvoiceDocument(this.db, organizationId, invoiceId);
   }
 
   private buildInvoiceItems(
@@ -270,57 +232,9 @@ export class InvoicesService {
     }
   }
 
-  private async nextInvoiceNumber(
-    _tx: Pick<DbHandle, "select">,
-    _organizationId: string,
-  ) {
+  private async nextInvoiceNumber(_tx: Pick<DbHandle, "select">, _organizationId: string) {
     const stamp = Date.now().toString(36).toUpperCase();
     const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
     return `INV-${stamp}-${suffix}`;
-  }
-
-  private async getInvoiceTx(
-    tx: Pick<DbHandle, "select">,
-    organizationId: string,
-    invoiceId: string,
-  ) {
-    const [result] = await tx
-      .select({
-        id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber,
-        customerId: contact.id,
-        customer: contact.name,
-        status: invoice.status,
-        subtotalKobo: invoice.subtotalKobo,
-        discountKobo: invoice.discountKobo,
-        taxKobo: invoice.taxKobo,
-        totalKobo: invoice.totalKobo,
-        currency: invoice.currency,
-        dueDate: invoice.dueDate,
-        paidAt: invoice.paidAt,
-        pdfUrl: invoice.pdfUrl,
-        notes: invoice.notes,
-        createdAt: invoice.createdAt,
-      })
-      .from(invoice)
-      .leftJoin(contact, eq(invoice.contactId, contact.id))
-      .where(and(eq(invoice.id, invoiceId), eq(invoice.organizationId, organizationId)))
-      .limit(1);
-
-    if (!result) throw new NotFoundException("Invoice not found.");
-
-    const items = await tx
-      .select({
-        id: invoiceItem.id,
-        productId: invoiceItem.productId,
-        description: invoiceItem.description,
-        quantity: invoiceItem.quantity,
-        unitPriceKobo: invoiceItem.unitPriceKobo,
-        totalKobo: invoiceItem.totalKobo,
-      })
-      .from(invoiceItem)
-      .where(eq(invoiceItem.invoiceId, invoiceId));
-
-    return { ...result, items };
   }
 }

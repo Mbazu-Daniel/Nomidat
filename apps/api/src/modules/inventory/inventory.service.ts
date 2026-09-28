@@ -16,7 +16,7 @@ const MAX_LIMIT = 50;
 export class InventoryService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
-  async listProducts(organizationId: string, limit = 20) {
+  async listProducts(organizationId: string, limit = 20, offset = 0) {
     return this.db
       .select({
         id: product.id,
@@ -35,7 +35,8 @@ export class InventoryService {
       .from(product)
       .where(eq(product.organizationId, organizationId))
       .orderBy(desc(product.updatedAt))
-      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
+      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT))
+      .offset(Math.max(0, offset));
   }
 
   async getProduct(organizationId: string, productId: string) {
@@ -82,6 +83,7 @@ export class InventoryService {
     const [updated] = await this.db
       .update(product)
       .set({
+        isActive: input.isActive ?? existing.isActive,
         name: input.name?.trim() ?? existing.name,
         sku,
         description: input.description?.trim() ?? existing.description,
@@ -97,7 +99,6 @@ export class InventoryService {
     return updated;
   }
 
-
   async archiveProduct(organizationId: string, productId: string) {
     await this.getProduct(organizationId, productId);
 
@@ -110,11 +111,7 @@ export class InventoryService {
     return updated;
   }
 
-  async adjustStock(
-    organizationId: string,
-    productId: string,
-    input: AdjustStockDto,
-  ) {
+  async adjustStock(organizationId: string, productId: string, input: AdjustStockDto) {
     if (input.quantity === 0) {
       throw new BadRequestException("Stock adjustment cannot be zero.");
     }
@@ -138,7 +135,10 @@ export class InventoryService {
 
       const [updated] = await tx
         .update(product)
-        .set({ stockQuantity: sql`${product.stockQuantity} + ${input.quantity}`, updatedAt: new Date() })
+        .set({
+          stockQuantity: sql`${product.stockQuantity} + ${input.quantity}`,
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(product.id, productId),

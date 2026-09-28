@@ -15,7 +15,12 @@ export class OrganizationService {
 
   async createOrganization(body: CreateOrganizationDto, headers: Headers) {
     return this.betterAuth.api.createOrganization({
-      body,
+      body: {
+        ...body,
+        metadata: body.businessDetails
+          ? { ...body.metadata, businessDetails: body.businessDetails }
+          : body.metadata,
+      },
       headers,
       asResponse: true,
     });

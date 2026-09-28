@@ -1,3 +1,4 @@
+import { ReceiptsService } from "./receipts.service";
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req } from "@nestjs/common";
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
@@ -12,6 +13,7 @@ export class InvoicesController {
   constructor(
     private readonly auth: BusinessAuthService,
     private readonly invoices: InvoicesService,
+    private readonly receipts: ReceiptsService,
   ) {}
 
   @Post("invoices")
@@ -43,9 +45,10 @@ export class InvoicesController {
     @Param("organizationId") organizationId: string,
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
+    @Query("offset", new ParseIntPipe({ optional: true })) offset?: number,
   ) {
     await this.authorize(req, organizationId);
-    return this.invoices.listInvoices(organizationId, limit);
+    return this.invoices.listInvoices(organizationId, limit, offset);
   }
 
   @Get("invoices/:invoiceId")
@@ -68,9 +71,9 @@ export class InvoicesController {
     @Req() req: Request,
   ) {
     await this.authorize(req, organizationId);
-    return this.invoices.getReceipt(organizationId, saleId);
+    return this.receipts.getReceipt(organizationId, saleId);
   }
   private authorize(req: Request, organizationId: string) {
-    return this.auth.authorize(extractHeaders(req), organizationId);
+    return this.auth.authorize(extractHeaders(req), organizationId, req.method !== "GET", "invoices");
   }
 }

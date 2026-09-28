@@ -1,0 +1,140 @@
+.sales-register {
+  container-type: inline-size;
+}
+.sales-register table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+.sales-register th,
+.sales-register td {
+  padding: 16px 10px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.sales-register th:first-child {
+  width: 22%;
+}
+.sales-register th:first-child,
+.sales-register td:first-child {
+  padding-inline-start: 20px;
+}
+.sales-register th:nth-child(2) {
+  width: 17%;
+}
+.sales-register th:nth-child(3),
+.sales-register th:nth-child(4),
+.sales-register th:nth-child(5) {
+  width: 13%;
+}
+.sales-register th:nth-child(6) {
+  width: 15%;
+}
+.sales-register th:last-child {
+  width: 7%;
+}
+.sales-register .workspace-record-name {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.sales-register .sales-money {
+  text-align: start;
+  white-space: normal;
+  font-variant-numeric: tabular-nums;
+}
+.sales-customer {
+  display: block;
+  margin-top: 6px;
+  color: #667183;
+}
+.sales-items {
+  min-width: 0;
+}
+.sales-items > span {
+  display: block;
+  overflow-wrap: anywhere;
+  margin: 4px 0;
+}
+.sales-register .sales-owed {
+  color: #a56820;
+  font-weight: 600;
+}
+.sales-status {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: normal;
+}
+.sales-status.paid {
+  color: #287346;
+  background: #edf8f1;
+}
+.sales-status[data-status="Paid"],
+.sales-status[data-status="Partially paid"] {
+  font-size: 10px;
+}
+.sales-status.owing {
+  color: #9b6118;
+  background: #fff3df;
+}
+.sales-status.cancelled {
+  color: #737e8e;
+  background: #f0f2f5;
+}
+@container (max-width: 750px) {
+  .sales-register th,
+  .sales-register td {
+    padding: 14px 6px;
+    font-size: 12px;
+  }
+  .sales-register .workspace-record-name {
+    font-size: 12px;
+  }
+  .sales-status {
+    padding: 5px 6px;
+    font-size: 11px;
+  }
+}
+@container (max-width: 560px) {
+  .sales-register table,
+  .sales-register tbody {
+    display: block;
+  }
+  .sales-register thead {
+    display: none;
+  }
+  .sales-register tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 14px;
+    border-bottom: 1px solid #e4e8ee;
+  }
+  .sales-register td {
+    min-width: 0;
+    border: 0;
+    padding: 8px;
+  }
+  .sales-register td:first-child,
+  .sales-register .sales-items {
+    grid-column: 1 / -1;
+  }
+  .sales-register td:last-child {
+    display: flex;
+    align-items: end;
+    justify-content: end;
+  }
+  .sales-register .sales-money {
+    text-align: start;
+  }
+  .sales-register td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 6px;
+    color: #737e8e;
+    font-size: 11px;
+    font-weight: 400;
+  }
+}

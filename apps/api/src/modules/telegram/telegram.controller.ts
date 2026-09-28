@@ -1,3 +1,5 @@
+import { UseGuards } from "@nestjs/common";
+import { InboundRateLimitGuard } from "../../common/rate-limit/inbound-rate-limit.guard";
 import { Body, Controller, Headers, HttpCode, Post, UnauthorizedException } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 import { ChannelInboundService } from "../channel/channel-inbound.service";
@@ -8,6 +10,7 @@ import type { TelegramUpdate } from "./types";
 
 @ApiExcludeController()
 @Controller("channels/telegram")
+@UseGuards(InboundRateLimitGuard)
 export class TelegramController {
   constructor(
     private readonly telegramClient: TelegramClient,
@@ -35,13 +38,27 @@ export class TelegramController {
 
   private getInboundMessage(update: TelegramUpdate): InboundMessage | null {
     const message = update.message;
-    if (!message) return null;
+    if (!message || message.chat.type !== "private") return null;
 
     const displayName =
       message.chat.title ??
       message.from?.username ??
       message.from?.first_name ??
       message.chat.first_name;
+
+    const photo = message.photo?.at(-1);
+    if (photo)
+      return {
+        provider: ChannelProvider.Telegram,
+        externalId: String(message.chat.id),
+        displayName,
+        kind: "image",
+        text: message.caption,
+        mediaUrl: photo.file_id,
+        mediaMimeType: "image/jpeg",
+        rawUpdateId: String(update.update_id),
+        receivedAt: new Date(),
+      };
 
     if (message.voice) {
       return {
@@ -62,7 +79,7 @@ export class TelegramController {
         provider: ChannelProvider.Telegram,
         externalId: String(message.chat.id),
         displayName,
-        kind: "document",
+        kind: message.document.mime_type?.startsWith("image/") ? "image" : "document",
         text: message.caption,
         mediaUrl: message.document.file_id,
         mediaMimeType: message.document.mime_type,

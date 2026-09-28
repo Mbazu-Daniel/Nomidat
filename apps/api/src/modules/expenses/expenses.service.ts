@@ -1,5 +1,11 @@
-import { ConflictException, Inject, Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
-import { and, desc, eq } from "@nomidat/db";
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { and, desc, eq, or, isNull } from "@nomidat/db";
 import { expense, expenseCategory } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateExpenseCategoryDto, CreateExpenseDto, UpdateExpenseDto } from "./dto";
@@ -10,7 +16,7 @@ const MAX_LIMIT = 50;
 export class ExpensesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
-  async list(organizationId: string, limit = 20) {
+  async list(organizationId: string, limit = 20, offset = 0) {
     return this.db
       .select({
         id: expense.id,
@@ -28,7 +34,8 @@ export class ExpensesService {
       .leftJoin(expenseCategory, eq(expense.categoryId, expenseCategory.id))
       .where(eq(expense.organizationId, organizationId))
       .orderBy(desc(expense.spentAt))
-      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
+      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT))
+      .offset(Math.max(0, offset));
   }
 
   async get(organizationId: string, expenseId: string) {
@@ -47,7 +54,7 @@ export class ExpensesService {
       .insert(expense)
       .values({
         organizationId,
-        categoryId: await this.resolveCategoryId(input.categoryId),
+        categoryId: await this.resolveCategoryId(organizationId, input.categoryId),
         amountKobo: input.amountKobo,
         description: input.description?.trim() || null,
         spentAt: input.spentAt ? new Date(input.spentAt) : new Date(),
@@ -63,7 +70,7 @@ export class ExpensesService {
   async update(organizationId: string, expenseId: string, input: UpdateExpenseDto) {
     const existing = await this.get(organizationId, expenseId);
     const categoryId = input.categoryId
-      ? await this.resolveCategoryId(input.categoryId)
+      ? await this.resolveCategoryId(organizationId, input.categoryId)
       : existing.categoryId;
 
     const [updated] = await this.db
@@ -85,22 +92,38 @@ export class ExpensesService {
 
   async remove(organizationId: string, expenseId: string) {
     await this.get(organizationId, expenseId);
-    await this.db.delete(expense).where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)));
+    await this.db
+      .delete(expense)
+      .where(and(eq(expense.id, expenseId), eq(expense.organizationId, organizationId)));
     return { id: expenseId, deleted: true };
   }
 
-  async listCategories() {
-    return this.db.select().from(expenseCategory).orderBy(expenseCategory.name);
+  async listCategories(organizationId: string) {
+    return this.db
+      .select()
+      .from(expenseCategory)
+      .where(
+        or(
+          eq(expenseCategory.organizationId, organizationId),
+          and(isNull(expenseCategory.organizationId), eq(expenseCategory.isDefault, true)),
+        ),
+      )
+      .orderBy(expenseCategory.name);
   }
 
-  async createCategory(input: CreateExpenseCategoryDto) {
+  async createCategory(organizationId: string, input: CreateExpenseCategoryDto) {
     const name = input.name.trim();
     if (!name) throw new BadRequestException("Category name is required.");
 
     try {
       const [created] = await this.db
         .insert(expenseCategory)
-        .values({ name, description: input.description?.trim() || null, isDefault: false })
+        .values({
+          organizationId,
+          name,
+          description: input.description?.trim() || null,
+          isDefault: false,
+        })
         .returning();
       return created;
     } catch (error) {
@@ -111,13 +134,21 @@ export class ExpensesService {
     }
   }
 
-  private async resolveCategoryId(categoryId?: string) {
+  private async resolveCategoryId(organizationId: string, categoryId?: string) {
     if (!categoryId) return null;
 
     const [category] = await this.db
       .select({ id: expenseCategory.id })
       .from(expenseCategory)
-      .where(eq(expenseCategory.id, categoryId))
+      .where(
+        and(
+          eq(expenseCategory.id, categoryId),
+          or(
+            eq(expenseCategory.organizationId, organizationId),
+            and(isNull(expenseCategory.organizationId), eq(expenseCategory.isDefault, true)),
+          ),
+        ),
+      )
       .limit(1);
 
     if (!category) throw new NotFoundException("Expense category not found.");

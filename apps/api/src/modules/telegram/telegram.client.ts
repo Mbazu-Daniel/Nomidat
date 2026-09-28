@@ -1,3 +1,4 @@
+import { readChannelMedia } from "../channel/read-media";
 import {
   ForbiddenException,
   Inject,
@@ -35,25 +36,30 @@ export class TelegramClient implements ChannelAdapter {
   }
 
   async getInboundMedia(mediaUrl: string): Promise<{ data: Uint8Array; mimeType?: string }> {
-    const fileResponse = await this.createTelegramApiCall("getFile", { file_id: mediaUrl }) as {
+    const fileResponse = (await this.createTelegramApiCall("getFile", { file_id: mediaUrl })) as {
       ok?: boolean;
       result?: { file_path?: string };
     };
     const filePath = fileResponse.result?.file_path;
-    if (!filePath) throw new ServiceUnavailableException("Telegram voice file could not be resolved.");
+    if (!filePath)
+      throw new ServiceUnavailableException("Telegram media file could not be resolved.");
 
-    const response = await fetch(`https://api.telegram.org/file/bot${this.getToken()}/${filePath}`);
-    if (!response.ok) throw new ServiceUnavailableException("Telegram voice file could not be downloaded.");
+    const response = await fetch(
+      `https://api.telegram.org/file/bot${this.getToken()}/${filePath}`,
+      { redirect: "error", signal: AbortSignal.timeout(30_000) },
+    );
+    if (!response.ok)
+      throw new ServiceUnavailableException("Telegram media file could not be downloaded.");
 
     return {
-      data: new Uint8Array(await response.arrayBuffer()),
+      data: await readChannelMedia(response),
       mimeType: response.headers.get("content-type") ?? undefined,
     };
   }
 
   getIsValidWebhookSecret(secretHeader: string | undefined): boolean {
     const expected = this.env.TELEGRAM_WEBHOOK_SECRET;
-    if (!expected) return true;
+    if (!expected) return false;
     return secretHeader === expected;
   }
 
@@ -73,6 +79,7 @@ export class TelegramClient implements ChannelAdapter {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) {
       const text = await response.text();

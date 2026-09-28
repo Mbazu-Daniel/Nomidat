@@ -9,6 +9,7 @@ export type SendEmailInput = {
   html: string;
   text?: string;
   replyTo?: EmailAddress;
+  attachments?: Array<{ name: string; mimeType: string; content: string }>;
 };
 
 export type EmailClientConfig = {
