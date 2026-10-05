@@ -1,20 +1,27 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, desc, eq, sql } from "@nomidat/db";
-import { contact, invoice, note, order, payment } from "@nomidat/db/schema";
+import { and, desc, eq } from "@nomidat/db";
+import { contact, invoice, note, order } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
+import { SalesQueriesService } from "../sales/sales-queries.service";
 import type { CreateContactDto, CreateNoteDto } from "./dto";
+
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 100;
 
 @Injectable()
 export class ContactsService {
-  constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: DbHandle,
+    private readonly queries: SalesQueriesService,
+  ) {}
 
-  async getContacts(organizationId: string, offset = 0) {
+  async getContacts(organizationId: string, limit = DEFAULT_LIMIT, offset = 0) {
     return this.db
       .select()
       .from(contact)
       .where(and(eq(contact.organizationId, organizationId), eq(contact.isActive, true)))
       .orderBy(desc(contact.createdAt), desc(contact.id))
-      .limit(50)
+      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT))
       .offset(Math.max(0, offset));
   }
 
@@ -69,7 +76,7 @@ export class ContactsService {
 
   async getClientFolder(organizationId: string, contactId: string) {
     const customer = await this.getContact(organizationId, contactId);
-    const [orders, invoices, notes, totals] = await Promise.all([
+    const [orders, invoices, notes, balance] = await Promise.all([
       this.db
         .select()
         .from(order)
@@ -88,25 +95,18 @@ export class ContactsService {
         .where(and(eq(note.organizationId, organizationId), eq(note.contactId, contactId)))
         .orderBy(desc(note.createdAt))
         .limit(50),
-      this.db
-        .select({
-          balanceKobo: sql<number>`coalesce(sum(greatest(0, ${order.totalKobo} - coalesce((select sum(${payment.amountKobo}) from ${payment} where ${payment.orderId} = "orders"."id" and ${payment.organizationId} = ${organizationId}), 0))), 0)`,
-        })
-        .from(order)
-        .where(
-          and(
-            eq(order.organizationId, organizationId),
-            eq(order.contactId, contactId),
-            eq(order.status, "pending"),
-          ),
-        ),
+      // Routed through the sales seam rather than derived here. A second copy of
+      // "what does this contact owe" is one that will eventually disagree with
+      // this one — and it already did, because this one clamped each order
+      // separately while the balance endpoint clamps the total.
+      this.queries.getCustomerBalance(organizationId, contactId),
     ]);
     return {
       contact: customer,
       orders,
       invoices,
       notes,
-      balanceKobo: Number(totals[0].balanceKobo),
+      balanceMinor: balance.outstandingMinor,
     };
   }
 }

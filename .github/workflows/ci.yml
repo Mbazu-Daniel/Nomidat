@@ -36,6 +36,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # No database needed: this compares the Drizzle schema against the tables
+      # the committed migrations create, so a column added to one and not the
+      # other fails here rather than at the next db:generate.
+      - name: Migration coverage
+        run: pnpm db:check
+
       - name: Build
         run: pnpm build
 

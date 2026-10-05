@@ -28,10 +28,11 @@ export class ContactsController {
   async getContacts(
     @Param("organizationId") org: string,
     @Req() req: Request,
+    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
     @Query("offset", new ParseIntPipe({ optional: true })) offset?: number,
   ) {
     await authorizeOrganization(this.auth, req, org, "customers");
-    return this.contacts.getContacts(org, offset);
+    return this.contacts.getContacts(org, limit, offset);
   }
 
   @Post()

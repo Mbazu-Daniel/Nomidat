@@ -16,6 +16,7 @@ import { ApiExcludeController } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
+import { secretsMatch } from "../../common/helpers/secret-match";
 import { ChannelInboundService } from "../channel/channel-inbound.service";
 import { ChannelProvider } from "../channel/types";
 import type { InboundMessage } from "../channel/types";
@@ -44,9 +45,7 @@ export class WhatsAppController {
   ) {
     if (
       mode === "subscribe" &&
-      verifyToken &&
-      this.env.WHATSAPP_VERIFY_TOKEN &&
-      verifyToken === this.env.WHATSAPP_VERIFY_TOKEN
+      secretsMatch(verifyToken, this.env.WHATSAPP_VERIFY_TOKEN)
     ) {
       return res.status(200).send(challenge ?? "");
     }
