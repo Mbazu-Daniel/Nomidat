@@ -5,7 +5,9 @@ import { organization } from "./organization/organization";
 export const inboundUpdate = pgTable(
   "inbound_update",
   {
-    id: uuid("id").$defaultFn(() => generateId()).primaryKey(),
+    id: uuid("id")
+      .$defaultFn(() => generateId())
+      .primaryKey(),
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),

@@ -2,6 +2,7 @@ import { UseGuards } from "@nestjs/common";
 import { InboundRateLimitGuard } from "../../common/rate-limit/inbound-rate-limit.guard";
 import { Body, Controller, Headers, HttpCode, Post, UnauthorizedException } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
+import { Public } from "../../common/guards/public-route.decorator";
 import { ChannelInboundService } from "../channel/channel-inbound.service";
 import { ChannelProvider } from "../channel/types";
 import type { InboundMessage } from "../channel/types";
@@ -9,6 +10,9 @@ import { TelegramClient } from "./telegram.client";
 import type { TelegramUpdate } from "./types";
 
 @ApiExcludeController()
+// Telegram posts here with the shared webhook secret, never a session, so the
+// route is public by design. Stated explicitly so it survives the next audit.
+@Public()
 @Controller("channels/telegram")
 @UseGuards(InboundRateLimitGuard)
 export class TelegramController {

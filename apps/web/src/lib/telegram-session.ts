@@ -1,4 +1,4 @@
-import { createApiRequest } from "./api";
+import { signInWithTelegram } from "./api";
 
 export type TelegramSessionResult = { ok: true; userName: string } | { ok: false; message: string };
 
@@ -11,11 +11,10 @@ export type TelegramWebAppLike = {
 
 export async function createTelegramSession(
   webApp: TelegramWebAppLike | null | undefined,
+  // Injectable so the signature and the Mini App handshake can be tested without
+  // a network round trip.
   request: (initData: string) => Promise<{ user?: { name?: string | null } | null }> = (initData) =>
-    createApiRequest<{ user?: { name?: string | null } | null }>("/auth/sign-in/telegram", {
-      method: "POST",
-      body: JSON.stringify({ initData }),
-    }),
+    signInWithTelegram(JSON.stringify({ initData })),
 ): Promise<TelegramSessionResult> {
   if (!webApp?.initData) {
     return { ok: false, message: "Open this page from your Telegram bot Mini App." };

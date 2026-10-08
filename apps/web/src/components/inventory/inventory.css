@@ -1,0 +1,325 @@
+/* Inventory screens. Uses the rose-gold theme tokens so they follow the app palette. */
+.inventory-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.inventory-actions {
+  display: flex;
+  gap: 8px;
+}
+.inventory-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+.inventory-tab {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+.inventory-tab:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.inventory-tab.active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.inventory-warehouse-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.inventory-warehouse-filter select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 500;
+}
+.inventory-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+.inventory-panel-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.inventory-subtabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.inventory-subtab {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.inventory-subtab.active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-dark);
+}
+.dark .inventory-subtab.active {
+  color: var(--primary-light);
+}
+.inventory-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.inventory-available {
+  font-weight: 700;
+  color: var(--primary);
+}
+.inventory-positive {
+  color: var(--success);
+}
+.inventory-negative {
+  color: var(--destructive);
+}
+.inventory-empty {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.inventory-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.inventory-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+}
+.inventory-chip-meta {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.inventory-create-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.inventory-create-form > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+.inventory-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.inventory-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.inventory-line select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 500;
+  max-width: 220px;
+}
+.inventory-line select:disabled {
+  color: var(--muted-foreground);
+}
+.inventory-line-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 130px;
+}
+.inventory-line-amount span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.inventory-line-unit {
+  padding-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.inventory-operation-form {
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+.inventory-operation-form label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.inventory-operation-form select,
+.inventory-operation-form input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+}
+.inventory-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.inventory-receive {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.inventory-receive select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+  max-width: 170px;
+}
+.inventory-receive-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+}
+.inventory-receive-actions {
+  display: flex;
+  gap: 6px;
+}
+.inventory-plain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.inventory-plain-table th,
+.inventory-plain-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.inventory-plain-table th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+.inventory-code {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+.inventory-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+}
+.inventory-status-in-stock {
+  color: var(--success);
+  border-color: var(--success);
+}
+.inventory-status-sold {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.inventory-status-void {
+  color: var(--muted-foreground);
+}
+.inventory-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.inventory-hint {
+  padding-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+/* Editing a catalog entry in place. */
+.catalog-row-buttons {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+.catalog-inline-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+}
+.catalog-inline-edit input {
+  width: 110px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+}
+.inventory-create-form select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+}

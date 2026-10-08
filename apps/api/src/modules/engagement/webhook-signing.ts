@@ -73,9 +73,7 @@ export function generateWebhookSecret(): string {
  * Including the timestamp is what stops a captured delivery being replayed later.
  */
 export function signWebhookPayload(secret: string, body: string, timestamp: number): string {
-  const signature = createHmac("sha256", secret)
-    .update(`${timestamp}.${body}`)
-    .digest("hex");
+  const signature = createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex");
   return `t=${timestamp},v1=${signature}`;
 }
 
@@ -103,9 +101,7 @@ export function verifyWebhookSignature(
   if (Math.abs(Date.now() / 1000 - timestamp) > toleranceSeconds) return false;
 
   // Compare only the HMAC, in constant time, over the same canonical input.
-  const expected = createHmac("sha256", secret)
-    .update(`${timestamp}.${body}`)
-    .digest("hex");
+  const expected = createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex");
 
   const providedBuffer = Buffer.from(provided, "utf8");
   const expectedBuffer = Buffer.from(expected, "utf8");

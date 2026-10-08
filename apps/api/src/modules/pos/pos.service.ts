@@ -1,17 +1,18 @@
-import { PosTotalsService } from "./pos-totals.service";
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, eq, inArray, sql } from "@nomidat/db";
+import { Inject, Injectable } from "@nestjs/common";
+import { and, eq, sql } from "@nomidat/db";
 import { product, productVariant, serialNumber } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { totalOnHandForVariantSql, totalOnHandSql } from "../inventory/stock-levels";
 import { AuditService } from "../audit/audit.service";
+import { MoneyPolicyService } from "../money/money-policy.service";
+import { SalePricingService } from "../sales/sale-pricing.service";
 import { SalesService } from "../sales/sales.service";
 import type { CreatePosSaleDto } from "./dto";
 import { POS_CATALOG_LIMIT } from "./pos.constants";
 import {
   ONLINE_POS_PAYMENT_METHODS,
   POS_DEFAULT_PAYMENT_METHOD,
-  type PosCartLine,
+  type PosCheckoutTotals,
   type PosPaymentMethod,
 } from "./types/pos.type";
 
@@ -38,7 +39,8 @@ export class PosService {
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     private readonly sales: SalesService,
-    private readonly totals: PosTotalsService,
+    private readonly pricing: SalePricingService,
+    private readonly money: MoneyPolicyService,
     private readonly audit: AuditService,
   ) {}
 
@@ -73,7 +75,9 @@ export class PosService {
         onHand: sql<number>`(${totalOnHandForVariantSql(organizationId)})`,
       })
       .from(productVariant)
-      .where(and(eq(productVariant.organizationId, organizationId), eq(productVariant.isActive, true)))
+      .where(
+        and(eq(productVariant.organizationId, organizationId), eq(productVariant.isActive, true)),
+      )
       .limit(POS_CATALOG_LIMIT);
 
     const byProduct = new Map<string, typeof variants>();
@@ -97,7 +101,15 @@ export class PosService {
       // A product with variants sells as its variants; showing the parent row as
       // well would offer a line the till cannot decrement.
       if (!productVariants || productVariants.length === 0) {
-        return [{ ...row, variantId: null, variantName: null, sku: row.sku, isSerialized: serializedProduct }];
+        return [
+          {
+            ...row,
+            variantId: null,
+            variantName: null,
+            sku: row.sku,
+            isSerialized: serializedProduct,
+          },
+        ];
       }
       return productVariants.map((variant) => ({
         ...row,
@@ -124,45 +136,42 @@ export class PosService {
        * durable place, and it is explicitly meant to hold "tried and refused".
        */
       if (input.clientReference) {
-        await this.audit.record(organizationId, { userId }, {
-          action: "pos.replay_rejected",
-          entityType: "pos_sale",
-          entityId: input.clientReference,
-          metadata: { reason: reason instanceof Error ? reason.message : String(reason) },
-        });
+        await this.audit.record(
+          organizationId,
+          { userId },
+          {
+            action: "pos.replay_rejected",
+            entityType: "pos_sale",
+            entityId: input.clientReference,
+            metadata: { reason: reason instanceof Error ? reason.message : String(reason) },
+          },
+        );
       }
       throw reason;
     }
   }
 
   private async recordSale(organizationId: string, userId: string | null, input: CreatePosSaleDto) {
-    const lines = await this.priceLines(organizationId, input.items);
     const tenderedMinor = input.tenderedMinor ?? 0;
-    const totals = await this.totals.calculate(
-      lines,
-      input.discountMinor ?? 0,
-      tenderedMinor,
-      organizationId,
-    );
     const method = input.paymentMethod ?? POS_DEFAULT_PAYMENT_METHOD;
-    const settled = this.isSettled(method, tenderedMinor, totals.totalMinor);
+
+    // Priced and totalled here only to know the change due and whether the sale is
+    // settled. The figures recorded on the Order are decided by the sale seams, so
+    // the till cannot disagree with the books about what it just took.
+    const lines = await this.pricing.priceLines(organizationId, input.items);
+    const money = await this.money.orderTotals(organizationId, lines, input.discountMinor ?? 0);
+    const settled = this.isSettled(method, tenderedMinor, money.totalMinor);
+    const totals: PosCheckoutTotals = {
+      ...money,
+      changeMinor: Math.max(0, tenderedMinor - money.totalMinor),
+    };
 
     const sale = await this.sales.createSale(organizationId, userId, {
       source: "pos",
       customerId: input.customerId,
-      items: lines.map((line, index) => ({
-        productId: line.productId,
-        // The DTO models "no variant" as an absent field, not null.
-        variantId: line.variantId ?? undefined,
-        quantity: line.quantity,
-        unitPriceMinor: line.unitPriceMinor,
-        lineTotalMinor: line.quantity * line.unitPriceMinor,
-        // The terminal names the exact units; the sale claims them transactionally.
-        serialNumberIds: input.items[index]?.serialNumberIds,
-      })),
-      discountMinor: totals.discountMinor,
-      taxMinor: totals.taxMinor,
-      paymentAmountMinor: settled ? totals.totalMinor : 0,
+      items: lines,
+      discountMinor: money.discountMinor,
+      paymentAmountMinor: settled ? money.totalMinor : 0,
       paymentMethod: method,
       paymentProvider: settled ? method : undefined,
       paymentReference: input.paymentReference,
@@ -170,80 +179,16 @@ export class PosService {
       notes: input.notes,
     });
 
-    return { ...sale, posTotals: totals, changeMinor: totals.changeMinor };
+    return { ...sale, posTotals: totals };
   }
 
   /**
    * Card and bank transfers settle online, so they stay unpaid until the provider
    * confirms. Cash at the counter settles immediately.
    */
-  private isSettled(
-    method: PosPaymentMethod,
-    tenderedMinor: number,
-    totalMinor: number,
-  ): boolean {
+  private isSettled(method: PosPaymentMethod, tenderedMinor: number, totalMinor: number): boolean {
     if (ONLINE_POS_PAYMENT_METHODS.has(method)) return false;
     return tenderedMinor >= totalMinor;
   }
 
-  /** Reads current prices server-side; the terminal only sends product ids. */
-  private async priceLines(
-    organizationId: string,
-    items: CreatePosSaleDto["items"],
-  ): Promise<PosCartLine[]> {
-    const productIds = [...new Set(items.map((item) => item.productId))];
-    const stored = await this.db
-      .select({
-        id: product.id,
-        priceMinor: product.priceMinor,
-        isActive: product.isActive,
-      })
-      .from(product)
-      .where(and(eq(product.organizationId, organizationId), inArray(product.id, productIds)));
-
-    const prices = new Map(stored.map((row) => [row.id, row]));
-
-    const variantIds = items.flatMap((item) => (item.variantId ? [item.variantId] : []));
-    const storedVariants =
-      variantIds.length === 0
-        ? []
-        : await this.db
-            .select({
-              id: productVariant.id,
-              productId: productVariant.productId,
-              priceMinor: productVariant.priceMinor,
-              isActive: productVariant.isActive,
-            })
-            .from(productVariant)
-            .where(
-              and(
-                eq(productVariant.organizationId, organizationId),
-                inArray(productVariant.id, variantIds),
-              ),
-            );
-    const variants = new Map(storedVariants.map((row) => [row.id, row]));
-
-    return items.map((item) => {
-      const found = prices.get(item.productId);
-      if (!found) throw new NotFoundException("Product not found.");
-      if (!found.isActive) throw new BadRequestException("Product is archived and cannot be sold.");
-
-      // A variant must belong to the product it was sold under, or a caller could
-      // name any variant they like and have its price applied to another product.
-      const variant = item.variantId ? variants.get(item.variantId) : undefined;
-      if (item.variantId && (!variant || variant.productId !== item.productId)) {
-        throw new BadRequestException("That variant does not belong to this product.");
-      }
-      if (variant && !variant.isActive) {
-        throw new BadRequestException("That variant is archived and cannot be sold.");
-      }
-
-      return {
-        productId: item.productId,
-        variantId: item.variantId ?? null,
-        quantity: item.quantity,
-        unitPriceMinor: variant?.priceMinor || found.priceMinor,
-      };
-    });
   }
-}

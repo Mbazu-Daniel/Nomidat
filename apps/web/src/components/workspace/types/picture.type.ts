@@ -1,4 +1,5 @@
-import type { FormProps, LineItem, BusinessRecord } from "./workspace.type";
+import type { Product } from "@/data/catalog";
+import type { FormProps, LineItem } from "./workspace.type";
 
 export type PictureItem = {
   name: string | null;
@@ -34,7 +35,7 @@ export type InventoryPictureProps = FormProps & { section: "inventory"; items: P
 export type TransactionLineItemProps = {
   item: LineItem;
   index: number;
-  products: BusinessRecord[];
+  products: Product[];
   fromPicture: boolean;
   updateItem: (key: string, patch: Partial<LineItem>) => void;
   canRemove: boolean;

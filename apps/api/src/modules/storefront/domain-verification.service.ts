@@ -111,4 +111,3 @@ export class DomainVerificationService {
     return normalized;
   }
 }
-

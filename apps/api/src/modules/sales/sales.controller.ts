@@ -31,14 +31,14 @@ export class SalesController {
   @Get("sales")
   @ApiOperation({ summary: "List sales" })
   @ApiQuery({ name: "limit", required: false, type: Number, maximum: 50 })
-  async listSales(
+  async getSales(
     @Param("organizationId") organizationId: string,
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
     @Query("offset", new ParseIntPipe({ optional: true })) offset?: number,
   ) {
     await this.auth.authorize(extractHeaders(req), organizationId);
-    return this.queries.listSales(organizationId, limit, offset);
+    return this.queries.getSales(organizationId, limit, offset);
   }
 
   @Get("sales/:saleId")

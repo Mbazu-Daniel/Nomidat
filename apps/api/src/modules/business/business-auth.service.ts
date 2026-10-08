@@ -18,7 +18,10 @@ export class BusinessAuthService {
     organizationId: string,
   ): Promise<{ userId: string; role: string }> {
     const origin = headers.get("origin");
-    if (origin && origin !== this.env.WEB_ORIGIN)
+    // Any configured origin passes. `localhost` and `127.0.0.1` are different
+    // origins to a browser even though they are the same machine, so a single
+    // allowed URL made one of them fail with a bare "Failed to fetch".
+    if (origin && !this.env.WEB_ORIGINS.includes(origin))
       throw new ForbiddenException("Untrusted request origin.");
     const session = await this.auth.api.getSession({ headers });
     if (!session?.user?.id) throw new UnauthorizedException("Authentication required");

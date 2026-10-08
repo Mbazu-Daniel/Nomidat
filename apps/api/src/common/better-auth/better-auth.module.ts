@@ -23,7 +23,7 @@ import { createBetterAuth, type BetterAuthInstance } from "./create-better-auth"
           sendPhoneOTP: (data) => sendPhoneOTP(env, data),
           secret: env.BETTER_AUTH_SECRET,
           baseURL: env.BETTER_AUTH_URL,
-          webOrigin: env.WEB_ORIGIN,
+          webOrigin: env.WEB_ORIGINS,
           telegramBotToken: env.TELEGRAM_BOT_TOKEN,
           google:
             env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
@@ -40,7 +40,9 @@ import { createBetterAuth, type BetterAuthInstance } from "./create-better-auth"
                   invitedByUsername: data.inviter.user.name,
                   invitedByEmail: data.inviter.user.email,
                   organizationName: data.organization.name,
-                  inviteLink: `${env.WEB_ORIGIN}/accept-invitation/${data.id}`,
+                  // The first configured origin is the canonical public one, so an invitation
+                  // link points somewhere a person can actually open.
+                  inviteLink: `${env.WEB_ORIGINS[0]}/accept-invitation/${data.id}`,
                 });
               }
             : undefined,

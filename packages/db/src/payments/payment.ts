@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { createOrgScopedColumns } from "../org-scoped-columns";
 import { contact } from "../contacts/contact";
 import { order } from "../orders/order";
@@ -12,7 +12,7 @@ export const payment = pgTable(
       .notNull()
       .references(() => order.id, { onDelete: "cascade" }),
     contactId: uuid("contact_id").references(() => contact.id, { onDelete: "set null" }),
-    amountKobo: integer("amount_kobo").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
     currency: text("currency").notNull().default("NGN"),
     method: text("method").notNull().default("cash"),
     reference: text("reference"),
@@ -28,5 +28,9 @@ export const payment = pgTable(
     index("payment_organization_id_order_id_idx").on(t.organizationId, t.orderId),
     index("payment_organization_id_contact_id_idx").on(t.organizationId, t.contactId),
     index("payment_created_by_user_id_idx").on(t.createdByUserId),
+    // A provider reference identifies exactly one payment, so a redelivered
+    // webhook cannot add a second row. Cash payments have no reference and stay
+    // outside the constraint.
+    uniqueIndex("payment_organization_id_reference_uidx").on(t.organizationId, t.reference),
   ],
 );

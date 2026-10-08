@@ -47,12 +47,7 @@ export class EngagementService {
         createdAt: notification.createdAt,
       })
       .from(notification)
-      .where(
-        and(
-          eq(notification.userId, userId),
-          eq(notification.organizationId, organizationId),
-        ),
-      )
+      .where(and(eq(notification.userId, userId), eq(notification.organizationId, organizationId)))
       .orderBy(desc(notification.createdAt))
       .limit(50);
   }
@@ -108,14 +103,27 @@ export class EngagementService {
   }
 
   /**
+   * The same notice for everyone the caller has decided should see it — an
+   * owner list, a role. Each member gets their own row, so marking one read
+   * never marks it read for the rest.
+   */
+  async notifyOwners(
+    organizationId: string,
+    userIds: readonly string[],
+    entry: Parameters<EngagementService["notify"]>[2],
+  ) {
+    const created = await Promise.all(
+      userIds.map((userId) => this.notify(organizationId, userId, entry)),
+    );
+    return created.filter((row) => row !== null);
+  }
+
+  /**
    * Subscribes an endpoint. The URL is validated here, once, at configuration
    * time — and the dispatcher never follows redirects so that check cannot be
    * undone later.
    */
-  async createWebhook(
-    organizationId: string,
-    input: { url: string; events: string[] },
-  ) {
+  async createWebhook(organizationId: string, input: { url: string; events: string[] }) {
     const url = assertSafeWebhookUrl(input.url);
     const events: WebhookEvent[] = input.events.filter((value): value is WebhookEvent =>
       (WEBHOOK_EVENTS as readonly string[]).includes(value),
@@ -167,12 +175,7 @@ export class EngagementService {
   async deleteWebhook(organizationId: string, id: string) {
     const [row] = await this.db
       .delete(outboundWebhook)
-      .where(
-        and(
-          eq(outboundWebhook.id, id),
-          eq(outboundWebhook.organizationId, organizationId),
-        ),
-      )
+      .where(and(eq(outboundWebhook.id, id), eq(outboundWebhook.organizationId, organizationId)))
       .returning({ id: outboundWebhook.id });
     if (!row) throw new NotFoundException("Webhook not found.");
     return row;

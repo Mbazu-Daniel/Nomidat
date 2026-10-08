@@ -31,8 +31,7 @@ export class StorefrontSettingsController {
   @Patch()
   @ApiOperation({
     summary: "Update shop settings",
-    description:
-      "Publishing makes the shop reachable at its slug and any verified domain.",
+    description: "Publishing makes the shop reachable at its slug and any verified domain.",
   })
   async update(
     @Param("organizationId") org: string,

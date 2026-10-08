@@ -1,53 +1,38 @@
+import { useCurrency } from "@/lib/currency-context";
+import { formatMoney, minorToDecimalInput, parseMoneyToMinor } from "@/lib/money";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { createApiRequest } from "@/lib/api";
-import { formatNaira } from "@/data/nomidat";
+import { useApiResource, useSubmit } from "@/lib/use-api-resource";
 import type { SaleDetailProps } from "./types";
 import type { SalePaymentSummary } from "./types/workspace.type";
 import "./sale-detail.css";
 
 export function SaleDetail({ path, record, canWrite, onSaved }: SaleDetailProps) {
+  const currency = useCurrency();
   const paymentFormId = useId();
-  const [sale, setSale] = useState<SalePaymentSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Bumped after a payment is recorded, so the balance on screen is the one the
+  // books now hold.
   const [version, setVersion] = useState(0);
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void createApiRequest<SalePaymentSummary>(`${path}/sales/${record.id}`)
-      .then((result) => {
-        if (!cancelled) setSale(result);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) {
-          setSale(null);
-          setError(reason.message);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [path, record.id, version]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const loaded = useApiResource<SalePaymentSummary | null>(
+    `${path}/sales/${record.id}`,
+    null,
+    version,
+  );
+  const sale = loaded.data;
+  const loading = loaded.loading;
+  const { busy, error, setError, submit } = useSubmit();
   const [paymentUrl, setPaymentUrl] = useState("");
   async function save(resource: string, body: object) {
-    setBusy(true);
-    setError("");
-    try {
+    const saved = await submit(async () => {
       await createApiRequest(path + resource, { method: "POST", body: JSON.stringify(body) });
       onSaved();
-    } catch (reason) {
-      setError((reason as Error).message);
-      if (resource.includes("/payments")) setVersion((value) => value + 1);
-    } finally {
-      setBusy(false);
-    }
+    });
+    // A refused payment may still have moved the books — a provider webhook can
+    // land before the response does — so the summary is re-read rather than trusted.
+    if (!saved && resource.includes("/payments")) setVersion((value) => value + 1);
   }
-  const canCollect = !loading && sale !== null && sale.balanceKobo > 0;
+  const canCollect = !loading && sale !== null && sale.balanceMinor > 0;
   function renderPaymentForm() {
     if (!sale) return null;
     return (
@@ -58,19 +43,18 @@ export function SaleDetail({ path, record, canWrite, onSaved }: SaleDetailProps)
           event.preventDefault();
           if (busy) return;
           const data = new FormData(event.currentTarget);
-          const amountKobo = Math.round(Number(data.get("amount")) * 100);
-          if (
-            !Number.isSafeInteger(amountKobo) ||
-            amountKobo <= 0 ||
-            amountKobo > sale.balanceKobo
-          ) {
+          const amountMinor = parseMoneyToMinor(String(data.get("amount") ?? ""), currency);
+          if (amountMinor === null || amountMinor <= 0 || amountMinor > sale.balanceMinor) {
             setError(
-              `Enter an additional payment between ₦0.01 and ${formatNaira(sale.balanceKobo / 100)}.`,
+              `Enter an additional payment between ${formatMoney(1, currency)} and ${formatMoney(
+                sale.balanceMinor,
+                currency,
+              )}.`,
             );
             return;
           }
           void save(`/sales/${record.id}/payments`, {
-            amountKobo,
+            amountMinor,
             method: data.get("method"),
           });
         }}
@@ -79,18 +63,18 @@ export function SaleDetail({ path, record, canWrite, onSaved }: SaleDetailProps)
         <p>Enter only the new amount received. Previous payments are already included above.</p>
         <fieldset disabled={busy} className="workspace-form-grid">
           <label>
-            Additional payment (₦)
+            Additional payment ({currency})
             <input
               name="amount"
               type="number"
               required
-              min="0.01"
-              max={sale.balanceKobo / 100}
-              step="0.01"
+              min={Number(minorToDecimalInput(1, currency))}
+              max={Number(minorToDecimalInput(sale.balanceMinor, currency))}
+              step={Number(minorToDecimalInput(1, currency))}
               aria-describedby="sale-payment-limit"
             />
             <small id="sale-payment-limit">
-              Up to {formatNaira(sale.balanceKobo / 100)} remaining.
+              Up to {formatMoney(sale.balanceMinor, currency)} remaining.
             </small>
           </label>
           <label>
@@ -136,9 +120,7 @@ export function SaleDetail({ path, record, canWrite, onSaved }: SaleDetailProps)
             onSubmit={async (event) => {
               event.preventDefault();
               const data = new FormData(event.currentTarget);
-              setBusy(true);
-              setError("");
-              try {
+              await submit(async () => {
                 const result = await createApiRequest<{ authorizationUrl: string }>(
                   `${path}/payments/paystack/initialize`,
                   {
@@ -146,14 +128,11 @@ export function SaleDetail({ path, record, canWrite, onSaved }: SaleDetailProps)
                     body: JSON.stringify({ orderId: record.id, email: data.get("email") }),
                   },
                 );
+                // Only ever follow an https redirect from the payment provider.
                 if (!result.authorizationUrl.startsWith("https://"))
                   throw new Error("Invalid payment URL returned.");
                 setPaymentUrl(result.authorizationUrl);
-              } catch (reason) {
-                setError((reason as Error).message);
-              } finally {
-                setBusy(false);
-              }
+              });
             }}
           >
             <label>
@@ -197,19 +176,19 @@ export function SaleDetail({ path, record, canWrite, onSaved }: SaleDetailProps)
           <dl className="sale-payment-summary" aria-busy={loading}>
             <div>
               <dt>Sale total</dt>
-              <dd>{formatNaira(sale.totalKobo / 100)}</dd>
+              <dd>{formatMoney(sale.totalMinor, currency)}</dd>
             </div>
             <div>
               <dt>Already paid</dt>
-              <dd>{formatNaira(sale.paidKobo / 100)}</dd>
+              <dd>{formatMoney(sale.paidMinor, currency)}</dd>
             </div>
             <div className="sale-balance">
               <dt>Outstanding balance</dt>
-              <dd>{formatNaira(sale.balanceKobo / 100)}</dd>
+              <dd>{formatMoney(sale.balanceMinor, currency)}</dd>
             </div>
           </dl>
         )}
-        {!loading && sale?.balanceKobo === 0 && (
+        {!loading && sale?.balanceMinor === 0 && (
           <p className="sale-paid-message" role="status">
             Fully paid · No further payment is needed.
           </p>

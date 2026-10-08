@@ -1,4 +1,11 @@
-import { IsArray, IsEmail, IsOptional, IsString, IsUrl } from "class-validator";
+import { ArrayMaxSize, IsArray, IsEmail, IsIn, IsOptional, IsString, IsUrl } from "class-validator";
+
+/**
+ * Channels Paystack accepts. Whitelisted rather than free-form: this array is
+ * passed straight through to `/transaction/initialize`, and an unvalidated string
+ * would let a caller request a channel we have no handling for.
+ */
+export const PAYSTACK_CHANNELS = ["card", "bank", "ussd", "mobile_money"] as const;
 
 export class InitializePaystackPaymentDto {
   @IsString()
@@ -13,6 +20,7 @@ export class InitializePaystackPaymentDto {
 
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
-  channels?: string[];
+  @ArrayMaxSize(PAYSTACK_CHANNELS.length)
+  @IsIn(PAYSTACK_CHANNELS, { each: true })
+  channels?: (typeof PAYSTACK_CHANNELS)[number][];
 }

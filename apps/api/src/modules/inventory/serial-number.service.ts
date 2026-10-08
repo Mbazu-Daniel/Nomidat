@@ -64,7 +64,8 @@ export class SerialNumberService {
     }
 
     const quantity = unique.size;
-    const warehouseId = dto.warehouseId ?? (await this.stock.resolveDefaultWarehouseId(organizationId));
+    const warehouseId =
+      dto.warehouseId ?? (await this.stock.resolveDefaultWarehouseId(organizationId));
 
     return this.db.transaction(async (tx) => {
       const [found] = await tx
@@ -86,7 +87,9 @@ export class SerialNumberService {
           ),
         );
       if (existing.length > 0) {
-        throw new ConflictException(`Already registered: ${existing.map((row) => row.code).join(", ")}.`);
+        throw new ConflictException(
+          `Already registered: ${existing.map((row) => row.code).join(", ")}.`,
+        );
       }
 
       const created = await tx
@@ -120,6 +123,11 @@ export class SerialNumberService {
   /**
    * Moves a serial through its lifecycle. Each transition is guarded so a sold
    * unit cannot silently return to stock, which would overstate inventory.
+   *
+   * A unit coming back into stock records a Stock Movement, because that is the one
+   * transition that changes what the business holds. Re-labelling the serial alone
+   * would leave the Stock Level where the sale left it while the serial claimed to
+   * be sellable — two sources of truth, disagreeing.
    */
   async updateStatus(organizationId: string, id: string, dto: UpdateSerialStatusDto) {
     const allowed: Record<string, string[]> = {
@@ -131,14 +139,35 @@ export class SerialNumberService {
 
     return this.db.transaction(async (tx) => {
       const [found] = await tx
-        .select({ id: serialNumber.id, status: serialNumber.status })
+        .select({
+          id: serialNumber.id,
+          code: serialNumber.code,
+          status: serialNumber.status,
+          productId: serialNumber.productId,
+          variantId: serialNumber.variantId,
+        })
         .from(serialNumber)
         .where(and(eq(serialNumber.organizationId, organizationId), eq(serialNumber.id, id)))
         .limit(1);
       if (!found) throw new NotFoundException("Serial number not found in this business.");
 
       if (!allowed[found.status]?.includes(dto.status)) {
-        throw new ConflictException(`A ${found.status.replace("_", " ")} unit cannot become ${dto.status.replace("_", " ")}.`);
+        throw new ConflictException(
+          `A ${found.status.replace("_", " ")} unit cannot become ${dto.status.replace("_", " ")}.`,
+        );
+      }
+
+      if (found.status === "returned" && dto.status === "in_stock") {
+        await this.stock.recordMovementTx(tx, organizationId, {
+          productId: found.productId,
+          variantId: found.variantId,
+          warehouseId: await this.stock.resolveDefaultWarehouseId(organizationId),
+          quantity: 1,
+          type: "return_in",
+          referenceId: id,
+          referenceType: "serial_number",
+          notes: `Serial ${found.code} returned to stock`,
+        });
       }
 
       const [updated] = await tx

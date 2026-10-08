@@ -21,7 +21,6 @@ interface MappedAuthError {
 // get our own message (and a corrected HTTP status); anything unknown falls
 // back to the upstream message with its `code` stripped.
 const AUTH_ERROR_MESSAGES: Record<string, MappedAuthError> = {
-  // sign-up / sign-in
   USER_ALREADY_EXISTS: { status: 409, message: "An account with this email already exists." },
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: {
     status: 409,
@@ -51,7 +50,6 @@ const AUTH_ERROR_MESSAGES: Record<string, MappedAuthError> = {
   FAILED_TO_CREATE_SESSION: { status: 500, message: FALLBACK_ERROR_MESSAGE },
   FAILED_TO_UPDATE_USER: { status: 500, message: FALLBACK_ERROR_MESSAGE },
   INTERNAL_SERVER_ERROR: { status: 500, message: FALLBACK_ERROR_MESSAGE },
-  // social
   SOCIAL_ACCOUNT_ALREADY_LINKED: {
     status: 409,
     message: "This social account is already linked to another user.",
@@ -64,7 +62,6 @@ const AUTH_ERROR_MESSAGES: Record<string, MappedAuthError> = {
   PROVIDER_NOT_SUPPORTED: { status: 400, message: "This sign-in method is currently unavailable." },
   FAILED_TO_GET_USER_INFO: { status: 400, message: "Could not sign you in with this provider." },
   ACCOUNT_NOT_FOUND: { status: 401, message: "Could not sign you in with this provider." },
-  // organization / member / invitation
   ORGANIZATION_NOT_FOUND: { status: 404, message: "Organization not found." },
   MEMBER_NOT_FOUND: { status: 404, message: "Member not found." },
   INVITATION_NOT_FOUND: { status: 404, message: "Invitation not found or already used." },

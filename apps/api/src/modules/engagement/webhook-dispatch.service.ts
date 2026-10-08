@@ -10,10 +10,10 @@ import {
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { signWebhookPayload } from "./webhook-signing";
 
-  /**
-   * Fire-and-forget: a sale must not fail because a tenant's receiver is down.
-   * Failures are counted on the subscription, which pauses it after enough.
-   */
+/**
+ * Fire-and-forget: a sale must not fail because a tenant's receiver is down.
+ * Failures are counted on the subscription, which pauses it after enough.
+ */
 @Injectable()
 export class WebhookDispatchService {
   private readonly logger = new Logger(WebhookDispatchService.name);
@@ -40,11 +40,14 @@ export class WebhookDispatchService {
     const matching = subscriptions.filter((row) => this.subscribesTo(row.events, event));
     if (matching.length === 0) return;
 
-    const body = JSON.stringify({ event, organizationId, sentAt: new Date().toISOString(), data: payload });
+    const body = JSON.stringify({
+      event,
+      organizationId,
+      sentAt: new Date().toISOString(),
+      data: payload,
+    });
 
-    await Promise.all(
-      matching.map((subscription) => this.deliver(subscription, body, event)),
-    );
+    await Promise.all(matching.map((subscription) => this.deliver(subscription, body, event)));
   }
 
   /**

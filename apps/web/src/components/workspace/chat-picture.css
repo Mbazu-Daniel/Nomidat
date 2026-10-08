@@ -1,9 +1,9 @@
 .chat-picture {
   margin: 0 24px 20px;
   padding: 18px;
-  border: 1px solid #f1d9c9;
-  border-radius: 14px;
-  background: #fff9f5;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
 }
 .chat-picture-heading {
   display: flex;
@@ -14,8 +14,8 @@
   width: 64px;
   height: 64px;
   object-fit: contain;
-  background: white;
-  border-radius: 8px;
+  background: var(--surface-raised);
+  border-radius: var(--radius-md);
 }
 .chat-picture-heading > div {
   flex: 1;
@@ -24,11 +24,11 @@
 .chat-picture-heading strong {
   overflow-wrap: anywhere;
   font-size: 13px;
-  color: #4b5666;
+  color: var(--ink-muted);
 }
 .chat-picture-heading p,
 .chat-picture-hint {
-  color: #8a94a2;
+  color: var(--ink-subtle);
   font-size: 12px;
   line-height: 1.6;
 }

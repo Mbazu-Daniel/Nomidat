@@ -1,0 +1,113 @@
+/* The inbox, the activity trail and outbound webhooks. */
+
+/* -------------------------------------------------------------- activity */
+
+.workspace-audit-summary {
+  margin-bottom: 12px;
+}
+
+.workspace-audit-metadata {
+  display: inline-block;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+/* ----------------------------------------------------------------- inbox */
+
+.workspace-inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-inbox-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.workspace-inbox-item p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+}
+
+.workspace-inbox-item.unread {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.workspace-inbox-meta {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+/* -------------------------------------------------------------- webhooks */
+
+.workspace-webhook-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.workspace-webhook-events label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+}
+
+.workspace-secret {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--primary-soft);
+}
+
+.workspace-secret code {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+/* Choosing which categories a product sits in. */
+.workspace-category-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.workspace-category-picker label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}

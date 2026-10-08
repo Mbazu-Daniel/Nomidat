@@ -1,5 +1,6 @@
+import { useCurrency } from "@/lib/currency-context";
+import { formatMoney } from "@/lib/money";
 import { IconArrowUpRight } from "@tabler/icons-react";
-import { formatNaira } from "@/data/nomidat";
 import type { BusinessRecord, Section } from "./types";
 
 export function RecordRow({
@@ -11,6 +12,7 @@ export function RecordRow({
   section: Section;
   onSelect: (row: BusinessRecord) => void;
 }) {
+  const currency = useCurrency();
   return (
     <tr>
       <td>
@@ -51,7 +53,7 @@ export function RecordRow({
         {section === "customers" ? (
           <span className="workspace-badge">{row.kind}</span>
         ) : (
-          formatNaira((row.priceKobo ?? row.totalKobo ?? row.amountKobo ?? 0) / 100)
+          formatMoney(row.priceMinor ?? row.totalMinor ?? row.amountMinor ?? 0, currency)
         )}
       </td>
       <td>

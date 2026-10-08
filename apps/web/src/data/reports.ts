@@ -4,26 +4,26 @@ import type { ReportRange } from "@/components/workspace/types/reports.type";
 type ReportSummary = {
   from: string;
   to: string;
-  salesKobo: number;
-  collectedKobo: number;
-  outstandingCreditKobo: number;
-  expensesKobo: number;
-  netCashflowKobo: number;
+  salesMinor: number;
+  collectedMinor: number;
+  outstandingCreditMinor: number;
+  expensesMinor: number;
+  netCashflowMinor: number;
   salesCount: number;
   paymentCount: number;
   expenseCount: number;
-  profitApproxKobo: number;
+  profitApproxMinor: number;
 };
 
 type SalesReportRow = {
   date: string;
-  salesKobo: number;
+  salesMinor: number;
   saleCount: number;
 };
 
 type ExpenseReportRow = {
   category: string;
-  amountKobo: number;
+  amountMinor: number;
   expenseCount: number;
 };
 
@@ -31,20 +31,20 @@ type ProductReportRow = {
   productId: string | null;
   productName: string;
   quantity: number;
-  salesKobo: number;
+  salesMinor: number;
 };
 
 type CustomerBalanceReportRow = {
   customerId: string;
   customerName: string;
-  balanceKobo: number;
+  balanceMinor: number;
 };
 
 type InventoryReport = {
   productCount: number;
   lowStockCount: number;
   outOfStockCount: number;
-  inventoryValueKobo: number;
+  inventoryValueMinor: number;
   lowStock: Array<{
     id: string;
     name: string;

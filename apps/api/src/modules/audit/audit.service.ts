@@ -1,11 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { and, count, desc, eq, gte, sql } from "@nomidat/db";
 import { auditLog } from "@nomidat/db/schema";
-import {
-  MAX_AUDIT_METADATA_BYTES,
-  MAX_AUDIT_PAGE_SIZE,
-  type AuditAction,
-} from "./audit.constants";
+import { MAX_AUDIT_METADATA_BYTES, MAX_AUDIT_PAGE_SIZE, type AuditAction } from "./audit.constants";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 
 export type AuditActor = {
@@ -22,10 +18,10 @@ export type AuditEntry = {
   ipAddress?: string | null;
 };
 
-  /**
-   * Best-effort by design: failing a customer's payment because the audit insert
-   * hiccuped is worse than losing the entry.
-   */
+/**
+ * Best-effort by design: failing a customer's payment because the audit insert
+ * hiccuped is worse than losing the entry.
+ */
 @Injectable()
 export class AuditService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}

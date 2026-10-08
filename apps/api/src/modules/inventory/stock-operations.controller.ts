@@ -12,7 +12,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
-import { authorizeOrganization } from "../../common/helpers/organization-auth";
+import { authorizeInventory } from "./authorize-inventory";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { CycleCountService } from "./cycle-count.service";
 import {
@@ -46,7 +46,7 @@ export class StockOperationsController {
     @Query("limit", new ParseIntPipe({ optional: true })) limit: number | undefined,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.transfers.getTransfers(org, limit);
   }
 
@@ -56,7 +56,7 @@ export class StockOperationsController {
     @Body() body: CreateTransferDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.transfers.createTransfer(org, body);
   }
 
@@ -67,7 +67,7 @@ export class StockOperationsController {
     @Param("transferId", ParseUUIDPipe) transferId: string,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.transfers.dispatchTransfer(org, session.userId, transferId);
   }
 
@@ -78,8 +78,19 @@ export class StockOperationsController {
     @Param("transferId", ParseUUIDPipe) transferId: string,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.transfers.receiveTransfer(org, session.userId, transferId);
+  }
+
+  @Post("stock-transfers/:transferId/cancel")
+  @ApiOperation({ summary: "Cancel a draft, or bring the goods back from transit" })
+  async cancelTransfer(
+    @Param("organizationId") org: string,
+    @Param("transferId", ParseUUIDPipe) transferId: string,
+    @Req() req: Request,
+  ) {
+    const session = await authorizeInventory(this.auth, req, org);
+    return this.transfers.cancelTransfer(org, session.userId, transferId);
   }
 
   @Get("cycle-counts")
@@ -88,7 +99,7 @@ export class StockOperationsController {
     @Query("limit", new ParseIntPipe({ optional: true })) limit: number | undefined,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.counts.getCycleCounts(org, limit);
   }
 
@@ -99,7 +110,7 @@ export class StockOperationsController {
     @Body() body: CreateCycleCountDto,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.counts.createCycleCount(org, session.userId, body);
   }
 
@@ -110,7 +121,7 @@ export class StockOperationsController {
     @Param("cycleCountId", ParseUUIDPipe) cycleCountId: string,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.counts.applyCycleCount(org, session.userId, cycleCountId);
   }
 
@@ -120,7 +131,7 @@ export class StockOperationsController {
     @Query("limit", new ParseIntPipe({ optional: true })) limit: number | undefined,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.returns.getReturns(org, limit);
   }
 
@@ -130,7 +141,7 @@ export class StockOperationsController {
     @Body() body: CreateReturnDto,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.returns.createReturn(org, session.userId, body);
   }
 
@@ -141,7 +152,7 @@ export class StockOperationsController {
     @Query("warehouseId", ParseUUIDPipe) warehouseId: string,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.returns.receiveReturn(org, session.userId, returnId, warehouseId);
   }
 
@@ -151,7 +162,7 @@ export class StockOperationsController {
     @Query("limit", new ParseIntPipe({ optional: true })) limit: number | undefined,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.purchasing.getPurchaseOrders(org, limit);
   }
 
@@ -161,7 +172,7 @@ export class StockOperationsController {
     @Body() body: CreatePurchaseOrderDto,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.purchasing.createPurchaseOrder(org, session.userId, body);
   }
 
@@ -172,7 +183,7 @@ export class StockOperationsController {
     @Param("purchaseOrderId", ParseUUIDPipe) purchaseOrderId: string,
     @Req() req: Request,
   ) {
-    await this.read(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.purchasing.getPurchaseOrder(org, purchaseOrderId);
   }
 
@@ -184,7 +195,7 @@ export class StockOperationsController {
     @Body() body: ReceivePurchaseOrderDto,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.purchasing.receivePurchaseOrder(org, session.userId, purchaseOrderId, body);
   }
 
@@ -194,7 +205,7 @@ export class StockOperationsController {
     @Param("productId", ParseUUIDPipe) productId: string,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.variants.list(org, productId);
   }
 
@@ -205,7 +216,7 @@ export class StockOperationsController {
     @Body() body: CreateVariantDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.variants.create(org, productId, body);
   }
 
@@ -217,16 +228,7 @@ export class StockOperationsController {
     @Body() body: UpdateVariantDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.variants.update(org, productId, variantId, body);
   }
-
-  private read(req: Request, org: string) {
-    return authorizeOrganization(this.auth, req, org, "inventory");
-  }
-
-  private write(req: Request, org: string) {
-    return authorizeOrganization(this.auth, req, org, "inventory");
-  }
 }
-

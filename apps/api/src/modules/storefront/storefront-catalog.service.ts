@@ -1,7 +1,13 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, asc, desc, eq, gte, ilike, inArray, sql } from "@nomidat/db";
-import { product, productCategory, productCategoryAssignment, productVariant, stock } from "@nomidat/db/schema";
+import { and, asc, desc, eq, gte, ilike, inArray } from "@nomidat/db";
+import {
+  product,
+  productCategory,
+  productCategoryAssignment,
+  productVariant,
+} from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
+import { inStockSql, variantInStockSql } from "../inventory/stock-levels";
 import { StorefrontResolver } from "./storefront-resolver.service";
 
 const MAX_LIMIT = 60;
@@ -47,10 +53,7 @@ export class StorefrontCatalogService {
       })
       .from(productCategory)
       .where(
-        and(
-          eq(productCategory.organizationId, organizationId),
-          eq(productCategory.isActive, true),
-        ),
+        and(eq(productCategory.organizationId, organizationId), eq(productCategory.isActive, true)),
       )
       .orderBy(productCategory.name);
   }
@@ -91,7 +94,7 @@ export class StorefrontCatalogService {
         priceMinor: product.priceMinor,
         sku: product.sku,
         unit: product.unit,
-        inStock: sql<boolean>`coalesce((select sum(${stock.onHand}) from ${stock} where ${stock.productId} = ${product.id} and ${stock.organizationId} = ${organizationId}) > 0, false)`,
+        inStock: inStockSql(organizationId),
       })
       .from(product)
       .where(and(...conditions))
@@ -112,7 +115,7 @@ export class StorefrontCatalogService {
         sku: product.sku,
         unit: product.unit,
         isActive: product.isActive,
-        inStock: sql<boolean>`coalesce((select sum(${stock.onHand}) from ${stock} where ${stock.productId} = ${product.id} and ${stock.organizationId} = ${organizationId}) > 0, false)`,
+        inStock: inStockSql(organizationId),
       })
       .from(product)
       .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
@@ -132,7 +135,7 @@ export class StorefrontCatalogService {
         id: productVariant.id,
         name: productVariant.name,
         priceMinor: productVariant.priceMinor,
-        inStock: sql<boolean>`coalesce((select sum(${stock.onHand}) from ${stock} where ${stock.productId} = ${productVariant.productId} and ${stock.variantId} = ${productVariant.id} and ${stock.organizationId} = ${organizationId}) > 0, false)`,
+        inStock: variantInStockSql(organizationId),
       })
       .from(productVariant)
       .where(

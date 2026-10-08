@@ -144,6 +144,55 @@ export class TransferService {
     });
   }
 
+  /**
+   * Undoes a draft or an in-transit transfer: goods still travelling go back
+   * onto the source shelf. Received goods already sit in the destination
+   * warehouse, no longer in the seller's hands to cancel.
+   */
+  async cancelTransfer(organizationId: string, userId: string | null, transferId: string) {
+    return this.db.transaction(async (tx) => {
+      const transfer = await this.lockTransfer(tx, organizationId, transferId);
+      if (transfer.status !== "draft" && transfer.status !== "in_transit") {
+        throw new ConflictException(`This transfer is already ${transfer.status}.`);
+      }
+
+      if (transfer.status === "in_transit") {
+        for (const line of await this.getLines(organizationId, transferId, tx)) {
+          const quantity = Number(line.quantity);
+          // The mirror image of the dispatch: back onto the source shelf and out
+          // of the in-transit hold, or the goods stay stranded between
+          // warehouses. dispatchedAt stays put — it records what happened.
+          await this.stock.recordMovementTx(tx, organizationId, {
+            productId: line.productId,
+            variantId: line.variantId,
+            warehouseId: transfer.fromWarehouseId,
+            quantity,
+            type: "transfer_in",
+            referenceId: transfer.id,
+            referenceType: "stock_transfer",
+            notes: `Cancelled ${transfer.reference}`,
+            userId,
+          });
+          await this.stock.adjustInTransit(
+            tx,
+            organizationId,
+            line.productId,
+            line.variantId,
+            transfer.fromWarehouseId,
+            -quantity,
+          );
+        }
+      }
+
+      const [updated] = await tx
+        .update(stockTransfer)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(eq(stockTransfer.id, transferId))
+        .returning();
+      return updated;
+    });
+  }
+
   getTransfers(organizationId: string, limit = 50) {
     return this.db
       .select()
@@ -157,7 +206,9 @@ export class TransferService {
     const [transfer] = await tx
       .select()
       .from(stockTransfer)
-      .where(and(eq(stockTransfer.id, transferId), eq(stockTransfer.organizationId, organizationId)))
+      .where(
+        and(eq(stockTransfer.id, transferId), eq(stockTransfer.organizationId, organizationId)),
+      )
       .limit(1);
 
     if (!transfer) throw new NotFoundException("Transfer not found.");
@@ -180,7 +231,9 @@ export class TransferService {
     const [transfer] = await tx
       .select()
       .from(stockTransfer)
-      .where(and(eq(stockTransfer.id, transferId), eq(stockTransfer.organizationId, organizationId)))
+      .where(
+        and(eq(stockTransfer.id, transferId), eq(stockTransfer.organizationId, organizationId)),
+      )
       .for("update")
       .limit(1);
 
@@ -188,4 +241,3 @@ export class TransferService {
     return transfer;
   }
 }
-

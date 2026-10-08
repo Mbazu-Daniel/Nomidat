@@ -20,10 +20,10 @@ export async function getInvoiceDocument(
       businessMetadata: organization.metadata,
       businessLogo: organization.logo,
       status: invoice.status,
-      subtotalKobo: invoice.subtotalKobo,
-      discountKobo: invoice.discountKobo,
-      taxKobo: invoice.taxKobo,
-      totalKobo: invoice.totalKobo,
+      subtotalMinor: invoice.subtotalMinor,
+      discountMinor: invoice.discountMinor,
+      taxMinor: invoice.taxMinor,
+      totalMinor: invoice.totalMinor,
       currency: invoice.currency,
       dueDate: invoice.dueDate,
       paidAt: invoice.paidAt,
@@ -45,8 +45,8 @@ export async function getInvoiceDocument(
       productId: invoiceItem.productId,
       description: invoiceItem.description,
       quantity: invoiceItem.quantity,
-      unitPriceKobo: invoiceItem.unitPriceKobo,
-      totalKobo: invoiceItem.totalKobo,
+      unitPriceMinor: invoiceItem.unitPriceMinor,
+      totalMinor: invoiceItem.totalMinor,
     })
     .from(invoiceItem)
     .where(eq(invoiceItem.invoiceId, invoiceId));

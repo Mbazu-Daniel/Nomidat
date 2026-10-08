@@ -25,8 +25,13 @@ export class CreateBatchDto {
   @MaxLength(80)
   code!: string;
 
+  /**
+   * Decimal, because a shop receives 1.5 kg. Capped at three places to match the
+   * `numeric(15,3)` columns: a fourth place would be silently rounded by Postgres,
+   * so the quantity received and the stock it books in would disagree.
+   */
   @ApiProperty()
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 3 })
   @IsPositive()
   quantity!: number;
 
@@ -48,8 +53,9 @@ export class CreateBatchDto {
 }
 
 export class ConsumeBatchDto {
+  /** Same three-place cap as `CreateBatchDto`, for the same reason. */
   @ApiProperty()
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 3 })
   @IsPositive()
   quantity!: number;
 

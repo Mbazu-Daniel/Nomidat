@@ -1,8 +1,15 @@
-import { IconArrowUpRight, IconFileInvoice } from "@tabler/icons-react";
-import { formatInvoiceMoney } from "./invoice-format";
+import { useState } from "react";
+import { IconArrowUpRight, IconFileInvoice, IconShare2 } from "@tabler/icons-react";
+import { formatMoney } from "@/lib/money";
+import { useCurrency } from "@/lib/currency-context";
+import { InvoiceShareControl } from "./invoice-share-control";
 import type { InvoiceRegisterProps } from "./types";
 
-export function InvoiceRegister({ rows, onSelect }: InvoiceRegisterProps) {
+export function InvoiceRegister({ organizationId, rows, onSelect }: InvoiceRegisterProps) {
+  // The register lists what customers owe, in the business's own currency.
+  const currency = useCurrency();
+  const [sharingId, setSharingId] = useState<string | null>(null);
+
   return (
     <div className="workspace-table-scroll invoice-register">
       <table>
@@ -54,17 +61,34 @@ export function InvoiceRegister({ rows, onSelect }: InvoiceRegisterProps) {
                 <span className="invoice-status">{row.status ?? "draft"}</span>
               </td>
               <td className="invoice-number">
-                <strong>{formatInvoiceMoney(row.totalKobo ?? 0)}</strong>
+                <strong>{formatMoney(row.totalMinor ?? 0, currency)}</strong>
                 <small>NGN</small>
               </td>
               <td>
-                <button
-                  className="workspace-icon-button"
-                  aria-label={`Open invoice ${row.invoiceNumber}`}
-                  onClick={() => onSelect(row)}
-                >
-                  <IconArrowUpRight size={18} />
-                </button>
+                <div className="invoice-register-actions">
+                  <button
+                    className="workspace-icon-button"
+                    aria-label={`Share invoice ${row.invoiceNumber}`}
+                    aria-expanded={sharingId === row.id}
+                    onClick={() => setSharingId(sharingId === row.id ? null : row.id)}
+                  >
+                    <IconShare2 size={18} />
+                  </button>
+                  <button
+                    className="workspace-icon-button"
+                    aria-label={`Open invoice ${row.invoiceNumber}`}
+                    onClick={() => onSelect(row)}
+                  >
+                    <IconArrowUpRight size={18} />
+                  </button>
+                </div>
+                {sharingId === row.id && (
+                  <InvoiceShareControl
+                    organizationId={organizationId}
+                    invoiceId={row.id}
+                    invoiceNumber={row.invoiceNumber ?? row.id}
+                  />
+                )}
               </td>
             </tr>
           ))}

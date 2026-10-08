@@ -1,4 +1,9 @@
+import { APP_GUARD } from "@nestjs/core";
 import { ContactsModule } from "./modules/contacts/contacts.module";
+import { PayoutsModule } from "./modules/payouts/payouts.module";
+import { EngagementModule } from "./modules/engagement/engagement.module";
+import { AuditModule } from "./modules/audit/audit.module";
+import { PlatformModule } from "./modules/platform/platform.module";
 import { PictureImportModule } from "./modules/picture-import/picture-import.module";
 import { Module } from "@nestjs/common";
 import { EnvModule } from "./common/config/env.module";
@@ -14,15 +19,23 @@ import { TelegramModule } from "./modules/telegram/telegram.module";
 import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
 import { BusinessModule } from "./modules/business/business.module";
 import { ConversationalModule } from "./modules/conversational/conversational.module";
+import { MoneyModule } from "./modules/money/money.module";
+import { StorefrontModule } from "./modules/storefront/storefront.module";
 import { SalesModule } from "./modules/sales/sales.module";
+import { PosModule } from "./modules/pos/pos.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { PaymentsModule } from "./modules/payments/payments.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
 import { ExpensesModule } from "./modules/expenses/expenses.module";
+import { OrgContextGuard } from "./common/guards/org-context.guard";
 
 @Module({
   imports: [
+    PayoutsModule,
+    EngagementModule,
+    AuditModule,
+    PlatformModule,
     PictureImportModule,
     ContactsModule,
     EnvModule,
@@ -38,12 +51,22 @@ import { ExpensesModule } from "./modules/expenses/expenses.module";
     WhatsAppModule,
     BusinessModule,
     SalesModule,
+    PosModule,
+    StorefrontModule,
+    MoneyModule,
     InvoicesModule,
     PaymentsModule,
     InventoryModule,
     ExpensesModule,
     ReportsModule,
     ConversationalModule,
+  ],
+  providers: [
+    // Default-deny, so authentication is a property of the route table rather
+    // than of every handler remembering to call `authorize`. Ordered before the
+    // per-controller guards so an unauthenticated request is rejected before
+    // any of them spend work on it.
+    { provide: APP_GUARD, useClass: OrgContextGuard },
   ],
 })
 export class AppModule {}

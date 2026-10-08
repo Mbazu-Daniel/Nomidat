@@ -112,14 +112,11 @@ export class WalletRepository {
     request: typeof payoutRequest.$inferInsert,
     db: DbExecutor,
   ): Promise<{ id: string; status: string; createdAt: Date } | null> {
-    const [row] = await db
-      .insert(payoutRequest)
-      .values(request)
-      .returning({
-        id: payoutRequest.id,
-        status: payoutRequest.status,
-        createdAt: payoutRequest.createdAt,
-      });
+    const [row] = await db.insert(payoutRequest).values(request).returning({
+      id: payoutRequest.id,
+      status: payoutRequest.status,
+      createdAt: payoutRequest.createdAt,
+    });
     return row ?? null;
   }
 

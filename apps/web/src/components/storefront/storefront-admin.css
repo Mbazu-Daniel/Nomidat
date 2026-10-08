@@ -1,0 +1,151 @@
+.shop-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 52rem;
+}
+
+.shop-admin-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.shop-admin-head h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.shop-admin-note,
+.shop-admin-hint {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8rem;
+  margin: 0.25rem 0 0;
+}
+
+.shop-admin-status {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--radius-full);
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+.shop-admin-status[data-live="true"] {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+.shop-admin-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 1.25rem;
+}
+
+.shop-admin-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.shop-admin-link {
+  font-size: 0.85rem;
+  color: hsl(var(--primary));
+}
+
+.shop-admin-select {
+  align-self: flex-start;
+  min-width: 12rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.4rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.shop-admin-css {
+  min-height: 11rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  padding: 0.6rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  resize: vertical;
+}
+
+.shop-admin-domains {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.shop-admin-domains th,
+.shop-admin-domains td {
+  text-align: left;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.shop-admin-domains th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+
+.shop-admin-badge {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.shop-admin-badge[data-verified="true"] {
+  color: hsl(var(--primary));
+}
+
+.shop-admin-empty,
+.shop-admin-error {
+  padding: 1.5rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.shop-admin-error {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+  color: hsl(var(--destructive));
+}
+
+.shop-admin-dns {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.shop-admin-dns code {
+  font-size: 0.72rem;
+  color: hsl(var(--muted-foreground));
+  word-break: break-all;
+}
+
+.shop-admin-copy {
+  font-size: 0.7rem;
+  color: hsl(var(--primary));
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}

@@ -44,10 +44,7 @@ export class StockService {
       .select({ productId: stock.productId, onHand: sql<number>`sum(${stock.onHand})::int` })
       .from(stock)
       .where(
-        and(
-          eq(stock.organizationId, organizationId),
-          sql`${stock.productId} in ${productIds}`,
-        ),
+        and(eq(stock.organizationId, organizationId), sql`${stock.productId} in ${productIds}`),
       )
       .groupBy(stock.productId);
 
@@ -85,9 +82,7 @@ export class StockService {
 
   /** Records a movement and returns the new balance. Rolls back on any failure. */
   async recordMovement(organizationId: string, input: RecordMovementInput) {
-    return this.db.transaction(async (tx) =>
-      this.recordMovementTx(tx, organizationId, input),
-    );
+    return this.db.transaction(async (tx) => this.recordMovementTx(tx, organizationId, input));
   }
 
   /** Transaction-scoped form, so a sale can move stock and write the order atomically. */
@@ -122,17 +117,25 @@ export class StockService {
     const variantId = input.variantId ?? null;
     await tx
       .insert(stock)
-      .values({ organizationId, productId: input.productId, variantId, warehouseId: input.warehouseId, onHand: newBalance })
-      .onConflictDoUpdate(variantId
-        ? {
-            target: [stock.organizationId, stock.productId, stock.variantId, stock.warehouseId],
-            set: { onHand: newBalance, updatedAt: new Date() },
-          }
-        : {
-            target: [stock.organizationId, stock.productId, stock.warehouseId],
-            targetWhere: sql`${stock.variantId} is null`,
-            set: { onHand: newBalance, updatedAt: new Date() },
-          });
+      .values({
+        organizationId,
+        productId: input.productId,
+        variantId,
+        warehouseId: input.warehouseId,
+        onHand: newBalance,
+      })
+      .onConflictDoUpdate(
+        variantId
+          ? {
+              target: [stock.organizationId, stock.productId, stock.variantId, stock.warehouseId],
+              set: { onHand: newBalance, updatedAt: new Date() },
+            }
+          : {
+              target: [stock.organizationId, stock.productId, stock.warehouseId],
+              targetWhere: sql`${stock.variantId} is null`,
+              set: { onHand: newBalance, updatedAt: new Date() },
+            },
+      );
 
     const [movement] = await tx
       .insert(stockMovement)
@@ -211,10 +214,7 @@ export class StockService {
       .from(product)
       .innerJoin(
         warehouse,
-        and(
-          eq(warehouse.organizationId, organizationId),
-          eq(warehouse.id, warehouseId),
-        ),
+        and(eq(warehouse.organizationId, organizationId), eq(warehouse.id, warehouseId)),
       )
       .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
       .limit(1);

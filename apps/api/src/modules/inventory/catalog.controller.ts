@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
-import { authorizeOrganization } from "../../common/helpers/organization-auth";
+import { authorizeInventory } from "./authorize-inventory";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { CatalogService } from "./catalog.service";
 import {
@@ -40,7 +40,7 @@ export class CatalogController {
   @Get("units")
   @ApiOperation({ summary: "List units of measure" })
   async getUnits(@Param("organizationId") org: string, @Req() req: Request) {
-    await this.read(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.units.getUnits(org);
   }
 
@@ -51,7 +51,7 @@ export class CatalogController {
     @Body() body: CreateUnitOfMeasureDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.units.createUnit(org, body);
   }
 
@@ -63,14 +63,14 @@ export class CatalogController {
     @Body() body: UpdateUnitOfMeasureDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.units.updateUnit(org, unitId, body);
   }
 
   @Get("unit-conversions")
   @ApiOperation({ summary: "List unit conversion factors" })
   async getConversions(@Param("organizationId") org: string, @Req() req: Request) {
-    await this.read(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.units.getConversions(org);
   }
 
@@ -81,14 +81,14 @@ export class CatalogController {
     @Body() body: CreateUnitConversionDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.units.createConversion(org, body);
   }
 
   @Get("product-categories")
   @ApiOperation({ summary: "List product categories" })
   async getCategories(@Param("organizationId") org: string, @Req() req: Request) {
-    await this.read(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.catalog.getCategories(org);
   }
 
@@ -99,7 +99,7 @@ export class CatalogController {
     @Body() body: CreateProductCategoryDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.catalog.createCategory(org, body);
   }
 
@@ -111,7 +111,7 @@ export class CatalogController {
     @Body() body: UpdateProductCategoryDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.catalog.updateCategory(org, categoryId, body);
   }
 
@@ -122,7 +122,7 @@ export class CatalogController {
     @Param("categoryId", ParseUUIDPipe) categoryId: string,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.catalog.archiveCategory(org, categoryId);
   }
 
@@ -133,7 +133,7 @@ export class CatalogController {
     @Param("productId", ParseUUIDPipe) productId: string,
     @Req() req: Request,
   ) {
-    await this.read(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.catalog.getProductCategories(org, productId);
   }
 
@@ -145,7 +145,7 @@ export class CatalogController {
     @Body() body: AssignProductToCategoriesDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.catalog.assignProductCategories(org, productId, body);
   }
 
@@ -156,7 +156,7 @@ export class CatalogController {
     @Query("limit", new ParseIntPipe({ optional: true })) limit: number | undefined,
     @Req() req: Request,
   ) {
-    await this.read(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.catalog.getSuppliers(org, limit);
   }
 
@@ -167,7 +167,7 @@ export class CatalogController {
     @Body() body: CreateSupplierDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.catalog.createSupplier(org, body);
   }
 
@@ -179,15 +179,7 @@ export class CatalogController {
     @Body() body: UpdateSupplierDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.catalog.updateSupplier(org, supplierId, body);
-  }
-
-  private read(req: Request, org: string) {
-    return authorizeOrganization(this.auth, req, org, "inventory");
-  }
-
-  private write(req: Request, org: string) {
-    return authorizeOrganization(this.auth, req, org, "inventory");
   }
 }

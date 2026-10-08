@@ -56,4 +56,3 @@ export class AddToCartLineDto {
   @Min(1)
   quantity!: number;
 }
-

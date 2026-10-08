@@ -29,7 +29,11 @@ export class PhoneInvitationService {
     return actor;
   }
   private async phoneUser(headers: Headers) {
-    if (headers.get("origin") && headers.get("origin") !== this.env.WEB_ORIGIN)
+    const origin = headers.get("origin");
+    // Any configured origin passes. Comparing against a single URL made a request
+    // from 127.0.0.1 look like a forged origin while it was only a different name
+    // for the same machine.
+    if (origin && !this.env.WEB_ORIGINS.includes(origin))
       throw new ForbiddenException("Untrusted request origin.");
     const session = await this.auth.api.getSession({ headers });
     if (!session) throw new UnauthorizedException("Sign in with your phone number first.");
@@ -160,13 +164,11 @@ export class PhoneInvitationService {
           )
           .limit(1);
         if (!existing)
-          await tx
-            .insert(member)
-            .values({
-              organizationId: invite.organizationId,
-              userId: person.id,
-              role: invite.role,
-            });
+          await tx.insert(member).values({
+            organizationId: invite.organizationId,
+            userId: person.id,
+            role: invite.role,
+          });
       }
       await tx
         .update(phoneInvitation)

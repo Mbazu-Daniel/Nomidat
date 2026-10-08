@@ -19,7 +19,9 @@ export async function nextReference(
   prefix: string,
   table: ReferenceTable,
 ): Promise<string> {
-  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`ref:${organizationId}:${prefix}`}))`);
+  await tx.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtext(${`ref:${organizationId}:${prefix}`}))`,
+  );
 
   const [row] = await tx
     .select({ total: sql<number>`count(*)::int` })

@@ -6,6 +6,7 @@ import {
   Max,
   IsDateString,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -13,7 +14,7 @@ import {
   ValidateNested,
 } from "class-validator";
 
-class CreateInvoiceItemDto {
+export class CreateInvoiceItemDto {
   @IsOptional()
   @IsUUID()
   productId?: string;
@@ -22,15 +23,21 @@ class CreateInvoiceItemDto {
   @IsString()
   description?: string;
 
-  @IsInt()
-  @Max(2147483647)
-  @Min(1)
+  /**
+   * Decimal, because a shop invoices 1.5 kg. Capped at three places to match the
+   * `numeric(12,3)` column: a fourth place would be rounded by Postgres, so a
+   * total computed here could disagree with the stored quantity.
+   */
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Max(999_999_999)
+  @Min(0.001)
   quantity!: number;
 
   @IsInt()
   @Max(2147483647)
   @Min(0)
-  unitPriceKobo!: number;
+  unitPriceMinor!: number;
 }
 
 export class CreateInvoiceDto {
@@ -49,13 +56,13 @@ export class CreateInvoiceDto {
   @IsInt()
   @Max(2147483647)
   @Min(0)
-  discountKobo?: number;
+  discountMinor?: number;
 
   @IsOptional()
   @IsInt()
   @Max(2147483647)
   @Min(0)
-  taxKobo?: number;
+  taxMinor?: number;
 
   @IsOptional()
   @IsDateString()

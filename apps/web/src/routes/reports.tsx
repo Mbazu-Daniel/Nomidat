@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { WorkspacePage } from "@/components/workspace/workspace-page";
+import { OrgRedirect } from "@/components/shell/org-redirect";
+
 export const Route = createFileRoute("/reports")({
-  component: () => <WorkspacePage section="reports" />,
+  component: () => <OrgRedirect section="reports" />,
 });

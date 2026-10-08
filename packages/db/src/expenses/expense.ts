@@ -10,7 +10,7 @@ export const expense = pgTable(
     categoryId: uuid("category_id").references(() => expenseCategory.id, {
       onDelete: "set null",
     }),
-    amountKobo: integer("amount_kobo").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
     description: text("description"),
     spentAt: timestamp("spent_at").notNull().defaultNow(),
     paymentMethod: text("payment_method").notNull().default("cash"),

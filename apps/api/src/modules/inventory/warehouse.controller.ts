@@ -12,7 +12,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
-import { authorizeOrganization } from "../../common/helpers/organization-auth";
+import { authorizeInventory } from "./authorize-inventory";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { CreateWarehouseDto, UpdateWarehouseDto } from "./dto/warehouse.dto";
 import { WarehouseService } from "./warehouse.service";
@@ -27,7 +27,7 @@ export class WarehouseController {
 
   @Get("warehouses")
   async list(@Param("organizationId") org: string, @Req() req: Request) {
-    await this.read(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.warehouses.getWarehouses(org);
   }
 
@@ -37,7 +37,7 @@ export class WarehouseController {
     @Body() body: CreateWarehouseDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.warehouses.createWarehouse(org, body);
   }
 
@@ -48,7 +48,7 @@ export class WarehouseController {
     @Body() body: UpdateWarehouseDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.warehouses.updateWarehouse(org, warehouseId, body);
   }
 
@@ -61,7 +61,7 @@ export class WarehouseController {
     @Query("offset", new ParseIntPipe({ optional: true })) offset: number | undefined,
     @Req() req: Request,
   ) {
-    await this.read(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.warehouses.getStockLevels(org, warehouseId, limit, offset);
   }
 
@@ -74,15 +74,7 @@ export class WarehouseController {
     @Query("offset", new ParseIntPipe({ optional: true })) offset: number | undefined,
     @Req() req: Request,
   ) {
-    await this.read(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.warehouses.getMovements(org, productId, limit, offset);
-  }
-
-  private read(req: Request, org: string) {
-    return authorizeOrganization(this.auth, req, org, "inventory");
-  }
-
-  private write(req: Request, org: string) {
-    return authorizeOrganization(this.auth, req, org, "inventory");
   }
 }

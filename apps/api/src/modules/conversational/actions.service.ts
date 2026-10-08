@@ -2,8 +2,18 @@ import { PictureActionsService } from "./picture-actions.service";
 import { ExtendedActionsService } from "./extended-actions.service";
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, ilike, sql, or, isNull, sum } from "@nomidat/db";
-import { contact, expense, expenseCategory, order, product, payment } from "@nomidat/db/schema";
+import {
+  contact,
+  expense,
+  expenseCategory,
+  order,
+  product,
+  payment,
+} from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
+import { formatMinorAmount, majorToMinor } from "../../common/helpers/money-format";
+import { totalOnHandSql } from "../inventory/stock-levels";
+import { MoneyPolicyService } from "../money/money-policy.service";
 import { SalesService } from "../sales/sales.service";
 import type { ParsedAction } from "./types";
 
@@ -14,6 +24,7 @@ export class ActionsService {
     private readonly salesService: SalesService,
     private readonly extended: ExtendedActionsService,
     private readonly pictureActions: PictureActionsService,
+    private readonly money: MoneyPolicyService,
   ) {}
 
   async executeAction(
@@ -21,20 +32,25 @@ export class ActionsService {
     organizationId: string,
     userId: string,
   ): Promise<string> {
+    // Read once and threaded down: every figure below is stored in the
+    // business's own currency, and a message quoting the wrong one is a lie the
+    // seller has no way to check against their books.
+    const { currency } = await this.money.getPolicy(organizationId);
     if (action.intent === "create_product" || (action.intent === "record_sale" && action.items))
-      return this.pictureActions.execute(action, organizationId, userId);
+      return this.pictureActions.execute(action, organizationId, userId, currency);
     const handlers: Partial<Record<ParsedAction["intent"], () => Promise<string> | string>> = {
       create_contact: () => this.createContact(action, organizationId),
-      record_sale: () => this.recordSale(action, organizationId),
-      record_expense: () => this.recordExpense(action, organizationId),
-      check_balance: () => this.checkBalance(action, organizationId),
+      record_sale: () => this.recordSale(action, organizationId, currency),
+      record_expense: () => this.recordExpense(action, organizationId, currency),
+      check_balance: () => this.checkBalance(action, organizationId, currency),
       check_inventory: () => this.checkInventory(action, organizationId),
-      summary: () => this.summary(organizationId),
+      summary: () => this.summary(organizationId, currency),
       unknown: () =>
         "Try checking stock, recording a sale or expense, adding a customer, or asking for a summary.",
     };
     return (
-      handlers[action.intent]?.() ?? this.extended.executeAction(action, organizationId, userId)
+      handlers[action.intent]?.() ??
+      this.extended.executeAction(action, organizationId, userId, currency)
     );
   }
 
@@ -65,7 +81,11 @@ export class ActionsService {
     return `Recorded ${created.name} as a customer.`;
   }
 
-  private async recordExpense(action: ParsedAction, organizationId: string): Promise<string> {
+  private async recordExpense(
+    action: ParsedAction,
+    organizationId: string,
+    currency: string,
+  ): Promise<string> {
     if (!action.amountNaira || action.amountNaira <= 0) {
       return "How much was the expense?";
     }
@@ -89,54 +109,59 @@ export class ActionsService {
       .values({
         organizationId,
         categoryId: category?.id,
-        amountKobo: Math.round(action.amountNaira * 100),
+        amountMinor: majorToMinor(action.amountNaira, currency),
         description: action.description ?? "Recorded through Nomidat",
         spentAt: action.date ? new Date(`${action.date}T12:00:00`) : new Date(),
         paymentMethod: action.paymentMethod ?? "cash",
       })
       .returning();
 
-    return `Recorded ₦${(created.amountKobo / 100).toLocaleString("en-NG")} expense.`;
+    return `Recorded ${formatMinorAmount(created.amountMinor, currency)} expense.`;
   }
 
-  private async recordSale(action: ParsedAction, organizationId: string): Promise<string> {
+  private async recordSale(
+    action: ParsedAction,
+    organizationId: string,
+    currency: string,
+  ): Promise<string> {
     const validationError = this.validateSaleAction(action);
     if (validationError) return validationError;
     const quantity = action.quantity!;
     const amountNaira = action.amountNaira!;
     const [customerId, existingProduct] = await Promise.all([
-      this.findCustomerId(organizationId, action.customerName),
-      this.findProduct(organizationId, action.productName!),
+      this.getCustomerId(organizationId, action.customerName),
+      this.getProduct(organizationId, action.productName!),
     ]);
     if (action.customerName && !customerId)
       return `I could not find ${action.customerName}. Please add the contact first.`;
-    const totalKobo = Math.round(amountNaira * 100);
+    const totalMinor = majorToMinor(amountNaira, currency);
     const result = await this.salesService.createSale(organizationId, null, {
       customerId: customerId ?? undefined,
       items: [
         {
+          // A named product is priced from the catalog; an ad-hoc one keeps the
+          // price the sender stated. Tax is added by the money seam either way.
           productId: existingProduct?.id,
           productName: existingProduct?.name ?? action.productName!,
           quantity,
-          unitPriceKobo: Math.floor(totalKobo / quantity),
-          lineTotalKobo: totalKobo,
+          unitPriceMinor: Math.floor(totalMinor / quantity),
         },
       ],
-      paymentAmountKobo: action.paid ? totalKobo : 0,
+      paymentAmountMinor: action.paid ? totalMinor : 0,
       paymentMethod: "cash",
       notes: "Recorded through Nomidat",
     });
     const balanceText =
-      result.balanceKobo > 0
-        ? " Outstanding: ₦" + (result.balanceKobo / 100).toLocaleString("en-NG") + "."
+      result.balanceMinor > 0
+        ? ` Outstanding: ${formatMinorAmount(result.balanceMinor, currency)}.`
         : "";
     return (
       "Recorded " +
       quantity +
       " × " +
       action.productName +
-      " for ₦" +
-      amountNaira.toLocaleString("en-NG") +
+      " for " +
+      formatMinorAmount(totalMinor, currency) +
       " " +
       (action.paid ? "paid" : "on credit") +
       "." +
@@ -154,7 +179,7 @@ export class ActionsService {
     return null;
   }
 
-  private async findCustomerId(organizationId: string, name?: string): Promise<string | null> {
+  private async getCustomerId(organizationId: string, name?: string): Promise<string | null> {
     if (!name) return null;
     const [customer] = await this.db
       .select({ id: contact.id })
@@ -169,7 +194,7 @@ export class ActionsService {
     return customer?.id ?? null;
   }
 
-  private async findProduct(organizationId: string, name: string) {
+  private async getProduct(organizationId: string, name: string) {
     const [item] = await this.db
       .select({ id: product.id, name: product.name })
       .from(product)
@@ -182,7 +207,11 @@ export class ActionsService {
       .limit(1);
     return item;
   }
-  private async checkBalance(action: ParsedAction, organizationId: string): Promise<string> {
+  private async checkBalance(
+    action: ParsedAction,
+    organizationId: string,
+    currency: string,
+  ): Promise<string> {
     if (!action.customerName) return "Which customer should I check?";
 
     const customers = await this.db
@@ -198,7 +227,7 @@ export class ActionsService {
 
     const rows = await this.db
       .select({
-        totalKobo: sql<number>`${order.totalKobo} - coalesce((select sum(${payment.amountKobo}) from ${payment} where ${payment.orderId} = "orders"."id" and ${payment.organizationId} = ${organizationId}), 0)`,
+        totalMinor: sql<number>`${order.totalMinor} - coalesce((select sum(${payment.amountMinor}) from ${payment} where ${payment.orderId} = "orders"."id" and ${payment.organizationId} = ${organizationId}), 0)`,
       })
       .from(order)
       .where(
@@ -209,8 +238,8 @@ export class ActionsService {
         ),
       );
 
-    const total = rows.reduce((sum, row) => sum + Number(row.totalKobo), 0);
-    return `${customer.name} currently owes ₦${(total / 100).toLocaleString("en-NG")}.`;
+    const total = rows.reduce((sum, row) => sum + Number(row.totalMinor), 0);
+    return `${customer.name} currently owes ${formatMinorAmount(total, currency)}.`;
   }
 
   private async checkInventory(action: ParsedAction, organizationId: string): Promise<string> {
@@ -227,22 +256,27 @@ export class ActionsService {
     const item = rows[0];
     if (!item) return `I couldn't find ${action.productName} in your inventory.`;
 
-    return `${item.name}: ${item.stockQuantity} ${item.unit} in stock.`;
+    const [row] = await this.db
+      .select({ onHand: totalOnHandSql(organizationId) })
+      .from(product)
+      .where(and(eq(product.id, item.id), eq(product.organizationId, organizationId)));
+
+    return `${item.name}: ${Number(row?.onHand ?? 0)} ${item.unit} in stock.`;
   }
 
-  private async summary(organizationId: string): Promise<string> {
+  private async summary(organizationId: string, currency: string): Promise<string> {
     const [[collected], [spent]] = await Promise.all([
       this.db
-        .select({ amount: sum(payment.amountKobo) })
+        .select({ amount: sum(payment.amountMinor) })
         .from(payment)
         .where(eq(payment.organizationId, organizationId)),
       this.db
-        .select({ amount: sum(expense.amountKobo) })
+        .select({ amount: sum(expense.amountMinor) })
         .from(expense)
         .where(eq(expense.organizationId, organizationId)),
     ]);
     const revenue = Number(collected.amount ?? 0);
     const spending = Number(spent.amount ?? 0);
-    return `Business summary: NGN ${(revenue / 100).toLocaleString("en-NG")} collected and NGN ${(spending / 100).toLocaleString("en-NG")} expenses. Net cash flow: NGN ${((revenue - spending) / 100).toLocaleString("en-NG")}.`;
+    return `Business summary: ${formatMinorAmount(revenue, currency)} collected and ${formatMinorAmount(spending, currency)} expenses. Net cash flow: ${formatMinorAmount(revenue - spending, currency)}.`;
   }
 }

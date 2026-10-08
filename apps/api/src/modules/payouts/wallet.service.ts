@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
-import { BPS_PER_UNIT } from "./payout.constants";
+import { platformFeeMinor } from "./payout.constants";
 import { DATABASE, type DbExecutor, type DbHandle } from "../../common/db/db.provider";
 import { WalletRepository } from "./wallet.repository";
 
@@ -35,71 +35,91 @@ export class WalletService {
     return this.wallet.findRequest(organizationId, requestId);
   }
 
-  async record(
-    organizationId: string,
-    input: {
-      kind: WalletKind;
-      amountMinor: number;
-      currency?: string;
-      reference?: string;
-      description?: string;
-    },
-  ) {
-    return this.db.transaction((tx) => this.recordIn(tx, organizationId, input));
+  /**
+   * Opens a business with a balance, for money that predates a payment: a manual
+   * top-up, a migrated opening balance, a correction agreed with support.
+   *
+   * Named for what it is rather than left as a general `record`. It refuses an
+   * overdraft, so it cannot be used to spend money that is not there.
+   */
+  async openWithBalance(organizationId: string, amountMinor: number, reference?: string) {
+    return this.db.transaction((tx) =>
+      this.appendEntry(
+        tx,
+        organizationId,
+        {
+          kind: "adjustment",
+          amountMinor,
+          currency: "NGN",
+          reference: reference ?? null,
+          description: "Opening balance",
+        },
+        { onDuplicate: "throw", mayOverdraw: false },
+      ),
+    );
   }
 
   /**
    * Appends a movement and returns the balance it leaves behind.
    *
-   * The resulting balance is read back rather than recomputed here, because
-   * `findBalance` is the one place that knows which way a `kind` travels. An
-   * earlier version applied the sign in this file and summed the raw column in
-   * the repository; the two disagreed, so a withdrawal raised the balance and
-   * the overdraft guard below could not see it.
+   * One sequence for every movement, because the balance invariant is one thing:
+   * lock the ledger, insert, read the balance back, refuse an overdraft, snapshot.
+   * The resulting balance is read rather than recomputed here, because
+   * `findBalance` is the one place that knows which way a `kind` travels.
+   *
+   * `onDuplicate` is how the caller says what a repeat means. A withdrawal refuses
+   * a replay loudly; a payment credit reports it and stops, because a redelivered
+   * webhook is normal and must not throw inside the payment's own transaction.
+   * `mayOverdraw` is false everywhere a tenant's own money is at stake — only a
+   * credit can raise a balance, so only a credit may leave it negative.
    */
-  private async recordIn(
-    tx: DbExecutor,
+  private async appendEntry(
+    executor: DbExecutor,
     organizationId: string,
-    input: {
+    entry: {
       kind: WalletKind;
       amountMinor: number;
-      currency?: string;
-      reference?: string;
-      description?: string;
+      currency: string;
+      reference?: string | null;
+      description?: string | null;
     },
-  ): Promise<{ id: string; balanceAfterMinor: number }> {
-    if (!Number.isInteger(input.amountMinor) || input.amountMinor <= 0) {
+    options: { onDuplicate: "throw" | "skip"; mayOverdraw: boolean },
+  ): Promise<{ id: string | null; balanceAfterMinor: number | null }> {
+    if (!Number.isInteger(entry.amountMinor) || entry.amountMinor <= 0) {
       throw new BadRequestException("Enter an amount greater than zero.");
     }
 
     // Taken before the balance is read, so two movements cannot both read the
     // same starting point and overwrite one another's running total.
-    await this.wallet.lockEntries(organizationId, tx);
+    await this.wallet.lockEntries(organizationId, executor);
 
     const created = await this.wallet.insertEntry(
       {
         organizationId,
-        kind: input.kind,
+        kind: entry.kind,
         // Always stored positive; the kind carries the direction.
-        amountMinor: input.amountMinor,
-        currency: input.currency ?? "NGN",
-        reference: input.reference ?? null,
-        description: input.description ?? null,
+        amountMinor: entry.amountMinor,
+        currency: entry.currency,
+        reference: entry.reference ?? null,
+        description: entry.description ?? null,
         // Provisional; corrected once the row exists.
         balanceAfterMinor: 0,
       },
-      tx,
+      executor,
     );
-    // An earlier delivery of the same reference already took this entry.
-    if (!created) throw new ConflictException("That entry is already recorded.");
+    if (!created) {
+      if (options.onDuplicate === "skip") return { id: null, balanceAfterMinor: null };
+      // An earlier delivery of the same reference already took this entry.
+      throw new ConflictException("That entry is already recorded.");
+    }
 
-    const balanceAfterMinor = await this.wallet.findBalance(organizationId, tx);
+    const balanceAfterMinor = await this.wallet.findBalance(organizationId, executor);
     // A tenant may never be overdrawn: the refusal and the movement roll back
     // together, so a refused withdrawal never reaches the ledger.
-    if (balanceAfterMinor < 0) {
+    if (!options.mayOverdraw && balanceAfterMinor < 0) {
       throw new ConflictException("That is more than the available balance.");
     }
-    await this.wallet.setBalanceOnEntry(created.id, balanceAfterMinor, tx);
+    await this.wallet.setBalanceOnEntry(created.id, balanceAfterMinor, executor);
 
     return { id: created.id, balanceAfterMinor };
   }
@@ -126,10 +146,7 @@ export class WalletService {
     },
     db: DbExecutor = this.db,
   ) {
-    // Floor, so rounding the fee can never credit a minor unit more than arrived.
-    // Divided by BPS_PER_UNIT, not BPS_PER_PERCENT: this is a fraction of the
-    // amount, not the number Paystack's percentageCharge wants.
-    const feeMinor = Math.floor((input.amountMinor * input.platformFeeBps) / BPS_PER_UNIT);
+    const feeMinor = platformFeeMinor(input.amountMinor, input.platformFeeBps);
     const netMinor = input.amountMinor - feeMinor;
     if (netMinor < 0) {
       throw new BadRequestException("That payment is smaller than the platform fee.");
@@ -141,27 +158,21 @@ export class WalletService {
         : (input.description ?? "Payment received");
 
     const credit = async (executor: DbExecutor) => {
-      await this.wallet.lockEntries(organizationId, executor);
-
-      const created = await this.wallet.insertEntry(
+      const written = await this.appendEntry(
+        executor,
+        organizationId,
         {
-          organizationId,
           kind: "credit",
           amountMinor: netMinor,
           currency: input.currency,
           reference: input.reference,
           description: explanation,
-          // Provisional; corrected once the credit is committed.
-          balanceAfterMinor: 0,
         },
-        executor,
+        // A redelivered webhook is normal, and throwing here would roll back the
+        // payment row it arrived alongside.
+        { onDuplicate: "skip", mayOverdraw: true },
       );
-      // An earlier delivery of this webhook already took the reference.
-      if (!created) return { credited: false, netMinor, feeMinor, balanceAfterMinor: null };
-
-      const balanceAfterMinor = await this.wallet.findBalance(organizationId, executor);
-      await this.wallet.setBalanceOnEntry(created.id, balanceAfterMinor, executor);
-      return { credited: true, netMinor, feeMinor, balanceAfterMinor };
+      return { credited: written.id !== null, netMinor, feeMinor, balanceAfterMinor: written.balanceAfterMinor };
     };
 
     return db === this.db ? this.db.transaction((tx) => credit(tx)) : credit(db);
@@ -188,12 +199,17 @@ export class WalletService {
     },
   ) {
     return this.db.transaction(async (tx) => {
-      const moved = await this.recordIn(tx, organizationId, {
-        kind: "withdrawal",
-        amountMinor: input.amountMinor,
-        currency: input.currency,
-        description: "Withdrawal requested",
-      });
+      const moved = await this.appendEntry(
+        tx,
+        organizationId,
+        {
+          kind: "withdrawal",
+          amountMinor: input.amountMinor,
+          currency: input.currency ?? "NGN",
+          description: "Withdrawal requested",
+        },
+        { onDuplicate: "throw", mayOverdraw: false },
+      );
 
       const created = await this.wallet.insertPayoutRequest(
         {
@@ -258,13 +274,18 @@ export class WalletService {
         throw new ConflictException("That withdrawal has already been decided.");
       }
 
-      return this.recordIn(tx, organizationId, {
-        kind: "adjustment",
-        amountMinor: request.amountMinor,
-        currency: request.currency,
-        reference: requestId,
-        description: `Withdrawal declined: ${reason}`,
-      });
+      return this.appendEntry(
+        tx,
+        organizationId,
+        {
+          kind: "adjustment",
+          amountMinor: request.amountMinor,
+          currency: request.currency,
+          reference: requestId,
+          description: `Withdrawal declined: ${reason}`,
+        },
+        { onDuplicate: "throw", mayOverdraw: true },
+      );
     });
   }
 }

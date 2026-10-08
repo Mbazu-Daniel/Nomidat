@@ -1,0 +1,14 @@
+# The app is server-rendered, so every path that is not a static file has to
+# reach the Node server. Only assets and icons are served from disk.
+/assets/ { expires 1y; add_header Cache-Control "public, immutable"; }
+/icons/  { expires 30d; }
+
+location / {
+  try_files $uri @nomidat;
+}
+
+location @nomidat {
+  proxy_pass http://127.0.0.1:3000;
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-Proto $scheme;
+}

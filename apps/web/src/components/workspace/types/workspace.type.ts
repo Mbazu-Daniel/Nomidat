@@ -20,17 +20,17 @@ export type BusinessRecord = {
   isActive?: boolean;
   stockQuantity?: number;
   lowStockThreshold?: number;
-  priceKobo?: number;
-  costKobo?: number;
+  priceMinor?: number;
+  costMinor?: number;
   sku?: string | null;
   unit?: string;
   customer?: string | null;
   description?: string | null;
   category?: string | null;
-  totalKobo?: number;
-  amountKobo?: number;
-  balanceKobo?: number;
-  paidKobo?: number;
+  totalMinor?: number;
+  amountMinor?: number;
+  balanceMinor?: number;
+  paidMinor?: number;
   saleReference?: string;
   saleItems?: { productName: string; quantity: number }[];
   invoiceNumber?: string;
@@ -44,7 +44,7 @@ export type ClientFolder = {
   orders: BusinessRecord[];
   invoices: BusinessRecord[];
   notes: { id: string; body: string; createdAt: string }[];
-  balanceKobo: number;
+  balanceMinor: number;
 };
 export type ChatMessage = {
   id: string;
@@ -68,7 +68,7 @@ export type LineItem = {
   productId: string;
   description: string;
   quantity: number | null;
-  unitPriceKobo: number | null;
+  unitPriceMinor: number | null;
 };
 export type InvoiceDetail = BusinessRecord & {
   businessName?: string;
@@ -81,17 +81,25 @@ export type InvoiceDetail = BusinessRecord & {
     registrationNumber?: string;
   };
   customerEmail?: string | null;
-  subtotalKobo: number;
-  discountKobo: number;
-  taxKobo: number;
+  /** The API returns it; money on this panel is rendered in the invoice's own currency. */
+  currency: string;
+  /**
+   * Free text on the table, but the API refuses to change an invoice once it is
+   * paid, void or cancelled — this panel hides the controls for those.
+   */
+  status?: string;
+  subtotalMinor: number;
+  discountMinor: number;
+  taxMinor: number;
   dueDate: string | null;
   notes: string | null;
   items: {
     id: string;
+    productId: string | null;
     description: string;
     quantity: number;
-    unitPriceKobo: number;
-    totalKobo: number;
+    unitPriceMinor: number;
+    totalMinor: number;
   }[];
 };
 
@@ -113,15 +121,22 @@ export type InvoiceDetailProps = {
   organizationId: string;
   invoiceId: string;
   canWrite: boolean;
+  /** Called after a save so the register above can reload its rows. */
+  onSaved: () => void;
+  /** Called after a delete, so the open detail can close. */
+  onClose: () => void;
 };
 
 export type ProductEditorProps = {
+  organizationId: string;
   record: BusinessRecord;
   busy: boolean;
   save: (resource: string, body: object, method?: string) => Promise<void>;
+  onSaved: () => void;
 };
 
 export type InvoiceRegisterProps = {
+  organizationId: string;
   rows: BusinessRecord[];
   onSelect: (row: BusinessRecord) => void;
 };
@@ -137,9 +152,9 @@ export type ChannelProviderCardsProps = {
 };
 
 export type SalePaymentSummary = {
-  totalKobo: number;
-  paidKobo: number;
-  balanceKobo: number;
+  totalMinor: number;
+  paidMinor: number;
+  balanceMinor: number;
 };
 
 export type SalesRegisterProps = {
@@ -149,6 +164,7 @@ export type SalesRegisterProps = {
 
 export interface RecordTableProps {
   section: Exclude<Section, "overview" | "chat" | "settings" | "channels" | "reports">;
+  organizationId: string;
   rows: BusinessRecord[];
   query: string;
   error: string;

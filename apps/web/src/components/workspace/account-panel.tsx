@@ -1,33 +1,34 @@
 import { PhoneInbox } from "./phone-inbox";
-import { useEffect, useState } from "react";
-import { createApiRequest } from "@/lib/api";
+import { useState } from "react";
+import { useLoadedResource, useSubmit } from "@/lib/use-api-resource";
+import { authClient } from "@/lib/api";
+import { clearSession } from "@/lib/session";
 import { InvitationInbox } from "./invitation-inbox";
 import type { AccountSession, LoginSession } from "./types/settings.type";
 export function AccountPanel() {
-  const [account, setAccount] = useState<AccountSession | null>();
-  const [sessions, setSessions] = useState<LoginSession[]>([]);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const loaded = useLoadedResource(
+    async () => {
+      const [session, listed] = await Promise.all([
+        authClient.getSession(),
+        authClient.listSessions(),
+      ]);
+      // The typed client is the source; the local shapes only narrow fields
+      // this panel reads, so a new Better Auth field cannot break the build.
+      return {
+        account: session.data as unknown as AccountSession | null,
+        sessions: (listed.data ?? []) as unknown as LoginSession[],
+      };
+    },
+    [],
+    { account: null, sessions: [] as LoginSession[] },
+  );
+  const account = loaded.data.account;
+  const sessions = loaded.data.sessions;
+  // The load error and the write error are one message to the seller, so the write
+  // seam owns it and a failed load is carried into the same place.
+  const { busy, error: writeError, submit } = useSubmit();
   const [notice, setNotice] = useState("");
-  useEffect(() => {
-    let cancelled = false;
-    void Promise.all([
-      createApiRequest<AccountSession | null>("/auth/session"),
-      createApiRequest<LoginSession[]>("/auth/sessions"),
-    ])
-      .then(([data, rows]) => {
-        if (!cancelled) {
-          setAccount(data);
-          setSessions(rows);
-        }
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const error = loaded.error || writeError;
   return (
     <>
       <section className="workspace-card settings-section account-settings">
@@ -53,26 +54,20 @@ export function AccountPanel() {
                 className="workspace-secondary"
                 disabled={busy}
                 onClick={async () => {
-                  setBusy(true);
-                  setError("");
-                  try {
-                    const result = await createApiRequest<{ url?: string }>("/auth/link-social", {
-                      method: "POST",
-                      body: JSON.stringify({
-                        provider: "google",
-                        callbackURL: `${window.location.origin}/settings`,
-                      }),
+                  await submit(async () => {
+                    const { data, error: linkError } = await authClient.linkSocial({
+                      provider: "google",
+                      callbackURL: `${window.location.origin}/settings`,
                     });
-                    if (result.url) {
-                      const url = new URL(result.url);
-                      if (url.protocol !== "https:") throw new Error("Invalid sign-in URL.");
-                      window.location.assign(url.href);
+                    if (linkError) throw new Error(linkError.message ?? "Could not link Google.");
+                    const url = data?.url;
+                    if (url) {
+                      const target = new URL(url);
+                      // Only ever follow an https redirect from the auth server.
+                      if (target.protocol !== "https:") throw new Error("Invalid sign-in URL.");
+                      window.location.assign(target.href);
                     } else setNotice("Google account linked.");
-                  } catch (reason) {
-                    setError((reason as Error).message);
-                  } finally {
-                    setBusy(false);
-                  }
+                  });
                 }}
               >
                 Link Google account
@@ -81,16 +76,13 @@ export function AccountPanel() {
                 className="workspace-secondary"
                 disabled={busy}
                 onClick={async () => {
-                  setBusy(true);
-                  setError("");
-                  try {
-                    await createApiRequest("/auth/sign-out", { method: "POST", body: "{}" });
+                  await submit(async () => {
+                    // Goes through clearSession so the offline cache is purged
+                    // too, rather than only the server cookie.
+                    await clearSession();
                     sessionStorage.removeItem("nomidat.organization");
                     window.location.assign("/login");
-                  } catch (reason) {
-                    setError((reason as Error).message);
-                    setBusy(false);
-                  }
+                  });
                 }}
               >
                 Sign out

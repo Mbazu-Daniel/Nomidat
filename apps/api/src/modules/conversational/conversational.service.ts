@@ -9,6 +9,7 @@ import type { ChannelAdapter, InboundMessage } from "../channel/types";
 import { ActionsService } from "./actions.service";
 import { AiService } from "./ai.service";
 import { getActionReview, getMissingActionDetails } from "./action-review";
+import { MoneyPolicyService } from "../money/money-policy.service";
 import { parsedActionSchema, writeActions } from "./action-schema";
 import type { ChatActor, ParsedAction } from "./types";
 
@@ -20,6 +21,7 @@ export class ConversationalService {
     private readonly actions: ActionsService,
     private readonly auth: BusinessAuthService,
     private readonly channelPictures: ChannelPictureReader,
+    private readonly money: MoneyPolicyService,
   ) {}
 
   async processInbound(
@@ -184,8 +186,13 @@ export class ConversationalService {
     if (write) this.auth.authorizeWrite(actor.role, actionWriteArea(action.intent));
     let content: string;
     if (missing) content = missing;
-    else if (write) content = getActionReview(action);
-    else content = await this.actions.executeAction(action, actor.organizationId, actor.userId);
+    else if (write) {
+      // The review quotes money, so it needs the business's own currency before
+      // it can be shown. Read here rather than inside the formatter: this is the
+      // only call that has to be right before anything is written.
+      const { currency } = await this.money.getPolicy(actor.organizationId);
+      content = getActionReview(action, currency);
+    } else content = await this.actions.executeAction(action, actor.organizationId, actor.userId);
     if (warnings.length)
       content += `\nPicture notes: ${warnings
         .slice(0, 3)

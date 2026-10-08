@@ -1,0 +1,44 @@
+.invoice-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  background: hsl(var(--muted) / 0.4);
+  min-width: 20rem;
+}
+
+.invoice-share-link {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.35rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.invoice-share-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  color: hsl(var(--destructive));
+}
+
+.invoice-share-hint {
+  flex-basis: 100%;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+}
+
+.invoice-register-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  justify-content: flex-end;
+}

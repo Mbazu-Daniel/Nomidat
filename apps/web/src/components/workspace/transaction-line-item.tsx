@@ -1,4 +1,6 @@
 import type { TransactionLineItemProps } from "./types/picture.type";
+import { minorToDecimalInput, parseMoneyToMinor } from "@/lib/money";
+import { useCurrency } from "@/lib/currency-context";
 
 export function TransactionLineItem({
   item,
@@ -9,6 +11,10 @@ export function TransactionLineItem({
   canRemove,
   onRemove,
 }: TransactionLineItemProps) {
+  // The business's own currency, so the price the seller types in is the price
+  // the record stores — a fixed hundredth would misread it in any currency
+  // without hundredths.
+  const currency = useCurrency();
   return (
     <div className="workspace-line-item" key={item.key}>
       <label>
@@ -22,7 +28,7 @@ export function TransactionLineItem({
               ...(product
                 ? {
                     description: product.name ?? "",
-                    unitPriceKobo: fromPicture ? item.unitPriceKobo : (product.priceKobo ?? 0),
+                    unitPriceMinor: fromPicture ? item.unitPriceMinor : (product.priceMinor ?? 0),
                   }
                 : {}),
             });
@@ -65,18 +71,20 @@ export function TransactionLineItem({
         />
       </label>
       <label>
-        Unit price (₦)
+        Unit price ({currency})
         <input
           type="number"
           min="0"
           max="20000000"
-          step="0.01"
+          step={Number(minorToDecimalInput(1, currency))}
           required
-          value={item.unitPriceKobo === null ? "" : item.unitPriceKobo / 100}
+          value={
+            item.unitPriceMinor === null ? "" : minorToDecimalInput(item.unitPriceMinor, currency)
+          }
           onChange={(event) =>
             updateItem(item.key, {
-              unitPriceKobo:
-                event.target.value === "" ? null : Math.round(Number(event.target.value) * 100),
+              unitPriceMinor:
+                event.target.value === "" ? null : parseMoneyToMinor(event.target.value, currency),
             })
           }
         />

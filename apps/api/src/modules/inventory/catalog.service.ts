@@ -138,11 +138,11 @@ export class CatalogService {
   }
 
   /**
- * The categories a product currently sits in. Exposed so the assignment screen
- * can show what is already set: without it, replacing the set is something the
- * seller can only do blind.
- */
-async getProductCategories(organizationId: string, productId: string) {
+   * The categories a product currently sits in. Exposed so the assignment screen
+   * can show what is already set: without it, replacing the set is something the
+   * seller can only do blind.
+   */
+  async getProductCategories(organizationId: string, productId: string) {
     return this.db
       .select({
         id: productCategory.id,

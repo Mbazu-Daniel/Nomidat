@@ -2,15 +2,12 @@ import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { PayoutAccountService } from "./payout-account.service";
 import { PaystackPlatformClient } from "./paystack-platform.client";
 import { assertCanManagePayouts } from "./payout-permissions";
+import { RejectWithdrawalDto } from "./dto/reject-withdrawal.dto";
 import { RequestWithdrawalDto } from "./dto/request-withdrawal.dto";
 import { WalletService } from "./wallet.service";
 
@@ -118,9 +115,31 @@ export class WalletController {
   }
 
   /**
-   * Reads are open to any member. Anything that moves money is not: withdrawing
-   * and sending a transfer are owner/admin/manager only, so a read-only or
-   * narrow-scope staff account cannot move the business's balance.
+   * Declines a withdrawal and returns the funds to the balance.
+   *
+   * Without this a declined payout stays debited forever: the reservation is real
+   * money held back, and nothing else can release it. The refusal and the credit
+   * share one transaction, so a decision cannot be recorded without the money going
+   * back — nor the money returned without the decision.
+   */
+  @Post("withdrawals/:requestId/reject")
+  @ApiOperation({ summary: "Decline a withdrawal and return the funds" })
+  async reject(
+    @Param("organizationId") org: string,
+    @Param("requestId") requestId: string,
+    @Body() body: RejectWithdrawalDto,
+    @Req() req: Request,
+  ) {
+    await this.managePayouts(req, org);
+
+    const result = await this.wallet.refundRequest(org, requestId, body.reason);
+    return { status: "rejected", balanceAfterMinor: result.balanceAfterMinor };
+  }
+
+  /**
+   * Reads are open to any member. Anything that moves money is not: withdrawing,
+   * sending and declining a transfer are owner/admin/manager only, so a read-only
+   * or narrow-scope staff account cannot move the business's balance.
    */
   private async read(req: Request, org: string) {
     return this.auth.getSession(extractHeaders(req), org);

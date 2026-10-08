@@ -6,4 +6,5 @@ allowBuilds:
   "@nestjs/core": true
   pnpm: true
   msw: true
-  '@scarf/scarf': true
+  "@scarf/scarf": true
+  "@swc/core": true

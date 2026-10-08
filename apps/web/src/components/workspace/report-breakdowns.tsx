@@ -1,6 +1,7 @@
+import { useCurrency } from "@/lib/currency-context";
+import { formatMoney } from "@/lib/money";
 import { Link } from "@tanstack/react-router";
 import { IconArrowUpRight } from "@tabler/icons-react";
-import { formatNaira } from "@/data/nomidat";
 import { ReportCard } from "./report-card";
 import type { ReportsData } from "./types/reports.type";
 export function ReportBreakdowns({
@@ -8,6 +9,7 @@ export function ReportBreakdowns({
   customers,
   inventory,
 }: Pick<ReportsData, "products" | "customers" | "inventory">) {
+  const currency = useCurrency();
   return (
     <>
       <div className="report-chart-grid">
@@ -35,7 +37,7 @@ export function ReportBreakdowns({
                         {row.productName}
                       </td>
                       <td>{row.quantity}</td>
-                      <td>{formatNaira(row.salesKobo / 100)}</td>
+                      <td>{formatMoney(row.salesMinor, currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -52,7 +54,7 @@ export function ReportBreakdowns({
                 <div key={row.customerId}>
                   <span className="report-avatar">{row.customerName.charAt(0).toUpperCase()}</span>
                   <strong>{row.customerName}</strong>
-                  <span>{formatNaira(row.balanceKobo / 100)}</span>
+                  <span>{formatMoney(row.balanceMinor, currency)}</span>
                 </div>
               ))}
             </div>
@@ -82,7 +84,7 @@ export function ReportBreakdowns({
           </div>
           <div>
             <span>Inventory value</span>
-            <strong>{formatNaira(inventory.inventoryValueKobo / 100)}</strong>
+            <strong>{formatMoney(inventory.inventoryValueMinor, currency)}</strong>
           </div>
         </div>
         {inventory.lowStock.length > 0 && (

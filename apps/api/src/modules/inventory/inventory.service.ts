@@ -1,3 +1,4 @@
+import { StockService } from "./stock.service";
 import {
   BadRequestException,
   ConflictException,
@@ -5,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { and, desc, eq, gte, sql } from "@nomidat/db";
+import { and, desc, eq, sql } from "@nomidat/db";
 import { product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { AdjustStockDto, CreateProductDto, UpdateProductDto } from "./dto";
@@ -14,18 +15,20 @@ const MAX_LIMIT = 50;
 
 @Injectable()
 export class InventoryService {
-  constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: DbHandle,
+    private readonly stock: StockService,
+  ) {}
 
-  async listProducts(organizationId: string, limit = 20, offset = 0) {
-    return this.db
+  async getProducts(organizationId: string, limit = 20, offset = 0) {
+    const rows = await this.db
       .select({
         id: product.id,
         name: product.name,
         sku: product.sku,
         description: product.description,
-        priceKobo: product.priceKobo,
-        costKobo: product.costKobo,
-        stockQuantity: product.stockQuantity,
+        priceMinor: product.priceMinor,
+        costMinor: product.costMinor,
         lowStockThreshold: product.lowStockThreshold,
         unit: product.unit,
         isActive: product.isActive,
@@ -37,6 +40,13 @@ export class InventoryService {
       .orderBy(desc(product.updatedAt))
       .limit(Math.min(Math.max(limit, 1), MAX_LIMIT))
       .offset(Math.max(0, offset));
+
+    // Display-only total across warehouses; stock rows stay the source of truth.
+    const totals = await this.stock.totalOnHand(
+      organizationId,
+      rows.map((row) => row.id),
+    );
+    return rows.map((row) => ({ ...row, stockQuantity: totals.get(row.id) ?? 0 }));
   }
 
   async getProduct(organizationId: string, productId: string) {
@@ -47,7 +57,9 @@ export class InventoryService {
       .limit(1);
 
     if (!item) throw new NotFoundException("Product not found.");
-    return item;
+
+    const totals = await this.stock.totalOnHand(organizationId, [productId]);
+    return { ...item, stockQuantity: totals.get(productId) ?? 0 };
   }
 
   async createProduct(organizationId: string, input: CreateProductDto) {
@@ -64,15 +76,27 @@ export class InventoryService {
         name,
         sku,
         description: input.description?.trim() || null,
-        priceKobo: input.priceKobo,
-        costKobo: input.costKobo ?? 0,
-        stockQuantity: input.stockQuantity ?? 0,
+        priceMinor: input.priceMinor,
+        costMinor: input.costMinor ?? 0,
         lowStockThreshold: input.lowStockThreshold ?? 5,
         unit: input.unit?.trim() || "pcs",
       })
       .returning();
 
-    return created;
+    // Opening stock is a recorded movement, not a column value.
+    if (input.stockQuantity && input.stockQuantity > 0) {
+      const warehouseId = await this.stock.resolveDefaultWarehouseId(organizationId);
+      await this.stock.recordMovement(organizationId, {
+        productId: created.id,
+        warehouseId,
+        quantity: input.stockQuantity,
+        type: "inbound_receive",
+        referenceType: "product",
+        notes: "Opening stock",
+      });
+    }
+
+    return { ...created, stockQuantity: input.stockQuantity ?? 0 };
   }
 
   async updateProduct(organizationId: string, productId: string, input: UpdateProductDto) {
@@ -87,8 +111,8 @@ export class InventoryService {
         name: input.name?.trim() ?? existing.name,
         sku,
         description: input.description?.trim() ?? existing.description,
-        priceKobo: input.priceKobo ?? existing.priceKobo,
-        costKobo: input.costKobo ?? existing.costKobo,
+        priceMinor: input.priceMinor ?? existing.priceMinor,
+        costMinor: input.costMinor ?? existing.costMinor,
         lowStockThreshold: input.lowStockThreshold ?? existing.lowStockThreshold,
         unit: input.unit?.trim() ?? existing.unit,
         updatedAt: new Date(),
@@ -116,42 +140,19 @@ export class InventoryService {
       throw new BadRequestException("Stock adjustment cannot be zero.");
     }
 
-    return this.db.transaction(async (tx) => {
-      const [current] = await tx
-        .select({ id: product.id, name: product.name, stockQuantity: product.stockQuantity })
-        .from(product)
-        .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
-        .for("update")
-        .limit(1);
+    await this.getProduct(organizationId, productId);
+    const warehouseId = await this.stock.resolveDefaultWarehouseId(organizationId);
 
-      if (!current) throw new NotFoundException("Product not found.");
-
-      const nextStock = current.stockQuantity + input.quantity;
-      if (nextStock < 0) {
-        throw new ConflictException(
-          `Stock cannot go below zero for ${current.name}. Available stock: ${current.stockQuantity}.`,
-        );
-      }
-
-      const [updated] = await tx
-        .update(product)
-        .set({
-          stockQuantity: sql`${product.stockQuantity} + ${input.quantity}`,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(product.id, productId),
-            eq(product.organizationId, organizationId),
-            gte(product.stockQuantity, -input.quantity),
-          ),
-        )
-        .returning();
-
-      if (!updated) throw new ConflictException("Stock changed while applying the adjustment.");
-
-      return { ...updated, adjustmentQuantity: input.quantity, reason: input.reason };
+    const movement = await this.stock.recordMovement(organizationId, {
+      productId,
+      warehouseId,
+      quantity: input.quantity,
+      type: input.quantity > 0 ? "adjustment_add" : "adjustment_remove",
+      referenceType: "adjustment",
+      notes: input.reason,
     });
+
+    return { ...movement, adjustmentQuantity: input.quantity, reason: input.reason };
   }
 
   private async ensureSkuAvailable(organizationId: string, sku: string, productId?: string) {
