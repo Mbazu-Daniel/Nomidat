@@ -21,7 +21,7 @@ export async function checkBusinessHandle(slug: string): Promise<boolean> {
   return result.status;
 }
 
-export type BusinessSummary = {
+type BusinessSummary = {
   salesTotalMinor: number;
   outstandingCreditMinor: number;
   expensesTotalMinor: number;

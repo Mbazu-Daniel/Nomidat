@@ -4,7 +4,7 @@ export const CartStatus = {
   CONVERTED: "converted",
   ABANDONED: "abandoned",
 } as const;
-export type CartStatus = (typeof CartStatus)[keyof typeof CartStatus];
+type CartStatus = (typeof CartStatus)[keyof typeof CartStatus];
 
 /** How a storefront hostname was attached to a shop. */
 export const StorefrontDomainKind = {
@@ -14,7 +14,7 @@ export const StorefrontDomainKind = {
 export type StorefrontDomainKind = (typeof StorefrontDomainKind)[keyof typeof StorefrontDomainKind];
 
 /** Which payment methods a storefront offers at checkout. */
-export const StorefrontPaymentMethod = {
+const StorefrontPaymentMethod = {
   CASH: "cash",
   BANK_TRANSFER: "bank_transfer",
   CARD: "card",
@@ -28,7 +28,7 @@ export const STOREFRONT_PAYMENT_METHODS = Object.values(StorefrontPaymentMethod)
  * A shop's theme. Only these tokens may be set, and only to colour values, so a
  * seller cannot smuggle arbitrary CSS into a public page through the theme.
  */
-export const STOREFRONT_THEME_TOKENS = [
+const STOREFRONT_THEME_TOKENS = [
   "accent",
   "background",
   "surface",
@@ -60,7 +60,7 @@ export function sanitizeStorefrontTheme(theme: unknown): StorefrontTheme {
 }
 
 /** The public shape of a shop, safe to hand to an unauthenticated browser. */
-export interface StorefrontConfig {
+interface StorefrontConfig {
   organizationId: string;
   slug: string;
   name: string;

@@ -15,7 +15,7 @@ import { organizationClient } from "better-auth/client/plugins";
  * `credentials: "include"` is required: sessions are httpOnly cookies, and the
  * client cannot read or set them itself.
  */
-export const API_BASE_URL =
+const API_BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "http://localhost:3001";
 
 /**
@@ -87,7 +87,7 @@ export const http = axios.create({
   timeout: 20_000,
 });
 
-export class ApiError extends Error {
+class ApiError extends Error {
   constructor(
     message: string,
     /** Absent when the request never reached the server. */

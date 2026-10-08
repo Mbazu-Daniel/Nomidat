@@ -1,4 +1,4 @@
-export interface PosCatalogSnapshot {
+interface PosCatalogSnapshot {
   products: unknown[];
   contacts: unknown[];
   cachedAt: number;

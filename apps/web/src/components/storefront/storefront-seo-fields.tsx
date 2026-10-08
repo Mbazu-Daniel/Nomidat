@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
  * whatever is in the stored blob, because each one has to be rendered somewhere
  * or the seller is editing a field that does nothing.
  */
-export const SEO_FIELDS = [
+const SEO_FIELDS = [
   { key: "title", label: "Page title", multiline: false },
   { key: "description", label: "Meta description", multiline: true },
   { key: "keywords", label: "Keywords", multiline: false },

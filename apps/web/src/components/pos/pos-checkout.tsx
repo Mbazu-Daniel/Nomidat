@@ -15,7 +15,7 @@ import { useState } from "react";
 
 /** Mirrors the server's VAT basis points so the cashier's preview matches the receipt. */
 
-export interface PosCheckoutTotals {
+interface PosCheckoutTotals {
   subtotalMinor: number;
   discountMinor: number;
   taxMinor: number;

@@ -61,7 +61,7 @@ export interface StoreVariant {
   inStock: boolean;
 }
 
-export interface StoreCategory {
+interface StoreCategory {
   id: string;
   name: string;
   slug: string;
@@ -87,7 +87,7 @@ export function getStorefrontConfig(slug: string) {
   return createApiRequest<StorefrontConfig>(`${PUBLIC}/${encodeURIComponent(slug)}/config`);
 }
 
-export function getStoreCategories(slug: string) {
+function getStoreCategories(slug: string) {
   return createApiRequest<StoreCategory[]>(`${PUBLIC}/${encodeURIComponent(slug)}/categories`);
 }
 
@@ -159,7 +159,7 @@ export function checkoutStoreCart(
  * The API is usually a different origin, so the browser would send the API's own
  * Host header. The shopper's hostname is forwarded explicitly instead.
  */
-export async function resolveShopFromHost(): Promise<
+async function resolveShopFromHost(): Promise<
   { resolved: true; slug: string; template: string } | { resolved: false }
 > {
   const host = typeof window === "undefined" ? "" : window.location.host;

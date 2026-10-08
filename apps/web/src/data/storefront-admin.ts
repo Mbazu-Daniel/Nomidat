@@ -28,7 +28,7 @@ export interface StorefrontDomainRow {
  * What `POST /verify` answers with. `reason` explains why it is not verified yet,
  * and `dns` tells the seller exactly which record to create.
  */
-export interface StorefrontDomainVerification {
+interface StorefrontDomainVerification {
   verified: boolean;
   recordName?: string;
   reason?: string;

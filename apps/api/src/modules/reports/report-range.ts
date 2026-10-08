@@ -8,7 +8,7 @@ export type ReportRange = {
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 366;
 
-export function defaultReportRange(): ReportRange {
+function defaultReportRange(): ReportRange {
   const to = new Date();
   const from = new Date(to);
   from.setUTCDate(from.getUTCDate() - DEFAULT_DAYS);

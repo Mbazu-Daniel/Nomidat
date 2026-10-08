@@ -15,7 +15,7 @@ export interface SerialNumberRow {
   orderId: string | null;
 }
 
-export interface BatchRow {
+interface BatchRow {
   id: string;
   code: string;
   productId: string;

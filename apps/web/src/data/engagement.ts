@@ -16,7 +16,7 @@ export interface AuditEntry {
   createdAt: string;
 }
 
-export interface AuditPage {
+interface AuditPage {
   entries: AuditEntry[];
   total: number;
 }
@@ -27,7 +27,7 @@ export function getAuditLog(organizationId: string, offset = 0, limit = 50) {
   );
 }
 
-export interface AuditSummaryRow {
+interface AuditSummaryRow {
   action: string;
   value: number;
 }
@@ -86,7 +86,7 @@ export interface WebhookRow {
   createdAt: string;
 }
 
-export interface CreatedWebhook extends WebhookRow {
+interface CreatedWebhook extends WebhookRow {
   /** Shown once, at creation, and never returned again. */
   secret: string;
 }

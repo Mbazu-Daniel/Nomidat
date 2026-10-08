@@ -24,14 +24,14 @@ export function normalizeHostname(rawHost: string | undefined | null): string {
 }
 
 /** The registrable part: `shop.example.com` -> `example.com`. */
-export function baseDomain(hostname: string): string {
+function baseDomain(hostname: string): string {
   const parts = hostname.split(".").filter(Boolean);
   if (parts.length <= 2) return hostname;
   return parts.slice(-2).join(".");
 }
 
 /** The subdomain a shop can be reached on: `shop.example.com` -> `shop`. */
-export function subdomainOf(hostname: string): string {
+function subdomainOf(hostname: string): string {
   const base = baseDomain(hostname);
   if (!base || hostname === base) return "";
   return hostname.slice(0, -(base.length + 1));

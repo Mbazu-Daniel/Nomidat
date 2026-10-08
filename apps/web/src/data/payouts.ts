@@ -5,7 +5,7 @@ export interface WalletBalance {
   balanceMinor: number;
 }
 
-export interface WalletEntry {
+interface WalletEntry {
   id: string;
   kind: string;
   amountMinor: number;
@@ -15,7 +15,7 @@ export interface WalletEntry {
   createdAt: string;
 }
 
-export interface WithdrawalRequest {
+interface WithdrawalRequest {
   id: string;
   amountMinor: number;
   currency: string;
@@ -42,7 +42,7 @@ export interface Bank {
   name: string;
 }
 
-export interface PlatformCapabilities {
+interface PlatformCapabilities {
   transactions: boolean;
   customerDirectory: boolean;
   dedicatedVirtualAccounts: boolean;
@@ -58,7 +58,7 @@ export function getWallet(organizationId: string) {
   return createApiRequest<WalletBalance>(wallet(organizationId));
 }
 
-export function getWalletEntries(organizationId: string, limit = 20, offset = 0) {
+function getWalletEntries(organizationId: string, limit = 20, offset = 0) {
   return createApiRequest<WalletEntry[]>(
     `${wallet(organizationId)}/entries?limit=${limit}&offset=${offset}`,
   );
@@ -95,6 +95,6 @@ export function savePayoutAccount(
   });
 }
 
-export function getPlatformCapabilities(organizationId: string) {
+function getPlatformCapabilities(organizationId: string) {
   return createApiRequest<PlatformCapabilities>(`${payoutAccount(organizationId)}/capabilities`);
 }

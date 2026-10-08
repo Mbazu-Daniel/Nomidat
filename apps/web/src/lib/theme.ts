@@ -16,7 +16,7 @@ export function readTheme(): Theme {
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
-export function applyTheme(theme: Theme) {
+function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
   document.documentElement.style.colorScheme = theme;
   try {

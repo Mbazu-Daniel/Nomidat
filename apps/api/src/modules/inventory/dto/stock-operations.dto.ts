@@ -16,7 +16,7 @@ import {
   ValidateNested,
 } from "class-validator";
 
-export class TransferLineDto {
+class TransferLineDto {
   @IsUUID()
   productId!: string;
 
@@ -48,7 +48,7 @@ export class CreateTransferDto {
   notes?: string;
 }
 
-export class CountLineDto {
+class CountLineDto {
   @IsUUID()
   productId!: string;
 
@@ -76,7 +76,7 @@ export class CreateCycleCountDto {
   notes?: string;
 }
 
-export class ReceiveCountDto {
+class ReceiveCountDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(500)
@@ -89,7 +89,7 @@ export class ReceiveCountDto {
   notes?: string;
 }
 
-export class ReturnLineDto {
+class ReturnLineDto {
   @IsUUID()
   productId!: string;
 
@@ -138,7 +138,7 @@ export class CreateReturnDto {
   notes?: string;
 }
 
-export class PurchaseOrderLineDto {
+class PurchaseOrderLineDto {
   @IsUUID()
   productId!: string;
 

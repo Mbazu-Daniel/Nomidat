@@ -9,12 +9,12 @@ import { addToStoreCart, getStoreCart, openStoreCart, type StoreCart } from "@/d
  */
 const TOKEN_KEY = "nomidat:storefront:cart";
 
-export function readCartToken(): string | undefined {
+function readCartToken(): string | undefined {
   if (typeof window === "undefined") return undefined;
   return window.localStorage.getItem(TOKEN_KEY) ?? undefined;
 }
 
-export function writeCartToken(token: string): void {
+function writeCartToken(token: string): void {
   window.localStorage.setItem(TOKEN_KEY, token);
 }
 
