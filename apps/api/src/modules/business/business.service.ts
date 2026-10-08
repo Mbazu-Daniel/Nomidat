@@ -1,7 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { and, count, desc, eq, lte, sum, sql } from "@nomidat/db";
+import { and, count, desc, eq, sum, sql } from "@nomidat/db";
 import { contact, expense, expenseCategory, order, product, payment } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
+import { lowStockFilter } from "../inventory/stock-levels";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -16,7 +17,7 @@ export class BusinessService {
         id: order.id,
         customer: contact.name,
         status: order.status,
-        totalKobo: order.totalKobo,
+        totalMinor: order.totalMinor,
         createdAt: order.createdAt,
       })
       .from(order)
@@ -44,34 +45,17 @@ export class BusinessService {
       this.db
         .select({
           customerId: order.contactId,
-          totalKobo: sql<number>`coalesce(sum(greatest(0, ${order.totalKobo} - coalesce((select sum(${payment.amountKobo}) from ${payment} where ${payment.orderId} = "orders"."id" and ${payment.organizationId} = ${organizationId}), 0))), 0)`,
+          totalMinor: sql<number>`coalesce(sum(greatest(0, ${order.totalMinor} - coalesce((select sum(${payment.amountMinor}) from ${payment} where ${payment.orderId} = "orders"."id" and ${payment.organizationId} = ${organizationId}), 0))), 0)`,
         })
         .from(order)
         .where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")))
         .groupBy(order.contactId),
     ]);
-    const balances = new Map(credit.map((row) => [row.customerId, Number(row.totalKobo ?? 0)]));
+    const balances = new Map(credit.map((row) => [row.customerId, Number(row.totalMinor ?? 0)]));
     return customers.map((customer) => ({
       ...customer,
-      outstandingKobo: balances.get(customer.id) ?? 0,
+      outstandingMinor: balances.get(customer.id) ?? 0,
     }));
-  }
-
-  async getProducts(organizationId: string, limit = DEFAULT_LIMIT) {
-    return this.db
-      .select({
-        id: product.id,
-        name: product.name,
-        sku: product.sku,
-        stockQuantity: product.stockQuantity,
-        lowStockThreshold: product.lowStockThreshold,
-        unit: product.unit,
-        priceKobo: product.priceKobo,
-      })
-      .from(product)
-      .where(eq(product.organizationId, organizationId))
-      .orderBy(desc(product.updatedAt))
-      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT));
   }
 
   async getSummary(organizationId: string) {
@@ -84,9 +68,9 @@ export class BusinessService {
       this.getLowStockCount(organizationId),
     ]);
     return {
-      salesTotalKobo: sales,
-      outstandingCreditKobo: credit,
-      expensesTotalKobo: expenses,
+      salesTotalMinor: sales,
+      outstandingCreditMinor: credit,
+      expensesTotalMinor: expenses,
       customerCount: customers,
       productCount: products,
       lowStockCount: lowStock,
@@ -95,28 +79,28 @@ export class BusinessService {
 
   private async getOrderTotal(organizationId: string): Promise<number> {
     const [row] = await this.db
-      .select({ totalKobo: sum(order.totalKobo) })
+      .select({ totalMinor: sum(order.totalMinor) })
       .from(order)
       .where(eq(order.organizationId, organizationId));
-    return Number(row?.totalKobo ?? 0);
+    return Number(row?.totalMinor ?? 0);
   }
 
   private async getPendingCredit(organizationId: string): Promise<number> {
     const [row] = await this.db
       .select({
-        totalKobo: sql<number>`coalesce(sum(greatest(0, ${order.totalKobo} - coalesce((select sum(${payment.amountKobo}) from ${payment} where ${payment.orderId} = "orders"."id" and ${payment.organizationId} = ${organizationId}), 0))), 0)`,
+        totalMinor: sql<number>`coalesce(sum(greatest(0, ${order.totalMinor} - coalesce((select sum(${payment.amountMinor}) from ${payment} where ${payment.orderId} = "orders"."id" and ${payment.organizationId} = ${organizationId}), 0))), 0)`,
       })
       .from(order)
       .where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")));
-    return Number(row?.totalKobo ?? 0);
+    return Number(row?.totalMinor ?? 0);
   }
 
   private async getExpenseTotal(organizationId: string): Promise<number> {
     const [row] = await this.db
-      .select({ totalKobo: sum(expense.amountKobo) })
+      .select({ totalMinor: sum(expense.amountMinor) })
       .from(expense)
       .where(eq(expense.organizationId, organizationId));
-    return Number(row?.totalKobo ?? 0);
+    return Number(row?.totalMinor ?? 0);
   }
 
   private async getCount(
@@ -134,12 +118,7 @@ export class BusinessService {
     const [row] = await this.db
       .select({ count: count() })
       .from(product)
-      .where(
-        and(
-          eq(product.organizationId, organizationId),
-          lte(product.stockQuantity, product.lowStockThreshold),
-        ),
-      );
+      .where(and(eq(product.organizationId, organizationId), lowStockFilter(organizationId)));
     return Number(row?.count ?? 0);
   }
 
@@ -148,7 +127,7 @@ export class BusinessService {
       .select({
         id: expense.id,
         description: expense.description,
-        amountKobo: expense.amountKobo,
+        amountMinor: expense.amountMinor,
         spentAt: expense.spentAt,
         paymentMethod: expense.paymentMethod,
         category: expenseCategory.name,

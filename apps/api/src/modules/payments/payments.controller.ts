@@ -2,9 +2,11 @@ import { Body, Controller, Get, Headers, Param, Post, Req } from "@nestjs/common
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
+import { Public } from "../../common/guards/public-route.decorator";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { InitializePaystackPaymentDto } from "./dto";
 import { PaystackService } from "./providers/paystack/paystack.service";
+import { PaymentProviderRegistry } from "./providers/payment-provider-registry.service";
 import type { PaystackWebhookRequest } from "./providers/paystack/paystack.interface";
 
 @ApiTags("Payments")
@@ -13,7 +15,19 @@ export class PaymentsController {
   constructor(
     private readonly auth: BusinessAuthService,
     private readonly paystack: PaystackService,
+    private readonly registry: PaymentProviderRegistry,
   ) {}
+
+  @Get("organizations/:organizationId/payments/providers")
+  @ApiOperation({
+    summary: "List payment providers and what each one supports",
+    description:
+      "Clients read this to decide which methods to offer, rather than assuming every provider behaves the same.",
+  })
+  async getProviders(@Param("organizationId") organizationId: string, @Req() req: Request) {
+    await this.auth.authorize(extractHeaders(req), organizationId);
+    return this.registry.describe();
+  }
 
   @Post("organizations/:organizationId/payments/paystack/initialize")
   @ApiOperation({ summary: "Initialize a Paystack payment for a sale" })
@@ -38,6 +52,9 @@ export class PaymentsController {
   }
 
   @Post("payments/paystack/webhook")
+  // Paystack signs this with the platform secret rather than a session, so the
+  // route is public by design and says so.
+  @Public()
   @ApiOperation({ summary: "Receive Paystack payment webhooks" })
   async webhook(
     @Headers("x-paystack-signature") signature: string | undefined,
