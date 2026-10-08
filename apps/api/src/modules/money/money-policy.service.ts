@@ -2,35 +2,20 @@ import { Inject, Injectable } from "@nestjs/common";
 import { eq } from "@nomidat/db";
 import { organization } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
-
-export interface MoneyPolicy {
-  /** ISO 4217 code, e.g. NGN, USD, GBP. */
-  currency: string;
-  /** Sales tax in basis points, e.g. 750 for 7.5%. */
-  taxRateBps: number;
-}
-
-/** Currencies whose minor unit is the usual cent-style hundredth. */
-const SUBUNIT_SCALE: Record<string, number> = {
-  NGN: 100,
-  USD: 100,
-  EUR: 100,
-  GBP: 100,
-  ZAR: 100,
-  KES: 100,
-  GHS: 100,
-  INR: 100,
-  JPY: 1,
-  KRW: 1,
-  VND: 1,
-};
+import { orderTotals } from "./order-money";
+import type { MoneyPolicy, OrderMoneyLine, PolicyOrderTotals } from "./types/money.type";
 
 const DEFAULT_POLICY: MoneyPolicy = { currency: "NGN", taxRateBps: 750 };
 
 /**
- * Owns "what money means" for a business. Amounts are stored as integers in the
- * currency's minor unit, so a business trading in dollars stores 450 meaning
- * $4.50 and the same arithmetic still works.
+ * Owns "what money means" for a business: the currency it trades in, the tax it
+ * charges, and the arithmetic that turns lines of minor units into an amount
+ * owed. Amounts are stored as integers in the currency's minor unit, so a
+ * business trading in dollars stores 450 meaning $4.50 and the same arithmetic
+ * still works.
+ *
+ * One seam for one invariant: a caller states what was sold and gets back what it
+ * costs. Nothing else decides a tax rate, and nothing else rounds an Order.
  */
 @Injectable()
 export class MoneyPolicyService {
@@ -47,13 +32,20 @@ export class MoneyPolicyService {
     return { currency: row.currency, taxRateBps: row.taxRateBps };
   }
 
-  /** How many minor units make one whole unit, e.g. 100 for NGN, 1 for JPY. */
-  minorUnitScale(currency: string): number {
-    return SUBUNIT_SCALE[currency.toUpperCase()] ?? 100;
-  }
-
-  /** Tax on a minor-unit amount, rounded to a whole minor unit. */
-  calculateTax(taxableMinor: number, taxRateBps: number): number {
-    return Math.round((taxableMinor * taxRateBps) / 10_000);
+  /**
+   * What an Order of these lines costs this business, and in what currency.
+   *
+   * The tax rate comes from the business, never from the caller. A till, a public
+   * shop and the assistant all land here, so a business in another tax regime is
+   * not charged this one — and a caller cannot post a tax of zero to sell tax
+   * free.
+   */
+  async orderTotals(
+    organizationId: string,
+    lines: OrderMoneyLine[],
+    discountMinor = 0,
+  ): Promise<PolicyOrderTotals> {
+    const { currency, taxRateBps } = await this.getPolicy(organizationId);
+    return { currency, ...orderTotals(taxRateBps, lines, discountMinor) };
   }
 }

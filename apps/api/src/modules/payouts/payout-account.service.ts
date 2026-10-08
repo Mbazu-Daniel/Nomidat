@@ -2,9 +2,8 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import { and, eq, isNotNull } from "@nomidat/db";
 import { payoutAccount } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
-import { BPS_PER_PERCENT, MAX_BPS } from "./payout.constants";
+import { MAX_BPS, providerPercentageCharge } from "./payout.constants";
 import { PaystackPlatformClient } from "./paystack-platform.client";
-
 
 /**
  * A destination is resolved with the bank before it is saved: Paystack does not
@@ -103,7 +102,7 @@ export class PayoutAccountService {
       businessName,
       bankCode: input.bankCode,
       accountNumber,
-      percentageCharge: platformFeeBps / BPS_PER_PERCENT,
+      percentageCharge: providerPercentageCharge(platformFeeBps),
     });
 
     const now = new Date();

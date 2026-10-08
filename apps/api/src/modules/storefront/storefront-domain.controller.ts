@@ -109,12 +109,7 @@ export class StorefrontDomainController {
     const [domain] = await this.db
       .select()
       .from(storefrontDomain)
-      .where(
-        and(
-          eq(storefrontDomain.id, domainId),
-          eq(storefrontDomain.organizationId, org),
-        ),
-      )
+      .where(and(eq(storefrontDomain.id, domainId), eq(storefrontDomain.organizationId, org)))
       .limit(1);
 
     if (!domain) throw new NotFoundException("Hostname not found.");
@@ -128,9 +123,6 @@ export class StorefrontDomainController {
 
   /** Deterministic per-hostname token, so a seller can retry verification safely. */
   private verificationTokenFor(hostname: string): string {
-    return createHash("sha256")
-      .update(`nomidat:verify:${hostname}`)
-      .digest("hex")
-      .slice(0, 32);
+    return createHash("sha256").update(`nomidat:verify:${hostname}`).digest("hex").slice(0, 32);
   }
 }

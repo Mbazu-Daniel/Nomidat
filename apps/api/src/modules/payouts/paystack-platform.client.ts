@@ -111,11 +111,13 @@ export class PaystackPlatformClient {
 
   /** The platform's own Paystack balance, per currency. */
   async getBalance() {
-    const response = await this.request<{
-      currency: string;
-      available: number;
-      ledger: number;
-    }[]>("/balance");
+    const response = await this.request<
+      {
+        currency: string;
+        available: number;
+        ledger: number;
+      }[]
+    >("/balance");
     return response.data;
   }
 
@@ -138,24 +140,25 @@ export class PaystackPlatformClient {
     reason: string;
     reference: string;
   }) {
-    const response = await this.request<{ transfer_code: number; reference: string; status: string }>(
-      "/transfer",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          // Paystack works in the currency's major unit, not minor units.
-          amount: input.amountMinor / 100,
-          recipient: {
-            type: "nuban",
-            account_number: input.accountNumber,
-            bank_code: input.bankCode,
-            name: input.accountName,
-          },
-          reason: input.reason,
-          reference: input.reference,
-        }),
-      },
-    );
+    const response = await this.request<{
+      transfer_code: number;
+      reference: string;
+      status: string;
+    }>("/transfer", {
+      method: "POST",
+      body: JSON.stringify({
+        // Paystack works in the currency's major unit, not minor units.
+        amount: input.amountMinor / 100,
+        recipient: {
+          type: "nuban",
+          account_number: input.accountNumber,
+          bank_code: input.bankCode,
+          name: input.accountName,
+        },
+        reason: input.reason,
+        reference: input.reference,
+      }),
+    });
     return response.data;
   }
 

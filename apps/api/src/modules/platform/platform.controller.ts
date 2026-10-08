@@ -46,17 +46,18 @@ export class PlatformController {
    */
   @Get("organizations/:organizationId/activity")
   @ApiOperation({ summary: "Recent activity for one tenant" })
-  async organizationActivity(
-    @Req() req: Request,
-    @Param("organizationId") organizationId: string,
-  ) {
+  async organizationActivity(@Req() req: Request, @Param("organizationId") organizationId: string) {
     const email = await this.requireAdmin(req);
     const activity = await this.database.getOrganizationActivity(organizationId);
-    await this.audit.record(organizationId, { email, role: "platform" }, {
-      action: "platform.tenant_viewed",
-      entityType: "organization",
-      entityId: organizationId,
-    });
+    await this.audit.record(
+      organizationId,
+      { email, role: "platform" },
+      {
+        action: "platform.tenant_viewed",
+        entityType: "organization",
+        entityId: organizationId,
+      },
+    );
     return activity;
   }
 

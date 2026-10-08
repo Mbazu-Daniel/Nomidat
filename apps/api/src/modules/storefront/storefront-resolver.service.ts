@@ -33,10 +33,7 @@ export class StorefrontResolver {
         published: storefrontSettings.published,
       })
       .from(storefrontDomain)
-      .innerJoin(
-        organization,
-        eq(organization.id, storefrontDomain.organizationId),
-      )
+      .innerJoin(organization, eq(organization.id, storefrontDomain.organizationId))
       .leftJoin(
         storefrontSettings,
         eq(storefrontSettings.organizationId, storefrontDomain.organizationId),
@@ -119,4 +116,3 @@ export class StorefrontResolver {
     };
   }
 }
-

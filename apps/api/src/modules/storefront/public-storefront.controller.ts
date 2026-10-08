@@ -1,14 +1,6 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Headers,
-  Param,
-  Post,
-  Query,
-  UseGuards,
-} from "@nestjs/common";
+import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Public } from "../../common/guards/public-route.decorator";
 import { StorefrontCartService } from "./storefront-cart.service";
 import { StorefrontCatalogService } from "./storefront-catalog.service";
 import { StorefrontCheckoutService } from "./storefront-checkout.service";
@@ -22,6 +14,7 @@ import { StorefrontRateLimitGuard } from "./storefront-rate-limit.guard";
  * which is what makes per-shop subdomains work without any edge rewrite.
  */
 @ApiTags("Public Storefront")
+@Public()
 @UseGuards(StorefrontRateLimitGuard)
 @Controller("public/storefront")
 export class PublicStorefrontController {

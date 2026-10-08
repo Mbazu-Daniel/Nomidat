@@ -1,14 +1,15 @@
 import { randomBytes } from "node:crypto";
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { and, eq, isNull, sql } from "@nomidat/db";
-import { cart, cartItem, product, productVariant } from "@nomidat/db/schema";
+import { cart, cartItem } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
+import { lineTotalMinor } from "../money/order-money";
+import { SalePricingService } from "../sales/sale-pricing.service";
+import { CartStatus } from "./types/storefront.type";
 
 const CART_TTL_MINUTES = 60 * 24 * 14;
 const MAX_LINES = 50;
 const MAX_QUANTITY = 999;
-
-import { CartStatus } from "./types/storefront.type";
 
 /** A shopper's only credential, so it must be unguessable. */
 export function createCartToken(): string {
@@ -29,7 +30,10 @@ export interface CartLineInput {
  */
 @Injectable()
 export class StorefrontCartService {
-  constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: DbHandle,
+    private readonly pricing: SalePricingService,
+  ) {}
 
   async openCart(organizationId: string, token?: string) {
     if (token) {
@@ -56,44 +60,12 @@ export class StorefrontCartService {
 
     const existing = await this.requireCart(organizationId, token);
 
-    // Price and name are read here, never taken from the request, so a shopper
-    // cannot post a price of their own choosing.
-    const [item] = await this.db
-      .select({ id: product.id, name: product.name, priceMinor: product.priceMinor, isActive: product.isActive })
-      .from(product)
-      .where(and(eq(product.id, line.productId), eq(product.organizationId, organizationId)))
-      .limit(1);
-
-    if (!item || !item.isActive) throw new NotFoundException("Product not found.");
-
-    // The variant's own price and name win, and it must belong to the product it
-    // was requested under, or a shopper could price a line from another product.
-    let variantName: string | null = null;
-    let unitPriceMinor = item.priceMinor;
-    if (line.variantId) {
-      const [variant] = await this.db
-        .select({
-          id: productVariant.id,
-          productId: productVariant.productId,
-          name: productVariant.name,
-          priceMinor: productVariant.priceMinor,
-          isActive: productVariant.isActive,
-        })
-        .from(productVariant)
-        .where(
-          and(
-            eq(productVariant.id, line.variantId),
-            eq(productVariant.organizationId, organizationId),
-          ),
-        )
-        .limit(1);
-
-      if (!variant || variant.productId !== item.id || !variant.isActive) {
-        throw new NotFoundException("Option not found.");
-      }
-      variantName = variant.name;
-      if (variant.priceMinor) unitPriceMinor = variant.priceMinor;
-    }
+    // Priced through the same seam a till uses. A shopper cannot post a price of
+    // their own choosing, and a product pulled from sale mid-visit is refused here
+    // rather than sitting in a basket until checkout.
+    const [priced] = await this.pricing.priceLines(organizationId, [
+      { productId: line.productId, variantId: line.variantId ?? null, quantity: line.quantity },
+    ]);
 
     // Identity is the product *and* the option, so two sizes stay two lines.
     const [alreadyInCart] = await this.db
@@ -102,10 +74,8 @@ export class StorefrontCartService {
       .where(
         and(
           eq(cartItem.cartId, existing.id),
-          eq(cartItem.productId, item.id),
-          line.variantId
-            ? eq(cartItem.variantId, line.variantId)
-            : isNull(cartItem.variantId),
+          eq(cartItem.productId, line.productId),
+          line.variantId ? eq(cartItem.variantId, line.variantId) : isNull(cartItem.variantId),
         ),
       )
       .limit(1);
@@ -127,10 +97,12 @@ export class StorefrontCartService {
       await this.db.insert(cartItem).values({
         organizationId,
         cartId: existing.id,
-        productId: item.id,
+        productId: line.productId,
         variantId: line.variantId ?? null,
-        productName: variantName ? `${item.name} · ${variantName}` : item.name,
-        unitPriceMinor,
+        // The snapshot so a basket still renders if the product is later renamed.
+        // Checkout re-prices through the sale seam and ignores this figure.
+        productName: priced.productName,
+        unitPriceMinor: priced.unitPriceMinor,
         quantity: line.quantity,
       });
     }
@@ -158,10 +130,9 @@ export class StorefrontCartService {
       .where(eq(cartItem.cartId, cartId))
       .orderBy(cartItem.createdAt);
 
-    const subtotalMinor = items.reduce(
-      (total, item) => total + item.quantity * item.unitPriceMinor,
-      0,
-    );
+    // Rounded per line by the same rule the sale uses, so the basket total a
+    // shopper reads is the figure the order will record.
+    const subtotalMinor = items.reduce((total, item) => total + lineTotalMinor(item), 0);
 
     return {
       id: record.id,
