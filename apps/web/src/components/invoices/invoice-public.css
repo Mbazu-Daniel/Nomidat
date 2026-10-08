@@ -1,0 +1,184 @@
+.invoice-public {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem 1.25rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.invoice-public-card {
+  width: 100%;
+  max-width: 46rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 2rem;
+}
+
+.invoice-public-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  padding-bottom: 1.25rem;
+}
+
+.invoice-public-head h1 {
+  font-size: 1.25rem;
+  margin: 0.25rem 0 0;
+}
+
+.invoice-public-logo {
+  height: 2.5rem;
+  width: auto;
+}
+
+.invoice-public-meta {
+  text-align: right;
+}
+
+.invoice-public-number {
+  font-weight: 600;
+  margin: 0;
+}
+
+.invoice-public-status {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-full);
+  padding: 0.1rem 0.6rem;
+}
+
+.invoice-public-facts,
+.invoice-public-totals {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1.25rem 0;
+}
+
+.invoice-public-facts {
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.invoice-public-facts dt,
+.invoice-public-totals dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+
+.invoice-public-facts dd,
+.invoice-public-totals dd {
+  margin: 0;
+}
+
+.invoice-public-items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.invoice-public-items th,
+.invoice-public-items td {
+  text-align: left;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.invoice-public-items th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+}
+
+.invoice-public-items td:nth-child(n + 2),
+.invoice-public-items th:nth-child(n + 2) {
+  text-align: right;
+}
+
+.invoice-public-totals {
+  margin-left: auto;
+  max-width: 18rem;
+}
+
+.invoice-public-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.invoice-public-grand {
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 0.5rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.invoice-public-notes {
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 1rem;
+  color: hsl(var(--muted-foreground));
+  white-space: pre-wrap;
+}
+
+.invoice-public-muted {
+  color: hsl(var(--muted-foreground));
+}
+
+.invoice-public-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+@media print {
+  .invoice-public-foot {
+    display: none;
+  }
+}
+
+/* Proposing a different amount on a shared invoice. */
+.invoice-public-offer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.invoice-public-offer h2 {
+  font-size: 15px;
+}
+.invoice-public-offer label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.invoice-public-offer input,
+.invoice-public-offer textarea {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+}
+.workspace-offers {
+  margin-top: 14px;
+}
+.workspace-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
