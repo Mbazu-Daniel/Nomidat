@@ -17,6 +17,7 @@ export function createDbStub(selectRows: unknown[][] = [], returnedRows: unknown
       orderBy: vi.fn(() => chain),
       for: vi.fn(() => chain),
       onConflictDoNothing: vi.fn(() => chain),
+      onConflictDoUpdate: vi.fn(() => chain),
       values: vi.fn((data: unknown) => {
         inserts(data);
         return chain;
@@ -26,6 +27,7 @@ export function createDbStub(selectRows: unknown[][] = [], returnedRows: unknown
         return chain;
       }),
       returning: vi.fn(() => chain),
+      // eslint-disable-next-line unicorn/no-thenable -- mirrors drizzle, whose query builders are awaitable
       then: (resolve: (value: unknown[]) => unknown) =>
         Promise.resolve(rows.shift() ?? []).then(resolve),
     };

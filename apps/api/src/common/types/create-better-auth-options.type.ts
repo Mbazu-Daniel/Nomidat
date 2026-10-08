@@ -5,7 +5,12 @@ export type CreateBetterAuthOptions = {
   db: Database;
   secret: string;
   baseURL: string;
-  webOrigin: string;
+  /**
+   * Every origin the browser may call from. An array, because `localhost`,
+   * `127.0.0.1` and a LAN address are three different origins to a browser and
+   * all three are the same app.
+   */
+  webOrigin: string[];
   google?: GoogleAuthCredentials;
   telegramBotToken?: string;
   sendPhoneOTP?: (data: { phoneNumber: string; code: string }) => Promise<void>;

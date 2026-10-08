@@ -67,7 +67,32 @@ function getTelegramDisplayName(user: TelegramMiniAppUser): string {
   return fullName || user.username || `Telegram ${user.id}`;
 }
 
-export type TelegramUserStore<TUser extends { id: string }> = {
+/**
+ * The user shape this module reads.
+ *
+ * It has to be stated rather than left to inference: `InternalAdapter` is
+ * generic, and inferring `TUser` from a bare `{ id: string }` constraint narrows
+ * it to that constraint instead of the adapter's real user, so every property
+ * Better Auth requires then looks missing.
+ */
+export type TelegramAuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/**
+ * The slice of Better Auth's internal adapter this module reads.
+ *
+ * Names are Better Auth's own, and had drifted: `getAccountByKey` and
+ * `getUserById` do not exist on the adapter, so a second sign-in threw a
+ * TypeError instead of finding the account it had already created.
+ */
+export type TelegramUserStore<TUser extends TelegramAuthUser> = {
   findAccountByKey: (key: {
     providerId: string;
     accountId: string;
@@ -79,7 +104,7 @@ export type TelegramUserStore<TUser extends { id: string }> = {
   ) => Promise<{ user: TUser }>;
 };
 
-export async function resolveTelegramUser<TUser extends { id: string }>(
+export async function resolveTelegramUser<TUser extends TelegramAuthUser>(
   initData: string,
   botToken: string,
   maxAuthAgeSeconds: number | undefined,
