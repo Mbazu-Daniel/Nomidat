@@ -45,7 +45,12 @@ export class ChannelController {
     @Param() params: ChannelIdentityParamsDto,
     @Req() req: Request,
   ) {
-    await this.channelAuthService.authorize(extractHeaders(req), params.organizationId, true, "channels");
+    await this.channelAuthService.authorize(
+      extractHeaders(req),
+      params.organizationId,
+      true,
+      "channels",
+    );
     await this.channelService.deleteOrganizationChannelIdentity(
       params.organizationId,
       params.channelIdentityId,

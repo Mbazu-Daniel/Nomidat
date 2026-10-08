@@ -4,6 +4,8 @@ import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { BusinessAuthService } from "../business/business-auth.service";
+import { InventoryHealthService } from "./inventory-health.service";
+import { parseReportRange, type ReportRange } from "./report-range";
 import { ReportsService } from "./reports.service";
 
 @ApiTags("Reports")
@@ -12,6 +14,7 @@ export class ReportsController {
   constructor(
     private readonly auth: BusinessAuthService,
     private readonly reports: ReportsService,
+    private readonly inventoryHealth: InventoryHealthService,
   ) {}
 
   @Get("summary")
@@ -22,12 +25,8 @@ export class ReportsController {
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {
-    return this.authorizedRange(
-      req,
-      organizationId,
-      from,
-      to,
-      (range) => this.reports.getSummary(organizationId, range),
+    return this.authorizedRange(req, organizationId, from, to, (range) =>
+      this.reports.getSummary(organizationId, range),
     );
   }
 
@@ -41,12 +40,8 @@ export class ReportsController {
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {
-    return this.authorizedRange(
-      req,
-      organizationId,
-      from,
-      to,
-      (range) => this.reports.getSalesTrend(organizationId, range),
+    return this.authorizedRange(req, organizationId, from, to, (range) =>
+      this.reports.getSalesTrend(organizationId, range),
     );
   }
 
@@ -58,12 +53,8 @@ export class ReportsController {
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {
-    return this.authorizedRange(
-      req,
-      organizationId,
-      from,
-      to,
-      (range) => this.reports.getExpenseBreakdown(organizationId, range),
+    return this.authorizedRange(req, organizationId, from, to, (range) =>
+      this.reports.getExpenseBreakdown(organizationId, range),
     );
   }
 
@@ -77,12 +68,8 @@ export class ReportsController {
     @Query("from") from?: string,
     @Query("to") to?: string,
   ) {
-    return this.authorizedRange(
-      req,
-      organizationId,
-      from,
-      to,
-      (range) => this.reports.getTopProducts(organizationId, range, limit),
+    return this.authorizedRange(req, organizationId, from, to, (range) =>
+      this.reports.getTopProducts(organizationId, range, limit),
     );
   }
 
@@ -94,23 +81,16 @@ export class ReportsController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    return this.authorized(
-      req,
-      organizationId,
-      () => this.reports.getCustomerBalances(organizationId, limit),
+    return this.authorized(req, organizationId, () =>
+      this.reports.getCustomerBalances(organizationId, limit),
     );
   }
 
   @Get("inventory")
   @ApiOperation({ summary: "Get inventory health and low-stock products" })
-  async getInventory(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-  ) {
-    return this.authorized(
-      req,
-      organizationId,
-      () => this.reports.getInventoryHealth(organizationId),
+  async getInventory(@Param("organizationId") organizationId: string, @Req() req: Request) {
+    return this.authorized(req, organizationId, () =>
+      this.inventoryHealth.getInventoryHealth(organizationId),
     );
   }
 
@@ -132,9 +112,9 @@ export class ReportsController {
     organizationId: string,
     from: string | undefined,
     to: string | undefined,
-    action: (range: ReturnType<ReportsService["parseRange"]>) => Promise<T>,
+    action: (range: ReportRange) => Promise<T>,
   ): Promise<T> {
     await this.authorize(req, organizationId);
-    return action(this.reports.parseRange(from, to));
+    return action(parseReportRange(from, to));
   }
 }

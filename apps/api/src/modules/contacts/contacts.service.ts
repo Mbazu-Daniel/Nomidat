@@ -1,9 +1,9 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { and, desc, eq } from "@nomidat/db";
 import { contact, invoice, note, order } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { SalesQueriesService } from "../sales/sales-queries.service";
-import type { CreateContactDto, CreateNoteDto } from "./dto";
+import type { CreateContactDto, CreateNoteDto, UpdateContactDto } from "./dto";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
@@ -58,6 +58,79 @@ export class ContactsService {
       .returning();
     if (!row) throw new NotFoundException("Contact not found.");
     return row;
+  }
+
+  /**
+   * Edits a contact, including the phone number that anchors their WhatsApp and
+   * Telegram identity.
+   *
+   * Only the fields present in the body are written, so a caller fixing one typo
+   * does not have to send the whole contact back. An empty `phone` is stored as
+   * null rather than as `""`: an empty string would pass the length check and
+   * then compare equal to nothing in a search.
+   *
+   * Archived contacts are refused here rather than silently brought back, so
+   * restoring one is a deliberate act.
+   */
+  async updateContact(organizationId: string, contactId: string, input: UpdateContactDto) {
+    const patch: Partial<typeof contact.$inferInsert> = {};
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.phone !== undefined) patch.phone = input.phone || null;
+    if (input.email !== undefined) patch.email = input.email;
+    if (input.kind !== undefined) patch.kind = input.kind;
+
+    if (Object.keys(patch).length === 0) {
+      throw new BadRequestException("Provide at least one field to change.");
+    }
+    patch.updatedAt = new Date();
+
+    const [row] = await this.db
+      .update(contact)
+      .set(patch)
+      .where(
+        and(
+          eq(contact.organizationId, organizationId),
+          eq(contact.id, contactId),
+          eq(contact.isActive, true),
+        ),
+      )
+      .returning();
+    if (!row) throw new NotFoundException("Contact not found.");
+    return row;
+  }
+
+  /**
+   * Hides a contact from the working lists without destroying its history.
+   *
+   * Archiving rather than deleting, because an order, invoice or note already
+   * points at this row: a customer with a purchase history cannot simply stop
+   * existing, and the books still have to foot after they are archived.
+   */
+  async archiveContact(organizationId: string, contactId: string) {
+    const [row] = await this.db
+      .update(contact)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(
+        and(
+          eq(contact.organizationId, organizationId),
+          eq(contact.id, contactId),
+          eq(contact.isActive, true),
+        ),
+      )
+      .returning();
+    if (!row) throw new NotFoundException("Contact not found.");
+    return row;
+  }
+
+  /** Archived contacts, kept visible so an archived row is findable and reversible. */
+  async getArchivedContacts(organizationId: string, limit = DEFAULT_LIMIT, offset = 0) {
+    return this.db
+      .select()
+      .from(contact)
+      .where(and(eq(contact.organizationId, organizationId), eq(contact.isActive, false)))
+      .orderBy(desc(contact.updatedAt), desc(contact.id))
+      .limit(Math.min(Math.max(limit, 1), MAX_LIMIT))
+      .offset(Math.max(0, offset));
   }
 
   async createNote(

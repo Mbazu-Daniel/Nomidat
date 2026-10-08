@@ -17,20 +17,14 @@ export class EngagementController {
 
   @Get("announcements")
   @ApiOperation({ summary: "Announcements visible to this organization" })
-  async getAnnouncements(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-  ) {
+  async getAnnouncements(@Param("organizationId") organizationId: string, @Req() req: Request) {
     await this.read(req, organizationId);
     return this.engagement.getAnnouncements(organizationId);
   }
 
   @Get("notifications")
   @ApiOperation({ summary: "The signed-in member's notifications" })
-  async getNotifications(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-  ) {
+  async getNotifications(@Param("organizationId") organizationId: string, @Req() req: Request) {
     const session = await this.read(req, organizationId);
     return this.engagement.getNotifications(session.userId, organizationId);
   }
@@ -48,10 +42,7 @@ export class EngagementController {
 
   @Get("webhooks")
   @ApiOperation({ summary: "List outbound webhook subscriptions" })
-  async getWebhooks(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-  ) {
+  async getWebhooks(@Param("organizationId") organizationId: string, @Req() req: Request) {
     await this.read(req, organizationId);
     return this.engagement.getWebhooks(organizationId);
   }
