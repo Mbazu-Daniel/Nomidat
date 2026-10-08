@@ -23,6 +23,8 @@ export function RecordsPanel({
   canWrite: boolean;
 }) {
   const meta = metadata[section];
+  /** Named once so the request, the next-page test and the footer cannot disagree. */
+  const PAGE_SIZE = 50;
   const [offset, setOffset] = useState(0);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
@@ -35,7 +37,7 @@ export function RecordsPanel({
     loading,
     error,
   } = useApiResource<BusinessRecord[]>(
-    `/organizations/${organizationId}/${meta.resource}?limit=50&offset=${offset}`,
+    `/organizations/${organizationId}/${meta.resource}?limit=${PAGE_SIZE}&offset=${offset}`,
     [],
     version,
   );
@@ -129,6 +131,7 @@ export function RecordsPanel({
         />
         <RecordTable
           section={section}
+          organizationId={organizationId}
           rows={filtered}
           query={query}
           error={error}
@@ -141,13 +144,16 @@ export function RecordsPanel({
           }}
         />
         <TablePagination
-          page={offset / 50 + 1}
+          page={offset / PAGE_SIZE + 1}
           count={filtered.length}
           loading={loading}
-          hasNext={rows.length === 50}
+          // A full page is the signal that more may exist, so the footer says so
+          // rather than presenting a truncated list as the whole one.
+          hasNext={rows.length === PAGE_SIZE}
+          pageSize={PAGE_SIZE}
           onPageChange={(page) => {
             setSelected(null);
-            setOffset((page - 1) * 50);
+            setOffset((page - 1) * PAGE_SIZE);
           }}
         />
       </section>
@@ -155,7 +161,16 @@ export function RecordsPanel({
   );
 }
 
-function RecordTable({ section, rows, query, error, loading, retry, onSelect }: RecordTableProps) {
+function RecordTable({
+  section,
+  organizationId,
+  rows,
+  query,
+  error,
+  loading,
+  retry,
+  onSelect,
+}: RecordTableProps) {
   const meta = metadata[section];
   const Register = section === "sales" ? SalesRegister : InvoiceRegister;
   function renderEmptyState() {
@@ -189,7 +204,7 @@ function RecordTable({ section, rows, query, error, loading, retry, onSelect }: 
     if (rows.length === 0) return renderEmptyState();
 
     if (section === "invoices" || section === "sales")
-      return <Register rows={rows} onSelect={onSelect} />;
+      return <Register organizationId={organizationId} rows={rows} onSelect={onSelect} />;
     return (
       <div className="workspace-table-scroll">
         <table>

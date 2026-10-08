@@ -1,44 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
+import { getOrganizationProducts, type Product } from "@/data/catalog";
+import { useLoadedResource, useSubmit } from "@/lib/use-api-resource";
 import { RecordForm } from "./record-form";
-import type { BusinessRecord } from "./types";
 import type { InventoryPictureProps } from "./types/picture.type";
 
 export function InventoryPictureReview(props: InventoryPictureProps) {
   const [index, setIndex] = useState(0);
   const [saved, setSaved] = useState(0);
   const [productId, setProductId] = useState("");
-  const [products, setProducts] = useState<BusinessRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const loaded = useLoadedResource(
+    () => getOrganizationProducts(props.organizationId),
+    [props.organizationId, saved],
+    [] as Product[],
+  );
+  const products = loaded.data.filter((product) => product.isActive !== false);
+  const loading = loaded.loading;
+  const { busy, error, setError, setBusy, submit } = useSubmit();
   const item = props.items[index];
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    async function load() {
-      const all: BusinessRecord[] = [];
-      for (let offset = 0; ; offset += 50) {
-        const page = await createApiRequest<BusinessRecord[]>(
-          `/organizations/${props.organizationId}/products?limit=50&offset=${offset}`,
-        );
-        if (cancelled) return;
-        all.push(...page);
-        if (page.length < 50) break;
-      }
-      setProducts(all.filter((product) => product.isActive !== false));
-    }
-    void load()
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [props.organizationId, saved]);
   function next(recorded: boolean) {
     if (recorded) setSaved((count) => count + 1);
     if (index === props.items.length - 1) {
@@ -57,9 +36,7 @@ export function InventoryPictureReview(props: InventoryPictureProps) {
         onSubmit={async (event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
-          setBusy(true);
-          setError("");
-          try {
+          const recorded = await submit(async () => {
             await createApiRequest(
               `/organizations/${props.organizationId}/products/${productId}/stock-adjustments`,
               {
@@ -70,12 +47,10 @@ export function InventoryPictureReview(props: InventoryPictureProps) {
                 }),
               },
             );
-            next(true);
-          } catch (reason) {
-            setError((reason as Error).message);
-          } finally {
-            setBusy(false);
-          }
+          });
+          // Only move on once the stock is actually recorded, so a refused
+          // adjustment cannot skip past the photograph it belonged to.
+          if (recorded) next(true);
         }}
       >
         <h2>Add stock</h2>

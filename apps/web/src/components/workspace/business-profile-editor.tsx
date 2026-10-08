@@ -1,6 +1,7 @@
 import { BusinessHandle } from "./business-handle";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { createApiRequest } from "@/lib/api";
+import { errorMessage, useApiResource, useSubmit } from "@/lib/use-api-resource";
 import { readBusinessLogo } from "./business-logo";
 import type { BusinessDetails, BusinessProfile } from "./types/settings.type";
 
@@ -12,34 +13,30 @@ export function BusinessProfileEditor({
   canManage: boolean;
 }) {
   const [handle, setHandle] = useState("");
-  const [profile, setProfile] = useState<BusinessProfile>();
-  const [metadata, setMetadata] = useState<Record<string, unknown>>({});
-  const [details, setDetails] = useState<BusinessDetails>({});
-  const [logo, setLogo] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
   const path = `/organizations/${organizationId}`;
-  useEffect(() => {
-    let cancelled = false;
-    void createApiRequest<BusinessProfile>(path)
-      .then((result) => {
-        if (cancelled) return;
-        const data =
-          typeof result.metadata === "string"
-            ? JSON.parse(result.metadata)
-            : (result.metadata ?? {});
-        setProfile(result);
-        setMetadata(data);
-        setDetails(data.businessDetails ?? {});
-        setLogo(result.logo ?? null);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [path]);
+  const loaded = useApiResource<BusinessProfile>(path, undefined as unknown as BusinessProfile);
+  const profile = loaded.data;
+  // Metadata arrives as a JSON string from some rows and an object from others, so
+  // it is parsed once here rather than at each of the four places that read it.
+  const metadata = useMemo<Record<string, unknown>>(() => {
+    const raw = profile?.metadata;
+    if (typeof raw === "string") {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return {};
+      }
+    }
+    return raw ?? {};
+  }, [profile]);
+  const details = (metadata.businessDetails ?? {}) as BusinessDetails;
+  const logoFromProfile = profile?.logo ?? null;
+  // A logo chosen in this session replaces the stored one without a round trip, so
+  // "Remove logo" is a local edit the seller can still change their mind about.
+  const [logoOverride, setLogo] = useState<string | null | undefined>(undefined);
+  const logo = logoOverride === undefined ? logoFromProfile : logoOverride;
+  const { busy, error: writeError, setError, submit } = useSubmit();
+  const error = loaded.error || writeError;
   function renderProfileForm() {
     if (!profile) return null;
     return (
@@ -49,9 +46,7 @@ export function BusinessProfileEditor({
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
           const value = (key: string) => String(fields.get(key) ?? "").trim();
-          setBusy(true);
-          setError("");
-          try {
+          const saved = await submit(async () => {
             await createApiRequest(path, {
               method: "PATCH",
               body: JSON.stringify({
@@ -75,11 +70,10 @@ export function BusinessProfileEditor({
                 },
               }),
             });
-            window.location.reload();
-          } catch (reason) {
-            setError((reason as Error).message);
-            setBusy(false);
-          }
+          });
+          // The slug is in the address bar and in every link the shell renders, so
+          // a renamed business needs a reload for those to catch up.
+          if (saved) window.location.reload();
         }}
       >
         <fieldset disabled={busy || !canManage} className="settings-fieldset">
@@ -93,14 +87,12 @@ export function BusinessProfileEditor({
                 onChange={async (event) => {
                   const file = event.target.files?.[0];
                   if (!file) return;
-                  setBusy(true);
-                  setError("");
+                  // Reading the file is local work, not a write, so it gets its own
+                  // error path rather than pretending to be a save.
                   try {
                     setLogo(await readBusinessLogo(file));
                   } catch (reason) {
-                    setError((reason as Error).message);
-                  } finally {
-                    setBusy(false);
+                    setError(errorMessage(reason));
                   }
                 }}
               />

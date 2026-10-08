@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Min } from "class-validator";
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class CreateProductDto {
   @IsString()
@@ -14,15 +14,21 @@ export class CreateProductDto {
 
   @IsInt()
   @Min(0)
-  priceKobo!: number;
+  priceMinor!: number;
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  costKobo?: number;
+  costMinor?: number;
 
+  /**
+   * Opening stock, in the Product's own unit. Three decimal places, matching
+   * `stock.on_hand`: a fourth would be rounded by Postgres, so the quantity typed
+   * and the quantity stored would disagree.
+   */
   @IsOptional()
-  @IsInt()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Max(999_999_999)
   @Min(0)
   stockQuantity?: number;
 
@@ -56,12 +62,12 @@ export class UpdateProductDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  priceKobo?: number;
+  priceMinor?: number;
 
   @IsOptional()
   @IsInt()
   @Min(0)
-  costKobo?: number;
+  costMinor?: number;
 
   @IsOptional()
   @IsInt()

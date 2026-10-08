@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
+import { useLoadedResource, useSubmit } from "@/lib/use-api-resource";
+import { minorToDecimalInput, parseMoneyToMinor } from "@/lib/money";
+import { useCurrency } from "@/lib/currency-context";
 import type { ExpenseCategory, ExpenseDetails } from "./types/settings.type";
 export function ExpenseEditor({
   path,
@@ -10,31 +13,29 @@ export function ExpenseEditor({
   expenseId: string;
   onSaved: () => void;
 }) {
-  const [expense, setExpense] = useState<ExpenseDetails>();
-  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
   const [removing, setRemoving] = useState(false);
   const resource = `${path}/expenses/${expenseId}`;
-  useEffect(() => {
-    let cancelled = false;
-    void Promise.all([
-      createApiRequest<ExpenseDetails>(resource),
-      createApiRequest<ExpenseCategory[]>(path + "/expense-categories"),
-    ])
-      .then(([data, rows]) => {
-        if (!cancelled) {
-          setExpense(data);
-          setCategories(rows);
-        }
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [resource, path]);
+  // Read from the business rather than assumed, so the amount and its currency
+  // cannot disagree: an amount in dollars shown with a naira sign is worse than an
+  // ugly one.
+  const currency = useCurrency();
+  const loaded = useLoadedResource(
+    async () => {
+      const [expense, categories] = await Promise.all([
+        createApiRequest<ExpenseDetails>(resource),
+        createApiRequest<ExpenseCategory[]>(path + "/expense-categories"),
+      ]);
+      return { expense, categories };
+    },
+    [resource, path],
+    { expense: undefined, categories: [] } as {
+      expense: ExpenseDetails | undefined;
+      categories: ExpenseCategory[];
+    },
+  );
+  const expense = loaded.data.expense;
+  const categories = loaded.data.categories;
+  const { busy, error, setError, submit } = useSubmit();
   const localDate = (date: string) => {
     const d = new Date(date);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -54,14 +55,21 @@ export function ExpenseEditor({
           onSubmit={async (event) => {
             event.preventDefault();
             const data = new FormData(event.currentTarget);
-            setBusy(true);
-            setError("");
-            try {
+            // Parsed against the business's own minor-unit scale rather than a
+            // fixed x100, and refused when it is not a number at all — otherwise
+            // NaN would be sent as the amount and the server would have to decide
+            // what that means.
+            const amountMinor = parseMoneyToMinor(String(data.get("amount")), currency);
+            if (amountMinor === null) {
+              setError("Enter an amount.");
+              return;
+            }
+            await submit(async () => {
               await createApiRequest(resource, {
                 method: "PATCH",
                 body: JSON.stringify({
                   description: data.get("description"),
-                  amountKobo: Math.round(Number(data.get("amount")) * 100),
+                  amountMinor,
                   categoryId: data.get("category") || undefined,
                   spentAt: new Date(String(data.get("date"))).toISOString(),
                   paymentMethod: data.get("method"),
@@ -69,11 +77,7 @@ export function ExpenseEditor({
                 }),
               });
               onSaved();
-            } catch (reason) {
-              setError((reason as Error).message);
-            } finally {
-              setBusy(false);
-            }
+            });
           }}
         >
           <fieldset disabled={busy} className="workspace-form-grid">
@@ -87,14 +91,14 @@ export function ExpenseEditor({
               />
             </label>
             <label>
-              Amount (₦)
+              Amount ({currency})
               <input
                 name="amount"
                 type="number"
                 min="0.01"
                 max="21474836.47"
                 step="0.01"
-                defaultValue={expense.amountKobo / 100}
+                defaultValue={minorToDecimalInput(expense.amountMinor, currency)}
                 required
               />
             </label>
@@ -162,15 +166,10 @@ export function ExpenseEditor({
                   type="button"
                   disabled={busy}
                   onClick={async () => {
-                    setBusy(true);
-                    setError("");
-                    try {
+                    await submit(async () => {
                       await createApiRequest(resource, { method: "DELETE" });
                       onSaved();
-                    } catch (reason) {
-                      setError((reason as Error).message);
-                      setBusy(false);
-                    }
+                    });
                   }}
                 >
                   Confirm delete

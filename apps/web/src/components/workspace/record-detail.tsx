@@ -1,10 +1,11 @@
+import { useCurrency } from "@/lib/currency-context";
+import { formatMoney } from "@/lib/money";
 import { ExpenseEditor } from "./expense-editor";
 import { ProductEditor } from "./product-editor";
 import { SaleDetail } from "./sale-detail";
 import { InvoiceDetailPanel } from "./invoice-detail";
-import { useEffect, useState } from "react";
 import { createApiRequest } from "@/lib/api";
-import { formatNaira } from "@/data/nomidat";
+import { useApiResource, useSubmit } from "@/lib/use-api-resource";
 import type { ClientFolder, RecordDetailProps } from "./types";
 
 export function RecordDetail({
@@ -15,35 +16,20 @@ export function RecordDetail({
   onSaved,
   onClose,
 }: RecordDetailProps) {
-  const [folder, setFolder] = useState<ClientFolder | null>(null);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const currency = useCurrency();
   const path = `/organizations/${organizationId}`;
-  useEffect(() => {
-    let cancelled = false;
-    if (section === "customers")
-      void createApiRequest<ClientFolder>(`${path}/contacts/${record.id}`)
-        .then((result) => {
-          if (!cancelled) setFolder(result);
-        })
-        .catch((reason: Error) => {
-          if (!cancelled) setError(reason.message);
-        });
-    return () => {
-      cancelled = true;
-    };
-  }, [path, record.id, section]);
+  // Only a customer has a folder to open; the other sections load their own detail.
+  const loaded = useApiResource<ClientFolder | null>(
+    section === "customers" ? `${path}/contacts/${record.id}` : null,
+    null,
+  );
+  const folder = loaded.data;
+  const { busy, error, submit } = useSubmit();
   async function save(resource: string, body: object, method = "POST") {
-    setBusy(true);
-    setError("");
-    try {
+    await submit(async () => {
       await createApiRequest(path + resource, { method, body: JSON.stringify(body) });
       onSaved();
-    } catch (reason) {
-      setError((reason as Error).message);
-    } finally {
-      setBusy(false);
-    }
+    });
   }
   function renderCustomerFolder() {
     if (!folder) return <p>Loading client folder…</p>;
@@ -53,7 +39,7 @@ export function RecordDetail({
           {folder.contact.phone ?? "No phone"} · {folder.contact.email ?? "No email"}
         </p>
         <p className="workspace-total">
-          Outstanding balance <strong>{formatNaira(folder.balanceKobo / 100)}</strong>
+          Outstanding balance <strong>{formatMoney(folder.balanceMinor, currency)}</strong>
         </p>
         {canWrite && folder.contact.kind === "lead" && (
           <button
@@ -71,7 +57,7 @@ export function RecordDetail({
             {folder.orders.map((row) => (
               <p key={row.id}>
                 {new Date(row.createdAt).toLocaleDateString()} ·{" "}
-                {formatNaira((row.totalKobo ?? 0) / 100)}{" "}
+                {formatMoney(row.totalMinor ?? 0, currency)}{" "}
                 <span className="workspace-badge">{row.status}</span>
               </p>
             ))}
@@ -81,7 +67,7 @@ export function RecordDetail({
             {folder.invoices.length === 0 && <p>No invoices yet.</p>}
             {folder.invoices.map((row) => (
               <p key={row.id}>
-                {row.invoiceNumber} · {formatNaira((row.totalKobo ?? 0) / 100)}
+                {row.invoiceNumber} · {formatMoney(row.totalMinor ?? 0, currency)}
               </p>
             ))}
           </div>
@@ -126,7 +112,15 @@ export function RecordDetail({
             <p>
               {record.stockQuantity} {record.unit} in stock · Alert at {record.lowStockThreshold}
             </p>
-            {canWrite && <ProductEditor record={record} busy={busy} save={save} />}
+            {canWrite && (
+              <ProductEditor
+                organizationId={organizationId}
+                record={record}
+                busy={busy}
+                save={save}
+                onSaved={onSaved}
+              />
+            )}
           </>
         );
       case "expenses":
@@ -134,7 +128,7 @@ export function RecordDetail({
           <ExpenseEditor path={path} expenseId={record.id} onSaved={onSaved} />
         ) : (
           <p>
-            {record.description} · {formatNaira((record.amountKobo ?? 0) / 100)}
+            {record.description} · {formatMoney(record.amountMinor ?? 0, currency)}
           </p>
         );
       case "sales":
@@ -145,6 +139,8 @@ export function RecordDetail({
             organizationId={organizationId}
             invoiceId={record.id}
             canWrite={canWrite}
+            onSaved={onSaved}
+            onClose={onClose}
           />
         );
       default:

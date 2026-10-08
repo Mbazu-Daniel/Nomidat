@@ -1,7 +1,14 @@
 import type { ProductEditorProps } from "./types";
+import { ProductCategories } from "./product-categories";
+import { VariantEditor } from "./variant-editor";
+import { minorToDecimalInput, parseMoneyToMinor } from "@/lib/money";
+import { useCurrency } from "@/lib/currency-context";
 
-export function ProductEditor({ record, busy, save }: ProductEditorProps) {
+export function ProductEditor({ organizationId, record, busy, save, onSaved }: ProductEditorProps) {
   const resource = `/products/${record.id}`;
+  // Prices are stored per the business's currency, so the inputs are scaled by it
+  // rather than by a fixed hundred — a cost entered in yen has no hundredths.
+  const currency = useCurrency();
   return (
     <>
       <form
@@ -15,9 +22,9 @@ export function ProductEditor({ record, busy, save }: ProductEditorProps) {
               name: data.get("name"),
               sku: data.get("sku"),
               description: data.get("description"),
-              costKobo: Math.round(Number(data.get("cost")) * 100),
+              costMinor: parseMoneyToMinor(String(data.get("cost")), currency) ?? 0,
               unit: data.get("unit"),
-              priceKobo: Math.round(Number(data.get("price")) * 100),
+              priceMinor: parseMoneyToMinor(String(data.get("price")), currency) ?? 0,
               lowStockThreshold: Number(data.get("threshold")),
             },
             "PATCH",
@@ -37,14 +44,14 @@ export function ProductEditor({ record, busy, save }: ProductEditorProps) {
             <input name="description" defaultValue={record.description ?? ""} maxLength={4000} />
           </label>
           <label>
-            Cost price (₦)
+            Cost price ({currency})
             <input
               name="cost"
               type="number"
               min="0"
               max="20000000"
               step="0.01"
-              defaultValue={(record.costKobo ?? 0) / 100}
+              defaultValue={minorToDecimalInput(record.costMinor ?? 0, currency)}
               required
             />
           </label>
@@ -53,14 +60,14 @@ export function ProductEditor({ record, busy, save }: ProductEditorProps) {
             <input name="unit" defaultValue={record.unit} required maxLength={40} />
           </label>
           <label>
-            Unit price (₦)
+            Unit price ({currency})
             <input
               name="price"
               type="number"
               min="0"
               max="21474836.47"
               step="0.01"
-              defaultValue={(record.priceKobo ?? 0) / 100}
+              defaultValue={minorToDecimalInput(record.priceMinor ?? 0, currency)}
               required
             />
           </label>
@@ -124,6 +131,10 @@ export function ProductEditor({ record, busy, save }: ProductEditorProps) {
           Update stock
         </button>
       </form>
+
+      <ProductCategories organizationId={organizationId} productId={record.id} />
+
+      <VariantEditor organizationId={organizationId} productId={record.id} onSaved={onSaved} />
     </>
   );
 }

@@ -46,7 +46,7 @@
 .sales-customer {
   display: block;
   margin-top: 6px;
-  color: #667183;
+  color: var(--ink-muted);
 }
 .sales-items {
   min-width: 0;
@@ -57,32 +57,32 @@
   margin: 4px 0;
 }
 .sales-register .sales-owed {
-  color: #a56820;
+  color: var(--primary);
   font-weight: 600;
 }
 .sales-status {
   display: inline-flex;
   padding: 6px 10px;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 600;
   white-space: normal;
 }
 .sales-status.paid {
-  color: #287346;
-  background: #edf8f1;
+  color: var(--success);
+  background: var(--surface-base);
 }
 .sales-status[data-status="Paid"],
 .sales-status[data-status="Partially paid"] {
   font-size: 10px;
 }
 .sales-status.owing {
-  color: #9b6118;
-  background: #fff3df;
+  color: var(--primary);
+  background: var(--surface-base);
 }
 .sales-status.cancelled {
-  color: #737e8e;
-  background: #f0f2f5;
+  color: var(--ink-subtle);
+  background: var(--surface-base);
 }
 @container (max-width: 750px) {
   .sales-register th,
@@ -110,7 +110,7 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 14px;
-    border-bottom: 1px solid #e4e8ee;
+    border-bottom: 1px solid var(--line);
   }
   .sales-register td {
     min-width: 0;
@@ -133,7 +133,7 @@
     content: attr(data-label);
     display: block;
     margin-bottom: 6px;
-    color: #737e8e;
+    color: var(--ink-subtle);
     font-size: 11px;
     font-weight: 400;
   }

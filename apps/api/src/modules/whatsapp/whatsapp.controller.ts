@@ -15,7 +15,9 @@ import {
 import { ApiExcludeController } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { API_ENV } from "../../common/config/env.module";
+import { Public } from "../../common/guards/public-route.decorator";
 import type { ApiEnv } from "../../common/config/env";
+import { secretsMatch } from "../../common/helpers/secret-match";
 import { ChannelInboundService } from "../channel/channel-inbound.service";
 import { ChannelProvider } from "../channel/types";
 import type { InboundMessage } from "../channel/types";
@@ -26,6 +28,9 @@ import type { WhatsAppWebhookMessage, WhatsAppWebhookPayload } from "./types";
 type RequestWithRawBody = Request & { rawBody?: Buffer };
 
 @ApiExcludeController()
+// Meta verifies this with the app secret rather than a session, so the route is
+// public by design and says so.
+@Public()
 @Controller("channels/whatsapp")
 @UseGuards(InboundRateLimitGuard)
 export class WhatsAppController {
@@ -42,12 +47,7 @@ export class WhatsAppController {
     @Query("hub.challenge") challenge: string | undefined,
     @Res() res: Response,
   ) {
-    if (
-      mode === "subscribe" &&
-      verifyToken &&
-      this.env.WHATSAPP_VERIFY_TOKEN &&
-      verifyToken === this.env.WHATSAPP_VERIFY_TOKEN
-    ) {
+    if (mode === "subscribe" && secretsMatch(verifyToken, this.env.WHATSAPP_VERIFY_TOKEN)) {
       return res.status(200).send(challenge ?? "");
     }
     throw new UnauthorizedException("WhatsApp verify token mismatch");

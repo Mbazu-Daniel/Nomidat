@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
+import { useCurrency } from "@/lib/currency-context";
 import type { FormProps } from "./types";
 import { TransactionForm } from "./transaction-form";
 import { ProductFields } from "./inventory-fields";
@@ -22,11 +23,14 @@ function SimpleRecordForm(props: FormProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const Fields = fieldComponents[props.section as keyof typeof fieldComponents];
+  // Read here rather than inside the form definition, which is a plain function:
+  // money typed into these forms is scaled by the business's own currency.
+  const currency = useCurrency();
   async function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const fields = new FormData(event.currentTarget);
     const { resource, payload } = recordFormDefinition(props.section);
-    const body = payload(fields);
+    const body = payload(fields, currency);
     setSaving(true);
     props.onSavingChange?.(true);
     setError("");

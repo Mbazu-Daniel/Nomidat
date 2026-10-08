@@ -9,7 +9,7 @@
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true,
-      "env": ["API_PORT", "WEB_ORIGIN", "DATABASE_URL"]
+      "env": ["API_PORT", "WEB_ORIGINS", "DATABASE_URL"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
@@ -19,7 +19,7 @@
       "dependsOn": ["build"],
       "cache": false,
       "persistent": true,
-      "env": ["API_PORT", "WEB_ORIGIN", "DATABASE_URL"]
+      "env": ["API_PORT", "WEB_ORIGINS", "DATABASE_URL"]
     }
   }
 }

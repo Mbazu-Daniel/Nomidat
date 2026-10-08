@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { and, count, desc, eq, gte, lt, sql, sum } from "@nomidat/db";
 import {
   contact,
@@ -10,51 +10,18 @@ import {
   product,
 } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
+import type { ReportRange } from "./report-range";
 
 // fallow-ignore-file code-duplication -- report queries intentionally share organization/range predicates and result shaping
 
-export type ReportRange = {
-  from: Date;
-  to: Date;
-};
-
-const DEFAULT_DAYS = 30;
-const MAX_DAYS = 366;
 const MAX_LIMIT = 50;
-const LOW_STOCK_COUNT = sql<number>`count(*) filter (where ${product.stockQuantity} <= ${product.lowStockThreshold})`;
-const OUT_OF_STOCK_COUNT = sql<number>`count(*) filter (where ${product.stockQuantity} <= 0)`;
 
 @Injectable()
 export class ReportsService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
-  getDefaultRange(): ReportRange {
-    const to = new Date();
-    const from = new Date(to);
-    from.setUTCDate(from.getUTCDate() - DEFAULT_DAYS);
-    return { from, to };
-  }
-
-  parseRange(from?: string, to?: string): ReportRange {
-    const fallback = this.getDefaultRange();
-    const fromDate = from ? this.parseDate(from, "from") : fallback.from;
-    const toDate = to ? this.parseDate(to, "to") : fallback.to;
-    this.validateRange(fromDate, toDate);
-    return { from: fromDate, to: toDate };
-  }
-
-  private validateRange(from: Date, to: Date) {
-    if (from >= to) {
-      throw new BadRequestException("Report 'from' must be before 'to'.");
-    }
-    const days = (to.getTime() - from.getTime()) / 86_400_000;
-    if (days > MAX_DAYS) {
-      throw new BadRequestException(`Report range cannot exceed ${MAX_DAYS} days.`);
-    }
-  }
-
   async getSummary(organizationId: string, range: ReportRange) {
-    const [sales, payments, expenses, outstandingCreditKobo] = await Promise.all([
+    const [sales, payments, expenses, outstandingCreditMinor] = await Promise.all([
       this.getOrderMetrics(organizationId, range),
       this.getPaymentMetrics(organizationId, range),
       this.getExpenseMetrics(organizationId, range),
@@ -64,21 +31,21 @@ export class ReportsService {
     return {
       from: range.from,
       to: range.to,
-      salesKobo: sales.totalKobo,
-      collectedKobo: payments.totalKobo,
-      outstandingCreditKobo,
-      expensesKobo: expenses.totalKobo,
-      netCashflowKobo: payments.totalKobo - expenses.totalKobo,
+      salesMinor: sales.totalMinor,
+      collectedMinor: payments.totalMinor,
+      outstandingCreditMinor,
+      expensesMinor: expenses.totalMinor,
+      netCashflowMinor: payments.totalMinor - expenses.totalMinor,
       salesCount: sales.count,
       paymentCount: payments.count,
       expenseCount: expenses.count,
-      profitApproxKobo: await this.getProfitApprox(organizationId, range, expenses.totalKobo),
+      profitApproxMinor: await this.getProfitApprox(organizationId, range, expenses.totalMinor),
     };
   }
 
   private async getOrderMetrics(organizationId: string, range: ReportRange) {
     const [row] = await this.db
-      .select({ totalKobo: sum(order.totalKobo), count: count() })
+      .select({ totalMinor: sum(order.totalMinor), count: count() })
       .from(order)
       .where(this.rangeCondition(order.createdAt, order.organizationId, organizationId, range));
     return this.toMetrics(row);
@@ -86,7 +53,7 @@ export class ReportsService {
 
   private async getPaymentMetrics(organizationId: string, range: ReportRange) {
     const [row] = await this.db
-      .select({ totalKobo: sum(payment.amountKobo), count: count() })
+      .select({ totalMinor: sum(payment.amountMinor), count: count() })
       .from(payment)
       .where(this.rangeCondition(payment.paidAt, payment.organizationId, organizationId, range));
     return this.toMetrics(row);
@@ -94,17 +61,14 @@ export class ReportsService {
 
   private async getExpenseMetrics(organizationId: string, range: ReportRange) {
     const [row] = await this.db
-      .select({ totalKobo: sum(expense.amountKobo), count: count() })
+      .select({ totalMinor: sum(expense.amountMinor), count: count() })
       .from(expense)
       .where(this.rangeCondition(expense.spentAt, expense.organizationId, organizationId, range));
     return this.toMetrics(row);
   }
 
   private rangeCondition(
-    timestamp:
-      | typeof order.createdAt
-      | typeof payment.paidAt
-      | typeof expense.spentAt,
+    timestamp: typeof order.createdAt | typeof payment.paidAt | typeof expense.spentAt,
     organizationColumn:
       | typeof order.organizationId
       | typeof payment.organizationId
@@ -118,10 +82,10 @@ export class ReportsService {
   }
 
   private toMetrics(
-    row: { totalKobo?: string | number | null; count?: number | null } | undefined,
+    row: { totalMinor?: string | number | null; count?: number | null } | undefined,
   ) {
     return {
-      totalKobo: this.toNumber(row?.totalKobo),
+      totalMinor: this.toNumber(row?.totalMinor),
       count: this.toNumber(row?.count),
     };
   }
@@ -135,7 +99,7 @@ export class ReportsService {
     const rows = await this.db
       .select({
         date: day,
-        salesKobo: sum(order.totalKobo),
+        salesMinor: sum(order.totalMinor),
         saleCount: count(),
       })
       .from(order)
@@ -151,7 +115,7 @@ export class ReportsService {
 
     return rows.map((row) => ({
       date: row.date,
-      salesKobo: Number(row.salesKobo ?? 0),
+      salesMinor: Number(row.salesMinor ?? 0),
       saleCount: Number(row.saleCount ?? 0),
     }));
   }
@@ -160,7 +124,7 @@ export class ReportsService {
     const rows = await this.db
       .select({
         category: expenseCategory.name,
-        amountKobo: sum(expense.amountKobo),
+        amountMinor: sum(expense.amountMinor),
         expenseCount: count(),
       })
       .from(expense)
@@ -173,27 +137,23 @@ export class ReportsService {
         ),
       )
       .groupBy(expenseCategory.name)
-      .orderBy(desc(sum(expense.amountKobo)));
+      .orderBy(desc(sum(expense.amountMinor)));
 
     return rows.map((row) => ({
       category: row.category ?? "Uncategorized",
-      amountKobo: Number(row.amountKobo ?? 0),
+      amountMinor: Number(row.amountMinor ?? 0),
       expenseCount: Number(row.expenseCount ?? 0),
     }));
   }
 
-  async getTopProducts(
-    organizationId: string,
-    range: ReportRange,
-    limit = 10,
-  ) {
+  async getTopProducts(organizationId: string, range: ReportRange, limit = 10) {
     const safeLimit = Math.min(Math.max(limit, 1), 20);
     const rows = await this.db
       .select({
         productId: orderItem.productId,
         productName: orderItem.productName,
         quantity: sum(orderItem.quantity),
-        salesKobo: sum(orderItem.totalKobo),
+        salesMinor: sum(orderItem.totalMinor),
       })
       .from(orderItem)
       .innerJoin(order, eq(orderItem.orderId, order.id))
@@ -205,14 +165,14 @@ export class ReportsService {
         ),
       )
       .groupBy(orderItem.productId, orderItem.productName)
-      .orderBy(desc(sum(orderItem.totalKobo)))
+      .orderBy(desc(sum(orderItem.totalMinor)))
       .limit(safeLimit);
 
     return rows.map((row) => ({
       productId: row.productId,
       productName: row.productName ?? "Unknown product",
       quantity: Number(row.quantity ?? 0),
-      salesKobo: Number(row.salesKobo ?? 0),
+      salesMinor: Number(row.salesMinor ?? 0),
     }));
   }
 
@@ -223,108 +183,59 @@ export class ReportsService {
         saleId: order.id,
         customerId: contact.id,
         customerName: contact.name,
-        totalKobo: order.totalKobo,
+        totalMinor: order.totalMinor,
         createdAt: order.createdAt,
       })
       .from(order)
       .innerJoin(contact, eq(order.contactId, contact.id))
-      .where(
-        and(
-          eq(order.organizationId, organizationId),
-          eq(order.status, "pending"),
-        ),
-      )
+      .where(and(eq(order.organizationId, organizationId), eq(order.status, "pending")))
       .orderBy(desc(order.createdAt));
 
     const balances = new Map<
       string,
-      { customerId: string; customerName: string; balanceKobo: number }
+      { customerId: string; customerName: string; balanceMinor: number }
     >();
 
     for (const sale of pendingSales) {
-      const balanceKobo = await this.getSaleBalance(organizationId, sale.saleId, sale.totalKobo);
-      this.addCustomerBalance(balances, sale, balanceKobo);
+      const balanceMinor = await this.getSaleBalance(organizationId, sale.saleId, sale.totalMinor);
+      this.addCustomerBalance(balances, sale, balanceMinor);
     }
 
     return [...balances.values()]
-      .sort((a, b) => b.balanceKobo - a.balanceKobo)
+      .sort((a, b) => b.balanceMinor - a.balanceMinor)
       .slice(0, safeLimit);
   }
 
-  private async getSaleBalance(organizationId: string, saleId: string, totalKobo: number) {
+  private async getSaleBalance(organizationId: string, saleId: string, totalMinor: number) {
     const [paid] = await this.db
-      .select({ totalKobo: sum(payment.amountKobo) })
+      .select({ totalMinor: sum(payment.amountMinor) })
       .from(payment)
       .where(and(eq(payment.organizationId, organizationId), eq(payment.orderId, saleId)));
-    return Math.max(0, totalKobo - Number(paid?.totalKobo ?? 0));
+    return Math.max(0, totalMinor - Number(paid?.totalMinor ?? 0));
   }
 
   private addCustomerBalance(
-    balances: Map<string, { customerId: string; customerName: string; balanceKobo: number }>,
+    balances: Map<string, { customerId: string; customerName: string; balanceMinor: number }>,
     sale: { customerId: string; customerName: string },
-    balanceKobo: number,
+    balanceMinor: number,
   ) {
-    if (balanceKobo === 0) return;
+    if (balanceMinor === 0) return;
     const current = balances.get(sale.customerId);
     balances.set(sale.customerId, {
       customerId: sale.customerId,
       customerName: sale.customerName,
-      balanceKobo: (current?.balanceKobo ?? 0) + balanceKobo,
+      balanceMinor: (current?.balanceMinor ?? 0) + balanceMinor,
     });
-  }
-
-  async getInventoryHealth(organizationId: string) {
-    const [totals, lowStock, inventoryValueKobo] = await Promise.all([
-      this.getInventoryTotals(organizationId),
-      this.getLowStockProducts(organizationId),
-      this.getInventoryValue(organizationId),
-    ]);
-    return {
-      ...totals,
-      inventoryValueKobo,
-      lowStock,
-    };
-  }
-
-  private async getInventoryTotals(organizationId: string) {
-    const [row] = await this.db
-      .select({
-        productCount: count(),
-        lowStockCount: LOW_STOCK_COUNT,
-        outOfStockCount: OUT_OF_STOCK_COUNT,
-      })
-      .from(product)
-      .where(eq(product.organizationId, organizationId));
-    return {
-      productCount: this.toNumber(row?.productCount),
-      lowStockCount: this.toNumber(row?.lowStockCount),
-      outOfStockCount: this.toNumber(row?.outOfStockCount),
-    };
-  }
-
-  private async getLowStockProducts(organizationId: string) {
-    return this.db
-      .select({
-        id: product.id,
-        name: product.name,
-        stockQuantity: product.stockQuantity,
-        lowStockThreshold: product.lowStockThreshold,
-        unit: product.unit,
-      })
-      .from(product)
-      .where(and(eq(product.organizationId, organizationId), sql`${product.stockQuantity} <= ${product.lowStockThreshold}`))
-      .orderBy(product.stockQuantity)
-      .limit(MAX_LIMIT);
   }
 
   private async getProfitApprox(
     organizationId: string,
     range: ReportRange,
-    expensesKobo: number,
+    expensesMinor: number,
   ): Promise<number> {
     const [margin] = await this.db
       .select({
-        grossMarginKobo: sql<number>`coalesce(sum(${orderItem.totalKobo} - (${orderItem.quantity} * coalesce(${product.costKobo}, 0))), 0)`,
+        grossMarginMinor: sql<number>`coalesce(sum(${orderItem.totalMinor} - (${orderItem.quantity} * coalesce(${product.costMinor}, 0))), 0)`,
       })
       .from(orderItem)
       .innerJoin(order, eq(orderItem.orderId, order.id))
@@ -337,28 +248,14 @@ export class ReportsService {
         ),
       );
 
-    return Number(margin?.grossMarginKobo ?? 0) - expensesKobo;
+    return Number(margin?.grossMarginMinor ?? 0) - expensesMinor;
   }
 
-  private async getInventoryValue(organizationId: string): Promise<number> {
-    const [value] = await this.db
-      .select({
-        totalKobo: sql<number>`coalesce(sum(${product.stockQuantity} * ${product.costKobo}), 0)`,
-      })
-      .from(product)
-      .where(eq(product.organizationId, organizationId));
-
-    return Number(value?.totalKobo ?? 0);
-  }
-
-  private async getOutstandingCredit(
-    organizationId: string,
-    asOf: Date,
-  ): Promise<number> {
+  private async getOutstandingCredit(organizationId: string, asOf: Date): Promise<number> {
     const pendingSales = await this.db
       .select({
         id: order.id,
-        totalKobo: order.totalKobo,
+        totalMinor: order.totalMinor,
       })
       .from(order)
       .where(
@@ -369,10 +266,10 @@ export class ReportsService {
         ),
       );
 
-    let outstandingKobo = 0;
+    let outstandingMinor = 0;
     for (const sale of pendingSales) {
       const [paid] = await this.db
-        .select({ totalKobo: sum(payment.amountKobo) })
+        .select({ totalMinor: sum(payment.amountMinor) })
         .from(payment)
         .where(
           and(
@@ -382,20 +279,9 @@ export class ReportsService {
           ),
         );
 
-      outstandingKobo += Math.max(
-        0,
-        sale.totalKobo - Number(paid?.totalKobo ?? 0),
-      );
+      outstandingMinor += Math.max(0, sale.totalMinor - Number(paid?.totalMinor ?? 0));
     }
 
-    return outstandingKobo;
-  }
-
-  private parseDate(value: string, name: string): Date {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      throw new BadRequestException(`Invalid report ${name} date.`);
-    }
-    return date;
+    return outstandingMinor;
   }
 }

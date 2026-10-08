@@ -1,7 +1,12 @@
 import type { FormProps } from "./types";
+import { useCurrency } from "@/lib/currency-context";
 
 export function ProductFields(props: FormProps) {
   const draft = props.pictureItems?.[0];
+  // The prices below are stored per the business's currency, so the label names it
+  // instead of assuming naira. The scale is applied on submit, by
+  // `recordFormDefinition`, which reads the same currency.
+  const currency = useCurrency();
   return (
     <>
       <label>
@@ -22,7 +27,7 @@ export function ProductFields(props: FormProps) {
         <input name="sku" maxLength={80} placeholder="e.g. CEM-50" />
       </label>
       <label>
-        Cost price (₦)
+        Cost price ({currency})
         <input
           name="cost"
           type="number"
@@ -38,7 +43,7 @@ export function ProductFields(props: FormProps) {
         <input name="description" maxLength={4000} />
       </label>
       <label>
-        Selling price (₦)
+        Selling price ({currency})
         <input
           defaultValue={draft?.unitPriceNaira ?? ""}
           name="price"

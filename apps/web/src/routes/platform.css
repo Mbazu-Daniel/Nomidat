@@ -1,0 +1,15 @@
+/* The operator's cross-tenant console. */
+
+.workspace-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.workspace-platform-detail {
+  margin-top: 14px;
+}
+
+.workspace-platform-detail h3 {
+  margin: 0 0 10px;
+}

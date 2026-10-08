@@ -10,17 +10,17 @@ const MAX_LIMIT = 50;
 @Injectable()
 export class SalesQueriesService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
-  async listSales(organizationId: string, limit = 20, offset = 0) {
+  async getSales(organizationId: string, limit = 20, offset = 0) {
     const rows = await this.db
       .select({
         id: order.id,
         customerId: contact.id,
         customer: contact.name,
         status: order.status,
-        subtotalKobo: order.subtotalKobo,
-        discountKobo: order.discountKobo,
-        taxKobo: order.taxKobo,
-        totalKobo: order.totalKobo,
+        subtotalMinor: order.subtotalMinor,
+        discountMinor: order.discountMinor,
+        taxMinor: order.taxMinor,
+        totalMinor: order.totalMinor,
         createdAt: order.createdAt,
       })
       .from(order)
@@ -42,7 +42,7 @@ export class SalesQueriesService {
       .where(inArray(orderItem.orderId, saleIds))
       .orderBy(orderItem.id);
     const totals = await this.db
-      .select({ orderId: payment.orderId, amount: sum(payment.amountKobo) })
+      .select({ orderId: payment.orderId, amount: sum(payment.amountMinor) })
       .from(payment)
       .where(and(eq(payment.organizationId, organizationId), inArray(payment.orderId, saleIds)))
       .groupBy(payment.orderId);
@@ -57,8 +57,8 @@ export class SalesQueriesService {
       ...sale,
       saleReference: `SALE-${sale.id.replaceAll("-", "").slice(-12).toUpperCase()}`,
       saleItems: itemsBySale.get(sale.id) ?? [],
-      paidKobo: amounts.get(sale.id) ?? 0,
-      balanceKobo: Math.max(0, sale.totalKobo - (amounts.get(sale.id) ?? 0)),
+      paidMinor: amounts.get(sale.id) ?? 0,
+      balanceMinor: Math.max(0, sale.totalMinor - (amounts.get(sale.id) ?? 0)),
     }));
   }
 
@@ -72,7 +72,7 @@ export class SalesQueriesService {
     if (!customer) throw new NotFoundException("Customer not found.");
 
     const pendingSales = await this.db
-      .select({ id: order.id, totalKobo: order.totalKobo, createdAt: order.createdAt })
+      .select({ id: order.id, totalMinor: order.totalMinor, createdAt: order.createdAt })
       .from(order)
       .where(
         and(
@@ -86,15 +86,15 @@ export class SalesQueriesService {
     const balances = await Promise.all(
       pendingSales.map(async (sale) => ({
         ...sale,
-        paidKobo: await this.getPaidAmount(organizationId, sale.id),
+        paidMinor: await this.getPaidAmount(organizationId, sale.id),
       })),
     );
 
     return {
       customer,
-      outstandingKobo: Math.max(
+      outstandingMinor: Math.max(
         0,
-        balances.reduce((total, sale) => total + sale.totalKobo - sale.paidKobo, 0),
+        balances.reduce((total, sale) => total + sale.totalMinor - sale.paidMinor, 0),
       ),
       pendingSales: balances,
     };
@@ -107,13 +107,16 @@ export class SalesQueriesService {
         customerId: contact.id,
         customer: contact.name,
         status: order.status,
-        subtotalKobo: order.subtotalKobo,
-        discountKobo: order.discountKobo,
-        taxKobo: order.taxKobo,
-        totalKobo: order.totalKobo,
+        subtotalMinor: order.subtotalMinor,
+        discountMinor: order.discountMinor,
+        taxMinor: order.taxMinor,
+        totalMinor: order.totalMinor,
         currency: order.currency,
         paidAt: order.paidAt,
         paymentReference: order.paymentReference,
+        // The method on the sale, which is the only record of it for a sale taken
+        // on credit: no Payment row exists until the money actually arrives.
+        paymentMethod: order.paymentMethod,
         notes: order.notes,
         createdAt: order.createdAt,
       })
@@ -130,8 +133,8 @@ export class SalesQueriesService {
         productId: orderItem.productId,
         productName: orderItem.productName,
         quantity: orderItem.quantity,
-        unitPriceKobo: orderItem.unitPriceKobo,
-        totalKobo: orderItem.totalKobo,
+        unitPriceMinor: orderItem.unitPriceMinor,
+        totalMinor: orderItem.totalMinor,
       })
       .from(orderItem)
       .where(eq(orderItem.orderId, saleId));
@@ -139,7 +142,7 @@ export class SalesQueriesService {
     const payments = await tx
       .select({
         id: payment.id,
-        amountKobo: payment.amountKobo,
+        amountMinor: payment.amountMinor,
         method: payment.method,
         reference: payment.reference,
         notes: payment.notes,
@@ -149,14 +152,14 @@ export class SalesQueriesService {
       .where(and(eq(payment.orderId, saleId), eq(payment.organizationId, organizationId)))
       .orderBy(desc(payment.paidAt));
 
-    const paidKobo = payments.reduce((total, item) => total + item.amountKobo, 0);
+    const paidMinor = payments.reduce((total, item) => total + item.amountMinor, 0);
 
     return {
       ...sale,
       items,
       payments,
-      paidKobo,
-      balanceKobo: Math.max(0, sale.totalKobo - paidKobo),
+      paidMinor,
+      balanceMinor: Math.max(0, sale.totalMinor - paidMinor),
     };
   }
 
@@ -170,10 +173,10 @@ export class SalesQueriesService {
     saleId: string,
   ) {
     const [result] = await tx
-      .select({ totalKobo: sum(payment.amountKobo) })
+      .select({ totalMinor: sum(payment.amountMinor) })
       .from(payment)
       .where(and(eq(payment.organizationId, organizationId), eq(payment.orderId, saleId)));
 
-    return Number(result?.totalKobo ?? 0);
+    return Number(result?.totalMinor ?? 0);
   }
 }

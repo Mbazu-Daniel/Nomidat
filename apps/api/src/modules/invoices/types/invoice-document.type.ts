@@ -12,16 +12,16 @@ export type InvoiceDocument = {
   customerEmail?: string | null;
   customer: string | null;
   currency: string;
-  subtotalKobo: number;
-  discountKobo: number;
-  taxKobo: number;
-  totalKobo: number;
+  subtotalMinor: number;
+  discountMinor: number;
+  taxMinor: number;
+  totalMinor: number;
   dueDate: Date | null;
   notes: string | null;
   items: {
     description: string | null;
     quantity: number;
-    unitPriceKobo: number;
-    totalKobo: number;
+    unitPriceMinor: number;
+    totalMinor: number;
   }[];
 };

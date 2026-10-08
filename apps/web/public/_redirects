@@ -1,0 +1,5 @@
+# The app is server-rendered, so a deep link like /acme/pos must reach the
+# Node server, not the static file layer. There is no shell to rewrite to.
+# Static assets are served first by the CDN's own rules.
+/assets/*  /assets/:splat  200
+/icons/*   /icons/:splat   200

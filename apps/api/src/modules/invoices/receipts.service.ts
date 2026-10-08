@@ -11,7 +11,7 @@ export class ReceiptsService {
         id: order.id,
         customerId: contact.id,
         customer: contact.name,
-        totalKobo: order.totalKobo,
+        totalMinor: order.totalMinor,
         currency: order.currency,
         createdAt: order.createdAt,
       })
@@ -27,8 +27,8 @@ export class ReceiptsService {
         id: orderItem.id,
         description: orderItem.productName,
         quantity: orderItem.quantity,
-        unitPriceKobo: orderItem.unitPriceKobo,
-        totalKobo: orderItem.totalKobo,
+        unitPriceMinor: orderItem.unitPriceMinor,
+        totalMinor: orderItem.totalMinor,
       })
       .from(orderItem)
       .where(eq(orderItem.orderId, saleId));
@@ -36,7 +36,7 @@ export class ReceiptsService {
     const payments = await this.db
       .select({
         id: payment.id,
-        amountKobo: payment.amountKobo,
+        amountMinor: payment.amountMinor,
         method: payment.method,
         reference: payment.reference,
         paidAt: payment.paidAt,
@@ -45,15 +45,15 @@ export class ReceiptsService {
       .where(and(eq(payment.orderId, saleId), eq(payment.organizationId, organizationId)))
       .orderBy(desc(payment.paidAt));
 
-    const paidKobo = payments.reduce((total, item) => total + item.amountKobo, 0);
+    const paidMinor = payments.reduce((total, item) => total + item.amountMinor, 0);
 
     return {
       receiptNumber: `RCPT-${sale.id.slice(0, 8).toUpperCase()}`,
       sale,
       items,
       payments,
-      paidKobo,
-      balanceKobo: Math.max(0, sale.totalKobo - paidKobo),
+      paidMinor,
+      balanceMinor: Math.max(0, sale.totalMinor - paidMinor),
     };
   }
 }

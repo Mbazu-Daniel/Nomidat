@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { businessAccess, businessRoles } from "./organization-permissions";
@@ -27,7 +27,9 @@ function resolveGoogleProvider(google: CreateBetterAuthOptions["google"]) {
 
 export function createBetterAuth(options: CreateBetterAuthOptions) {
   const socialProviders = resolveGoogleProvider(options.google);
-  const useCrossSiteCookies = options.webOrigin.startsWith("https://");
+  // Cross-site cookies are only needed once the app is served over HTTPS, which
+  // is a property of the deployment rather than of any one origin in the list.
+  const useCrossSiteCookies = options.webOrigin.some((origin) => origin.startsWith("https://"));
 
   return betterAuth({
     basePath: AUTH_BASE_PATH,
@@ -37,7 +39,10 @@ export function createBetterAuth(options: CreateBetterAuthOptions) {
     }),
     secret: options.secret,
     baseURL: options.baseURL,
-    trustedOrigins: [options.webOrigin],
+    // All of them, so a request from 127.0.0.1 is trusted exactly like one from
+    // localhost. Trusting a single origin here is what produced "Failed to fetch"
+    // on a sign-in that was otherwise entirely correct.
+    trustedOrigins: options.webOrigin,
     advanced: {
       database: {
         generateId,

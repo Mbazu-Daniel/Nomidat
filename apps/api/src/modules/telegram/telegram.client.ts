@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
+import { secretsMatch } from "../../common/helpers/secret-match";
 import type { ChannelAdapter, OutboundMessage } from "../channel/types";
 import { ChannelProvider } from "../channel/types";
 
@@ -58,9 +59,7 @@ export class TelegramClient implements ChannelAdapter {
   }
 
   getIsValidWebhookSecret(secretHeader: string | undefined): boolean {
-    const expected = this.env.TELEGRAM_WEBHOOK_SECRET;
-    if (!expected) return false;
-    return secretHeader === expected;
+    return secretsMatch(secretHeader, this.env.TELEGRAM_WEBHOOK_SECRET);
   }
 
   private getToken(): string {

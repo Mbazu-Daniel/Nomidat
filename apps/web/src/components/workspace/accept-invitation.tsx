@@ -1,49 +1,44 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useLoadedResource } from "@/lib/use-api-resource";
 import { Link } from "@tanstack/react-router";
-import { createApiRequest } from "@/lib/api";
+import { authClient, createApiRequest } from "@/lib/api";
+import { clearSession } from "@/lib/session";
 import type { StaffInvitation } from "./types/staff.type";
 import { staffRoles } from "./staff-roles";
 
 export function AcceptInvitation({ invitationId }: { invitationId: string }) {
-  const [invitation, setInvitation] = useState<StaffInvitation>();
-  const [signedIn, setSignedIn] = useState(false);
-  const [email, setEmail] = useState("");
-  const [accountId, setAccountId] = useState("");
-  const [verified, setVerified] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [signUp, setSignUp] = useState(false);
   const [error, setError] = useState("");
-  const [revision, setRevision] = useState(0);
   const [joined, setJoined] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    void (async () => {
-      const session = await createApiRequest<{
-        user?: { id: string; email: string; emailVerified: boolean };
-      } | null>("/auth/session");
-      if (cancelled) return;
-      setSignedIn(Boolean(session?.user));
-      setEmail(session?.user?.email ?? "");
-      setAccountId(session?.user?.id ?? "");
-      setVerified(Boolean(session?.user?.emailVerified));
-      if (session?.user?.emailVerified) {
-        const result = await createApiRequest<StaffInvitation>(`/invitations/${invitationId}`);
-        if (!cancelled) setInvitation(result);
-      }
-    })()
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [invitationId, revision]);
+  // Bumped after signing in or out, so the session is read again: an invitation is
+  // only readable once the account is verified, and signing out must drop it.
+  const [revision, setRevision] = useState(0);
+  const loaded = useLoadedResource(
+    async () => {
+      const { data: session } = await authClient.getSession();
+      const user = session?.user as
+        | { id: string; email: string; emailVerified: boolean }
+        | undefined;
+      return {
+        user,
+        invitation: user?.emailVerified
+          ? await createApiRequest<StaffInvitation>(`/invitations/${invitationId}`)
+          : undefined,
+      };
+    },
+    [invitationId, revision],
+    { user: undefined, invitation: undefined } as {
+      user: { id: string; email: string; emailVerified: boolean } | undefined;
+      invitation: StaffInvitation | undefined;
+    },
+  );
+  const invitation = loaded.data.invitation;
+  const signedIn = Boolean(loaded.data.user);
+  const email = loaded.data.user?.email ?? "";
+  const accountId = loaded.data.user?.id ?? "";
+  const verified = Boolean(loaded.data.user?.emailVerified);
+  const loading = loaded.loading;
   function renderSignIn() {
     return (
       <form
@@ -53,14 +48,14 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
           setBusy(true);
           setError("");
           try {
-            await createApiRequest(signUp ? "/auth/sign-up/email" : "/auth/sign-in/email", {
-              method: "POST",
-              body: JSON.stringify({
-                email: String(fields.get("email")).trim(),
-                password: fields.get("password"),
-                ...(signUp ? { name: fields.get("name") } : {}),
-              }),
-            });
+            const credentials = {
+              email: String(fields.get("email")).trim(),
+              password: String(fields.get("password")),
+            };
+            const { error: authError } = signUp
+              ? await authClient.signUp.email({ ...credentials, name: String(fields.get("name")) })
+              : await authClient.signIn.email(credentials);
+            if (authError) throw new Error(authError.message ?? "Could not sign you in.");
             setRevision((value) => value + 1);
           } catch (reason) {
             setError((reason as Error).message);
@@ -181,8 +176,8 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
           onClick={async () => {
             setBusy(true);
             try {
-              await createApiRequest("/auth/sign-out", { method: "POST", body: "{}" });
-              setInvitation(undefined);
+              await clearSession();
+              loaded.setData({ user: undefined, invitation: undefined });
               setRevision((value) => value + 1);
             } catch (reason) {
               setError((reason as Error).message);

@@ -1,21 +1,30 @@
 import { createApiRequest } from "@/lib/api";
 
+export type OrganizationSummary = { id: string; name: string; slug?: string };
+
+/**
+ * A contact's outstanding balance arrives with the client folder rather than from
+ * its own endpoint: both answer "what does this contact owe", and reading two of
+ * them would be a second place for that number to disagree with itself.
+ */
+
 export async function getOrganizations() {
-  return createApiRequest<Array<{ id: string; name: string }>>("/organizations");
+  return createApiRequest<OrganizationSummary[]>("/organizations");
 }
 
-export function formatNaira(amount: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(amount);
+/** Whether a business handle is still free. Rejects when it is taken. */
+export async function checkBusinessHandle(slug: string): Promise<boolean> {
+  const result = await createApiRequest<{ status: boolean }>("/organizations/check-slug", {
+    method: "POST",
+    body: JSON.stringify({ slug }),
+  });
+  return result.status;
 }
 
-export type BusinessSummary = {
-  salesTotalKobo: number;
-  outstandingCreditKobo: number;
-  expensesTotalKobo: number;
+type BusinessSummary = {
+  salesTotalMinor: number;
+  outstandingCreditMinor: number;
+  expensesTotalMinor: number;
   customerCount: number;
   productCount: number;
   lowStockCount: number;

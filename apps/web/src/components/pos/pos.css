@@ -1,0 +1,320 @@
+/* Point of sale. Uses the rose-gold theme tokens so POS follows the app palette. */
+.pos-terminal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.pos-terminal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+.pos-terminal-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.pos-offline-banner {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 600;
+}
+.dark .pos-offline-banner {
+  color: var(--primary-light);
+}
+
+/* A risk the seller must act on, not a status to glance past. */
+.pos-storage-warning {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--destructive);
+  background: color-mix(in srgb, var(--destructive) 8%, transparent);
+  color: var(--destructive);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pos-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pos-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.pos-catalog-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  height: auto;
+  padding: 12px;
+  text-align: left;
+  white-space: normal;
+}
+.pos-catalog-name {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.3;
+}
+.pos-catalog-price {
+  font-size: 13px;
+  color: var(--primary);
+  font-weight: 600;
+}
+.pos-catalog-stock {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.pos-catalog-serial {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+}
+.pos-serial-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+.pos-serial-hint {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.pos-serial-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pos-serial-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.pos-serial-code {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+.pos-serial-actions {
+  display: flex;
+  gap: 8px;
+}
+.pos-catalog-empty {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.pos-terminal-contact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.pos-terminal-contact select {
+  flex: 1;
+  max-width: 280px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 500;
+}
+
+.pos-cart {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+.pos-cart-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+}
+.pos-cart-empty {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.pos-cart-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.pos-cart-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.pos-cart-line-detail {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  min-width: 0;
+}
+.pos-cart-line-sku {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.pos-cart-line-serial {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.pos-cart-line-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.pos-cart-line-quantity {
+  min-width: 26px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/*
+  An editable quantity, not the plain span this replaced. Wide enough for "1.5"
+  and a decimal keypad, because a till weighing produce cannot add half a kilo
+  with the +/- pair. The spinner is suppressed so the field reads as a value a
+  seller types rather than as something to click up through.
+*/
+input.pos-cart-line-quantity {
+  min-width: 62px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+input.pos-cart-line-quantity:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+input.pos-cart-line-quantity::-webkit-outer-spin-button,
+input.pos-cart-line-quantity::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+input.pos-cart-line-quantity[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.pos-cart-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 14px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.pos-cart-checkout {
+  width: 100%;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.pos-checkout-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.pos-checkout-methods {
+  display: flex;
+  gap: 8px;
+}
+.pos-checkout-totals,
+.pos-receipt-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+.pos-checkout-totals div,
+.pos-receipt-totals div {
+  display: flex;
+  justify-content: space-between;
+}
+.pos-checkout-grand,
+.pos-receipt-grand {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 700;
+}
+.pos-receipt-grand dd {
+  color: var(--primary);
+}
+.pos-checkout-contact {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 900px) {
+  .pos-terminal-body {
+    grid-template-columns: 1fr;
+  }
+  .pos-cart {
+    position: static;
+  }
+  .pos-checkout-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .pos-catalog,
+  .pos-cart,
+  .pos-checkout-dialog button {
+    display: none;
+  }
+}

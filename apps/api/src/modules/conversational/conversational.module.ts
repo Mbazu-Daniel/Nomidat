@@ -14,6 +14,7 @@ import { Module } from "@nestjs/common";
 import { DbModule } from "../../common/db/db.module";
 import { ReportsModule } from "../reports/reports.module";
 import { SalesModule } from "../sales/sales.module";
+import { MoneyModule } from "../money/money.module";
 import { ConversationalService } from "./conversational.service";
 
 @Module({
@@ -27,6 +28,7 @@ import { ConversationalService } from "./conversational.service";
     DbModule,
     SalesModule,
     ReportsModule,
+    MoneyModule,
   ],
   controllers: [ConversationalController],
   providers: [

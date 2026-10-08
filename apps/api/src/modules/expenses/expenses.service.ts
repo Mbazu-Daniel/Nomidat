@@ -5,12 +5,28 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
-import { and, desc, eq, or, isNull } from "@nomidat/db";
+import { and, count, desc, eq, or, isNull } from "@nomidat/db";
 import { expense, expenseCategory } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
-import type { CreateExpenseCategoryDto, CreateExpenseDto, UpdateExpenseDto } from "./dto";
+import type {
+  CreateExpenseCategoryDto,
+  CreateExpenseDto,
+  UpdateExpenseCategoryDto,
+  UpdateExpenseDto,
+} from "./dto";
 
 const MAX_LIMIT = 50;
+
+/**
+ * Whether Postgres refused the write on a unique index (SQLSTATE 23505).
+ *
+ * Drizzle wraps the driver's error, so the "duplicate key" text and the code
+ * live on `cause` while `error.message` is just the failed SQL — matching the
+ * message alone reported every name collision as a 500 instead of the 409 a
+ * caller can act on.
+ */
+const isUniqueViolation = (error: unknown): boolean =>
+  (error as { cause?: { code?: string } } | null)?.cause?.code === "23505";
 
 @Injectable()
 export class ExpensesService {
@@ -22,7 +38,7 @@ export class ExpensesService {
         id: expense.id,
         categoryId: expense.categoryId,
         category: expenseCategory.name,
-        amountKobo: expense.amountKobo,
+        amountMinor: expense.amountMinor,
         description: expense.description,
         spentAt: expense.spentAt,
         paymentMethod: expense.paymentMethod,
@@ -55,7 +71,7 @@ export class ExpensesService {
       .values({
         organizationId,
         categoryId: await this.resolveCategoryId(organizationId, input.categoryId),
-        amountKobo: input.amountKobo,
+        amountMinor: input.amountMinor,
         description: input.description?.trim() || null,
         spentAt: input.spentAt ? new Date(input.spentAt) : new Date(),
         paymentMethod: input.paymentMethod?.trim() || "cash",
@@ -77,7 +93,7 @@ export class ExpensesService {
       .update(expense)
       .set({
         categoryId,
-        amountKobo: input.amountKobo ?? existing.amountKobo,
+        amountMinor: input.amountMinor ?? existing.amountMinor,
         description: input.description?.trim() || existing.description,
         spentAt: input.spentAt ? new Date(input.spentAt) : existing.spentAt,
         paymentMethod: input.paymentMethod?.trim() || existing.paymentMethod,
@@ -98,7 +114,7 @@ export class ExpensesService {
     return { id: expenseId, deleted: true };
   }
 
-  async listCategories(organizationId: string) {
+  async getCategories(organizationId: string) {
     return this.db
       .select()
       .from(expenseCategory)
@@ -127,11 +143,95 @@ export class ExpensesService {
         .returning();
       return created;
     } catch (error) {
-      if (error instanceof Error && /unique/i.test(error.message)) {
+      if (isUniqueViolation(error)) {
         throw new ConflictException("An expense category with this name already exists.");
       }
       throw error;
     }
+  }
+
+  async updateCategory(
+    organizationId: string,
+    categoryId: string,
+    input: UpdateExpenseCategoryDto,
+  ) {
+    const existing = await this.getCategory(organizationId, categoryId);
+    const name = input.name?.trim() ?? existing.name;
+    if (!name) throw new BadRequestException("Category name is required.");
+
+    try {
+      const [updated] = await this.db
+        .update(expenseCategory)
+        .set({
+          name,
+          description:
+            input.description === undefined
+              ? existing.description
+              : input.description?.trim() || null,
+        })
+        .where(
+          and(
+            eq(expenseCategory.id, categoryId),
+            eq(expenseCategory.organizationId, organizationId),
+          ),
+        )
+        .returning();
+      return updated;
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException("An expense category with this name already exists.");
+      }
+      throw error;
+    }
+  }
+
+  async removeCategory(organizationId: string, categoryId: string) {
+    await this.getCategory(organizationId, categoryId);
+
+    // `expense.categoryId` references this row with onDelete "set null", so the
+    // delete itself would succeed and quietly strip the category off history —
+    // expense-by-category reporting would change with no error anywhere. Refuse
+    // while anything still points here and send the caller to rename instead.
+    const [used] = await this.db
+      .select({ value: count() })
+      .from(expense)
+      .where(eq(expense.categoryId, categoryId));
+
+    if (used.value > 0) {
+      throw new ConflictException(
+        `This category is used by ${used.value} expense${used.value === 1 ? "" : "s"}. ` +
+          "Rename it instead of deleting it.",
+      );
+    }
+
+    await this.db
+      .delete(expenseCategory)
+      .where(
+        and(eq(expenseCategory.id, categoryId), eq(expenseCategory.organizationId, organizationId)),
+      );
+
+    return { id: categoryId, deleted: true };
+  }
+
+  /**
+   * A category this organization owns, or a 404.
+   *
+   * The organization scope is what keeps the shared defaults safe: their
+   * `organizationId` is NULL, and NULL never equals the caller's id, so the
+   * rows every tenant reads are also the rows no tenant may rename or retire.
+   * The same clause keeps one business out of another's rows.
+   */
+  private async getCategory(organizationId: string, categoryId: string) {
+    const [category] = await this.db
+      .select()
+      .from(expenseCategory)
+      .where(
+        and(eq(expenseCategory.id, categoryId), eq(expenseCategory.organizationId, organizationId)),
+      )
+      .limit(1);
+
+    if (!category) throw new NotFoundException("Expense category not found.");
+    return category;
   }
 
   private async resolveCategoryId(organizationId: string, categoryId?: string) {

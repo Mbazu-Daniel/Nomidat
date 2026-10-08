@@ -1,10 +1,12 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { and, count, eq, gte, lt, lte, sql } from "@nomidat/db";
+import { and, count, eq, gte, lt, sql } from "@nomidat/db";
 import { contact, order, product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
+import { formatMinorAmount, majorToMinor } from "../../common/helpers/money-format";
 import { ContactsService } from "../contacts/contacts.service";
 import { InvoiceDeliveryService } from "../invoices/invoice-delivery.service";
 import { InvoicesService } from "../invoices/invoices.service";
+import { lowStockFilter, totalOnHandSql } from "../inventory/stock-levels";
 import { ReportsService } from "../reports/reports.service";
 import { PaystackService } from "../payments/providers/paystack/paystack.service";
 import type { ParsedAction } from "./types";
@@ -24,33 +26,38 @@ export class ExtendedActionsService {
     action: ParsedAction,
     organizationId: string,
     userId: string,
+    currency: string,
   ): Promise<string> {
     const handlers: Partial<Record<ParsedAction["intent"], () => Promise<string>>> = {
-      list_low_stock: () => this.listLowStock(organizationId),
+      list_low_stock: () => this.getLowStock(organizationId),
       get_order_count: () => this.getOrderCount(action, organizationId),
       get_daily_summary: () => this.getExpenseSummary(action, organizationId),
       get_expense_summary: () => this.getExpenseSummary(action, organizationId),
-      list_invoices: () => this.listInvoices(organizationId),
+      list_invoices: () => this.getInvoices(organizationId),
       get_client_folder: () => this.getClientFolder(action, organizationId),
       convert_lead_to_customer: () => this.convertLeadToCustomer(action, organizationId),
       add_note: () => this.addNote(action, organizationId, userId),
-      create_invoice: () => this.createInvoice(action, organizationId),
+      create_invoice: () => this.createInvoice(action, organizationId, currency),
       create_payment_link: () => this.createPaymentLink(action, organizationId),
       send_invoice: () => this.sendInvoice(action, organizationId),
     };
     return handlers[action.intent]?.() ?? "Please describe the action you want to take.";
   }
 
-  private async listLowStock(organizationId: string): Promise<string> {
+  private async getLowStock(organizationId: string): Promise<string> {
     return JSON.stringify(
       await this.db
-        .select({ name: product.name, stock: product.stockQuantity, unit: product.unit })
+        .select({
+          name: product.name,
+          stock: totalOnHandSql(organizationId),
+          unit: product.unit,
+        })
         .from(product)
         .where(
           and(
             eq(product.organizationId, organizationId),
             eq(product.isActive, true),
-            lte(product.stockQuantity, product.lowStockThreshold),
+            lowStockFilter(organizationId),
           ),
         )
         .limit(50),
@@ -78,8 +85,8 @@ export class ExtendedActionsService {
     );
   }
 
-  private async listInvoices(organizationId: string): Promise<string> {
-    return JSON.stringify(await this.invoices.listInvoices(organizationId));
+  private async getInvoices(organizationId: string): Promise<string> {
+    return JSON.stringify(await this.invoices.getInvoices(organizationId));
   }
 
   private async getClientFolder(action: ParsedAction, organizationId: string): Promise<string> {
@@ -117,7 +124,11 @@ export class ExtendedActionsService {
     return "Note added to the client folder.";
   }
 
-  private async createInvoice(action: ParsedAction, organizationId: string): Promise<string> {
+  private async createInvoice(
+    action: ParsedAction,
+    organizationId: string,
+    currency: string,
+  ): Promise<string> {
     if (!action.items) return "Please include the invoice items, quantities and unit prices.";
     const result = await this.invoices.createInvoice(organizationId, {
       customerId: await this.getContactId(action, organizationId),
@@ -125,13 +136,13 @@ export class ExtendedActionsService {
         productId: item.productId,
         description: item.description,
         quantity: item.quantity,
-        unitPriceKobo: Math.round(item.unitPriceNaira * 100),
+        unitPriceMinor: majorToMinor(item.unitPriceNaira, currency),
       })),
-      taxKobo: Math.round((action.taxNaira ?? 0) * 100),
-      discountKobo: Math.round((action.discountNaira ?? 0) * 100),
+      taxMinor: majorToMinor(action.taxNaira ?? 0, currency),
+      discountMinor: majorToMinor(action.discountNaira ?? 0, currency),
       dueDate: action.date,
     });
-    return `Created invoice ${result.invoiceNumber} for NGN ${(result.totalKobo / 100).toLocaleString("en-NG")}. Open Invoices to download or send it.`;
+    return `Created invoice ${result.invoiceNumber} for ${formatMinorAmount(result.totalMinor, currency)}. Open Invoices to download or send it.`;
   }
 
   private async createPaymentLink(action: ParsedAction, organizationId: string): Promise<string> {
