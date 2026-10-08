@@ -10,6 +10,15 @@ export const member = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     role: text("role").notNull().default("member"),
+    /**
+     * The person's name and face inside this business, not on their login. One
+     * user can be "Ada" the owner at one shop and just "A. Bello" at another, so
+     * a staff profile cannot hang off the user row.
+     */
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    /** Data URL. Optional, and validated on read rather than trusted raw. */
+    avatar: text("avatar"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [

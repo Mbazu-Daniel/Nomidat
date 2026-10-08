@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createOrgScopedColumns } from "../org-scoped-columns";
 
 export const businessProfile = pgTable(
@@ -6,6 +6,10 @@ export const businessProfile = pgTable(
   {
     ...createOrgScopedColumns(),
     name: text("name").notNull(),
+    /** Data URL for the logo printed on an invoice. Validated on read, never trusted raw. */
+    logo: text("logo"),
+    /** Invoice address, phone, email and registration numbers. Shaped by the invoice document. */
+    businessDetails: jsonb("business_details"),
     phone: text("phone"),
     email: text("email"),
     address: text("address"),

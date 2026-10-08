@@ -10,7 +10,7 @@ export const paymentLink = pgTable(
     provider: text("provider").notNull().default("paystack"),
     orderId: uuid("order_id").references(() => order.id, { onDelete: "set null" }),
     contactId: uuid("contact_id").references(() => contact.id, { onDelete: "set null" }),
-    amountKobo: integer("amount_kobo").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
     currency: text("currency").notNull().default("NGN"),
     reference: text("reference").notNull().unique(),
     providerUrl: text("provider_url"),
