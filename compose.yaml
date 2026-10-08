@@ -1,14 +1,20 @@
 services:
   postgres:
-    image: postgres:latest
+    # Pinned, not `latest`: the data directory cannot be read by an older major
+    # once this has started, so a silent jump to 19 would refuse to boot and
+    # look like corruption rather than an upgrade.
+    image: postgres:18
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
     ports:
+      # Loopback only — this database is for this machine, not the network.
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
+      - ./docker/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s

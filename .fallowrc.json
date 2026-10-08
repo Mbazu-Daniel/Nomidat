@@ -1,5 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": ["apps/web/src/components/ui/**"],
   "ignoreDependencies": ["class-transformer", "@nestjs/schematics", "shadcn"],
   "audit": {
     "healthBaseline": ".fallow/health-baseline.json"

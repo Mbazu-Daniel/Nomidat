@@ -1,0 +1,19 @@
+# Normalise line endings: LF in the repository, LF on disk, on every platform.
+# Without this the working tree churns between CRLF and LF and every diff
+# becomes unreviewable.
+* text=auto eol=lf
+
+# Binary assets are never line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.svg text
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.zip binary

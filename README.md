@@ -1,5 +1,22 @@
 # Nomidat
 
+> Phase-by-phase status, and what is not yet verified: [`PHASES.md`](PHASES.md).
+
+Architecture and invariants: [`ARCHITECTURE.md`](ARCHITECTURE.md). Domain
+vocabulary: [`CONTEXT.md`](CONTEXT.md). Binding rules for agents:
+[`AGENTS.md`](AGENTS.md).
+
+## Commands
+
+```bash
+pnpm install
+pnpm db:up && pnpm db:migrate
+pnpm dev
+
+pnpm lint && pnpm test && pnpm typecheck && pnpm build
+pnpm fallow:audit
+```
+
 A NestJS, PostgreSQL and React workspace for small-business inventory, sales, expenses, contacts and invoices. The browser dashboard and Telegram Mini App share the same screens and organization-scoped API.
 
 ## Implemented workflows
@@ -23,10 +40,15 @@ Use Node 24+ and the pnpm version declared in `package.json`.
 pnpm install
 cp .env.example .env
 pnpm db:up
+docker compose exec -T postgres sh -c 'createdb -U "$POSTGRES_USER" nomidat_test'
 pnpm db:migrate
 pnpm db:seed
 pnpm dev
 ```
+
+`pnpm db:migrate` applies the migrations to the development database and then to
+the one named by `TEST_DATABASE_URL`, so both have to exist first. The `createdb`
+line creates the second one; run it once.
 
 The browser defaults to `http://localhost:3000`, with API requests at `http://localhost:3001/api/v1`. Set `VITE_API_URL`, `WEB_ORIGIN`, `BETTER_AUTH_URL` and `API_PORT` together if changing ports. Register through the browser, create a business and begin adding records. No sample records are inserted into business workspaces.
 
@@ -54,27 +76,68 @@ Reconciliation runs at midnight Africa/Lagos in the API process. Run a continuou
 ## Verification
 
 ```bash
-pnpm test
-pnpm typecheck
-pnpm lint
-pnpm build
+pnpm lint && pnpm test && pnpm build && pnpm typecheck
 pnpm fallow:audit
 ```
 
-Integration checks require a built, running API connected to a **disposable** PostgreSQL database. They create test accounts and records, so never point them at production:
+`pnpm test` runs every suite. The unit files need no database: money formatting
+and rounding in both tiers, stock balance and unit-conversion arithmetic, POS
+cart arithmetic, timing-safe secret comparison, the conversational action review,
+and storefront theme sanitisation. The end-to-end files that need a database
+skip themselves unless `TEST_DATABASE_URL` is set, so the command still runs on
+a machine with no database.
+
+### End-to-end tests
+
+The money and stock invariants live in SQL and in transaction boundaries, so
+they are tested against a real PostgreSQL rather than a stub — a stubbed
+database would have passed while a withdrawal raised the balance.
+
+`pnpm db:migrate` has already applied the migrations to the test database (see
+Local setup). Run the suite with:
 
 ```bash
-TEST_API_URL=http://localhost:3018/api/v1 \
-TEST_WEB_ORIGIN=http://localhost:3017 \
-TEST_DATABASE_URL=postgresql://postgres:password@localhost:55439/nomidat_test \
-pnpm test:integration
+pnpm test
 ```
 
-The database name must end in `_test` for the confirmation checks. The API must use the same database and allow the supplied web origin.
+Every suite that writes to the database refuses a database name that does not end
+in `_test`, because it creates and deletes rows. No API server is needed, and
+there are no `TEST_API_URL`, `TEST_WEB_ORIGIN` or `TEST_AUTH_SECRET` variables:
+each suite drives the owning service against the database directly.
 
-Verified locally: migrations and idempotent category seeding, unit tests, browser inventory creation, responsive layout, tenant and role isolation, financial totals, partial payments, stock protection, PDF generation, and confirmation/cancellation/expiry/concurrency behavior. Provider-fallback tests use mocked HTTP responses.
+CI runs the same files in the `e2e` job of `.github/workflows/ci.yml`, against a
+`postgres:18` service, so a change that breaks a money path fails before merge.
+Run them locally as well, before touching money or stock code.
 
-Remaining validation: live Paystack callbacks/reconciliation, actual Telegram Mini App authentication and delivery, WhatsApp templates/delivery, ZeptoMail delivery, Nigerian-accent transcription accuracy and an SME pilot. The local Fallow gate passes with advisory warnings; its CI gate remains enabled. Live-provider and production-pilot validation are still required.
+### What is actually verified
+
+End to end against PostgreSQL, in `apps/api/test`:
+
+- `sales-journey`, `pos-sale`, `pos-quantity` — the stock ledger, refusal of
+  insufficient stock, credit and partial payments, refusal of overpayment,
+  offline till replay, and fractional quantities.
+- `schema-invariants` — the constraints the database itself enforces, including
+  the decimal quantity bounds.
+- `org-context-guard`, `staff-boundary` — who may reach a route and which
+  business's records they reach.
+- `contact-edit`, `expense-category`, `invoice-edit`, `invoice-offer`,
+  `transfer-cancel`, `business-profile` — what each area can change, archive,
+  refuse and undo, and that another business cannot touch it.
+- `wallet` — withdrawal atomicity, platform fee arithmetic, a refused withdrawal
+  that restores the funds once, and two requests racing for the same balance.
+- `inbound-replay`, `webhook-events`, `payment-announcement` — a provider
+  redelivering an update, an endpoint receiving only the events it asked for, and
+  a payment reaching the inbox and a subscription exactly once.
+- `auth-rate-limit` — the auth and inbound budgets, counted per address and per
+  tenant.
+
+Verified by hand rather than by the suite: browser inventory creation, responsive
+layout, invoice PDF generation, and the chat confirmation flow's cancellation,
+expiry and concurrency behaviour.
+
+Remaining validation: live Paystack callbacks and reconciliation, actual Telegram
+Mini App authentication and delivery, WhatsApp templates and delivery, ZeptoMail
+delivery, Nigerian-accent transcription accuracy and an SME pilot.
 
 ### Recording from pictures
 
@@ -108,8 +171,7 @@ Existing members keep their current role when accepting another invitation.
 Set `TERMII_API_KEY`, `TERMII_SENDER_ID` and the dashboard's `TERMII_BASE_URL` in
 `.env`, then restart the API. The sender must be enabled for transactional/DND
 messages. See [Termii's API documentation](https://developers.termii.com/).
-There is no production test code or verification bypass. The integration test injects
-a delivery fake into an isolated Better Auth instance; it sends no real SMS.
+There is no production test code or verification bypass.
 Phone OTPs expire after five minutes and allow three failed attempts. Phone endpoints
 use Better Auth's rate limiter. Configure trusted proxy/IP forwarding and shared rate
 limit storage before deploying multiple API instances.
@@ -122,10 +184,12 @@ editing, payment-key management, or ownership rights. Manager/admin roles retain
 existing broader permissions; choose Staff for a restricted combination.
 
 Run the additive database migration before starting the updated API:
-`pnpm db:migrate`. For the isolated lifecycle/permission integration check, set
-`TEST_API_URL`, `TEST_DATABASE_URL` (database name must end in `_test`) and
-`TEST_AUTH_SECRET` to match the test API, then run
-`node apps/api/test/phone-permissions.mjs`.
+`pnpm db:migrate`.
+
+There is no automated coverage for the OTP lifecycle: it was verified by hand
+against an isolated Better Auth instance with a delivery fake, which sends no real
+SMS. Staff permission boundaries are covered end to end by
+`apps/api/test/staff-boundary.e2e.ts`.
 
 Inventory now supports product cost, description and editable SKU. Reports support
 custom inclusive dates and selectable top-product/customer result counts. Business
