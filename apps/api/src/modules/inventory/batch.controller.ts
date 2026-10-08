@@ -12,7 +12,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
-import { authorizeOrganization } from "../../common/helpers/organization-auth";
+import { authorizeInventory } from "./authorize-inventory";
 import { BusinessAuthService } from "../business/business-auth.service";
 import { BatchService } from "./batch.service";
 import { ConsumeBatchDto, CreateBatchDto } from "./dto/batch.dto";
@@ -38,7 +38,7 @@ export class BatchController {
     @Query("offset", new ParseIntPipe({ optional: true })) offset: number | undefined,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.batches.getBatches(
       org,
       productId,
@@ -55,7 +55,7 @@ export class BatchController {
     @Body() body: CreateBatchDto,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.batches.createBatch(org, body, session.userId);
   }
 
@@ -67,7 +67,7 @@ export class BatchController {
     @Body() body: ConsumeBatchDto,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.batches.consumeBatch(org, batchId, body, session.userId);
   }
 
@@ -81,7 +81,7 @@ export class BatchController {
     @Query("offset", new ParseIntPipe({ optional: true })) offset: number | undefined,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.serials.getSerials(org, productId, status, limit, offset);
   }
 
@@ -92,7 +92,7 @@ export class BatchController {
     @Body() body: RegisterSerialDto,
     @Req() req: Request,
   ) {
-    const session = await this.write(req, org);
+    const session = await authorizeInventory(this.auth, req, org);
     return this.serials.registerSerials(org, body, session.userId);
   }
 
@@ -104,11 +104,7 @@ export class BatchController {
     @Body() body: UpdateSerialStatusDto,
     @Req() req: Request,
   ) {
-    await this.write(req, org);
+    await authorizeInventory(this.auth, req, org);
     return this.serials.updateStatus(org, serialNumberId, body);
-  }
-
-  private write(req: Request, org: string) {
-    return authorizeOrganization(this.auth, req, org, "inventory");
   }
 }

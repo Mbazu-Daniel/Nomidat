@@ -20,7 +20,11 @@ export class CycleCountService {
     private readonly stock: StockService,
   ) {}
 
-  async createCycleCount(organizationId: string, userId: string | null, input: CreateCycleCountDto) {
+  async createCycleCount(
+    organizationId: string,
+    userId: string | null,
+    input: CreateCycleCountDto,
+  ) {
     return this.db.transaction(async (tx) => {
       const reference = await nextReference(tx, organizationId, "CNT", cycleCount);
       const [created] = await tx
@@ -140,4 +144,3 @@ export class CycleCountService {
       );
   }
 }
-

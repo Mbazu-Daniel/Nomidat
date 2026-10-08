@@ -67,10 +67,7 @@ export class VariantService {
         updatedAt: new Date(),
       })
       .where(
-        and(
-          eq(productVariant.id, variantId),
-          eq(productVariant.organizationId, organizationId),
-        ),
+        and(eq(productVariant.id, variantId), eq(productVariant.organizationId, organizationId)),
       )
       .returning();
     return updated;

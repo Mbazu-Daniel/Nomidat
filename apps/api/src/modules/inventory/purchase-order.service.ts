@@ -117,8 +117,7 @@ export class PurchaseOrderService {
           throw new NotFoundException("A received item is not on this purchase order.");
         }
 
-        const outstanding =
-          Number(line.quantityOrdered) - Number(line.quantityReceived);
+        const outstanding = Number(line.quantityOrdered) - Number(line.quantityReceived);
         const quantity = Math.min(received.countedQuantity, outstanding);
         if (quantity <= 0) continue;
 
@@ -139,10 +138,7 @@ export class PurchaseOrderService {
           .set({ quantityReceived: Number(line.quantityReceived) + quantity })
           .where(eq(purchaseOrderItem.id, line.id));
 
-        receivedByLine.set(
-          line.id,
-          (receivedByLine.get(line.id) ?? 0) + quantity,
-        );
+        receivedByLine.set(line.id, (receivedByLine.get(line.id) ?? 0) + quantity);
       }
 
       // Judged across every line, not only the ones named in this request: a PO
@@ -164,7 +160,12 @@ export class PurchaseOrderService {
           receivedAt: complete ? new Date() : null,
           updatedAt: new Date(),
         })
-        .where(and(eq(purchaseOrder.id, purchaseOrderId), eq(purchaseOrder.organizationId, organizationId)))
+        .where(
+          and(
+            eq(purchaseOrder.id, purchaseOrderId),
+            eq(purchaseOrder.organizationId, organizationId),
+          ),
+        )
         .returning();
 
       return updated;
@@ -218,4 +219,3 @@ export class PurchaseOrderService {
       );
   }
 }
-

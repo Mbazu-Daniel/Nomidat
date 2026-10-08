@@ -52,12 +52,9 @@ export class BatchService {
   }
 
   /** Registers a batch and books the goods in through the stock ledger. */
-  async createBatch(
-    organizationId: string,
-    dto: CreateBatchDto,
-    userId?: string | null,
-  ) {
-    const warehouseId = dto.warehouseId ?? (await this.stock.resolveDefaultWarehouseId(organizationId));
+  async createBatch(organizationId: string, dto: CreateBatchDto, userId?: string | null) {
+    const warehouseId =
+      dto.warehouseId ?? (await this.stock.resolveDefaultWarehouseId(organizationId));
     const quantity = Number(dto.quantity);
 
     if (quantity <= 0) {
@@ -99,7 +96,12 @@ export class BatchService {
   }
 
   /** Draws from a batch, refusing to consume more than was received. */
-  async consumeBatch(organizationId: string, batchId: string, dto: ConsumeBatchDto, userId?: string | null) {
+  async consumeBatch(
+    organizationId: string,
+    batchId: string,
+    dto: ConsumeBatchDto,
+    userId?: string | null,
+  ) {
     const quantity = Number(dto.quantity);
     if (quantity <= 0) {
       throw new ConflictException("A batch consumption must be above zero.");
@@ -122,12 +124,11 @@ export class BatchService {
 
       const remaining = Number(found.received) - Number(found.consumed);
       if (quantity > remaining) {
-        throw new ConflictException(
-          `This batch has ${remaining} left. Requested ${quantity}.`,
-        );
+        throw new ConflictException(`This batch has ${remaining} left. Requested ${quantity}.`);
       }
 
-      const warehouseId = dto.warehouseId ?? (await this.stock.resolveDefaultWarehouseId(organizationId));
+      const warehouseId =
+        dto.warehouseId ?? (await this.stock.resolveDefaultWarehouseId(organizationId));
 
       await this.stock.recordMovementTx(tx, organizationId, {
         productId: found.productId,
@@ -136,6 +137,10 @@ export class BatchService {
         warehouseId,
         quantity: -quantity,
         type: dto.type ?? "outbound_ship",
+        // Without this the ledger row records a change with no cause, so "which
+        // document consumed this batch" has no answer.
+        referenceId: found.id,
+        referenceType: "batch",
         notes: dto.notes,
         userId,
       });

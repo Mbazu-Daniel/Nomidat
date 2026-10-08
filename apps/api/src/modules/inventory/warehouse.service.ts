@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, asc, desc, eq, sql } from "@nomidat/db";
+import { and, asc, desc, eq } from "@nomidat/db";
 import { product, stock, stockMovement, warehouse } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import type { CreateWarehouseDto, UpdateWarehouseDto } from "./dto/warehouse.dto";
@@ -64,9 +64,7 @@ export class WarehouseService {
         unit: product.unit,
         variantId: stock.variantId,
         onHand: stock.onHand,
-        reserved: stock.reserved,
         inTransit: stock.inTransit,
-        available: sql<number>`${stock.onHand} - ${stock.reserved}`,
       })
       .from(stock)
       .innerJoin(product, eq(product.id, stock.productId))

@@ -39,14 +39,14 @@ export class InventoryController {
   @Get("products")
   @ApiOperation({ summary: "List products" })
   @ApiQuery({ name: "limit", required: false, type: Number, maximum: 50 })
-  async listProducts(
+  async getProducts(
     @Param("organizationId") organizationId: string,
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
     @Query("offset", new ParseIntPipe({ optional: true })) offset?: number,
   ) {
     await this.authorize(req, organizationId);
-    return this.inventory.listProducts(organizationId, limit, offset);
+    return this.inventory.getProducts(organizationId, limit, offset);
   }
 
   @Get("products/:productId")

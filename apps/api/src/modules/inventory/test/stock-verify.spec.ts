@@ -8,10 +8,7 @@ import { createDbStub } from "../../../common/db/test/db.stub";
  */
 function ledgerStub(onHand: number) {
   return createDbStub(
-    [
-      [{ productId: "p1", warehouseId: "w1" }],
-      [{ onHand }],
-    ],
+    [[{ productId: "p1", warehouseId: "w1" }], [{ onHand }]],
     [[{ onHand: onHand }], [{ id: "m1", previousBalance: onHand }]],
   );
 }
@@ -80,7 +77,11 @@ describe("stock movement ledger", () => {
       type: "return_in",
     });
 
-    expect(inserts.mock.calls[1][0]).toMatchObject({ previousBalance: 0, newBalance: 4, type: "return_in" });
+    expect(inserts.mock.calls[1][0]).toMatchObject({
+      previousBalance: 0,
+      newBalance: 4,
+      type: "return_in",
+    });
   });
 
   it("writes the new balance onto the stock level as well as the ledger", async () => {
@@ -94,7 +95,11 @@ describe("stock movement ledger", () => {
       type: "inbound_receive",
     });
 
-    expect(inserts.mock.calls[0][0]).toMatchObject({ productId: "p1", warehouseId: "w1", onHand: 15 });
+    expect(inserts.mock.calls[0][0]).toMatchObject({
+      productId: "p1",
+      warehouseId: "w1",
+      onHand: 15,
+    });
   });
 
   it("reports zero on hand for a product that has never been stocked", async () => {
