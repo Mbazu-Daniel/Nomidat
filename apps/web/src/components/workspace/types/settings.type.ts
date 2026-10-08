@@ -21,7 +21,7 @@ export type ExpenseCategory = {
 };
 export type ExpenseDetails = {
   id: string;
-  amountKobo: number;
+  amountMinor: number;
   description: string | null;
   categoryId: string | null;
   spentAt: string;
@@ -48,29 +48,29 @@ export type LoginSession = {
 };
 export type ReceiptData = {
   receiptNumber: string;
-  sale: { customer: string | null; currency: string; createdAt: string; totalKobo: number };
+  sale: { customer: string | null; currency: string; createdAt: string; totalMinor: number };
   items: {
     id: string;
     description: string;
     quantity: number;
-    unitPriceKobo: number;
-    totalKobo: number;
+    unitPriceMinor: number;
+    totalMinor: number;
   }[];
   payments: {
     id: string;
-    amountKobo: number;
+    amountMinor: number;
     method: string;
     reference?: string | null;
     paidAt: string;
   }[];
-  paidKobo: number;
-  balanceKobo: number;
+  paidMinor: number;
+  balanceMinor: number;
 };
 
 export interface SettingsNavigationProps {
   value: string;
   onChange: (value: string) => void;
-  disabled: boolean;
+  disabled?: boolean;
   hasBusiness: boolean;
   canManage: boolean;
   canWrite: boolean;
