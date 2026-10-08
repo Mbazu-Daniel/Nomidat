@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { createApiRequest } from "@/lib/api";
+import { formatMoney } from "@/lib/money";
+import { useLoadedResource } from "@/lib/use-api-resource";
 import type { ReceiptData, BusinessProfile } from "./types/settings.type";
 export function SaleReceipt({
   organizationId,
@@ -9,31 +10,27 @@ export function SaleReceipt({
   organizationId: string;
   saleId: string;
 }) {
-  const [receipt, setReceipt] = useState<ReceiptData>();
-  const [business, setBusiness] = useState<BusinessProfile>();
-  const [error, setError] = useState("");
-  useEffect(() => {
-    let cancelled = false;
-    const path = `/organizations/${organizationId}`;
-    void Promise.all([
-      createApiRequest<ReceiptData>(`${path}/sales/${saleId}/receipt`),
-      createApiRequest<BusinessProfile>(path),
-    ])
-      .then(([data, profile]) => {
-        if (!cancelled) {
-          setReceipt(data);
-          setBusiness(profile);
-        }
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [organizationId, saleId]);
-  const money = (amount: number) =>
-    `${receipt?.sale.currency ?? "NGN"} ${(amount / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const { data, error } = useLoadedResource(
+    async () => {
+      const path = `/organizations/${organizationId}`;
+      const [receipt, business] = await Promise.all([
+        createApiRequest<ReceiptData>(`${path}/sales/${saleId}/receipt`),
+        createApiRequest<BusinessProfile>(path),
+      ]);
+      return { receipt, business };
+    },
+    [organizationId, saleId],
+    { receipt: undefined, business: undefined } as {
+      receipt: ReceiptData | undefined;
+      business: BusinessProfile | undefined;
+    },
+  );
+  const receipt = data.receipt;
+  const business = data.business;
+  // The sale carries its own currency, so the formatting follows it. A fixed /100
+  // and a fixed locale printed dollars to two decimals with a Nigerian grouping
+  // pattern, which reads as a different amount rather than as a wrong format.
+  const money = (amount: number) => formatMoney(amount, receipt?.sale.currency ?? "NGN");
   return (
     <main className="receipt-page">
       <div className="receipt-controls">
@@ -76,8 +73,8 @@ export function SaleReceipt({
                 <tr key={item.id}>
                   <td>{item.description}</td>
                   <td>{item.quantity}</td>
-                  <td>{money(item.unitPriceKobo)}</td>
-                  <td>{money(item.totalKobo)}</td>
+                  <td>{money(item.unitPriceMinor)}</td>
+                  <td>{money(item.totalMinor)}</td>
                 </tr>
               ))}
             </tbody>
@@ -85,15 +82,15 @@ export function SaleReceipt({
           <dl className="receipt-totals">
             <div>
               <dt>Sale total</dt>
-              <dd>{money(receipt.sale.totalKobo)}</dd>
+              <dd>{money(receipt.sale.totalMinor)}</dd>
             </div>
             <div>
               <dt>Paid</dt>
-              <dd>{money(receipt.paidKobo)}</dd>
+              <dd>{money(receipt.paidMinor)}</dd>
             </div>
             <div>
               <dt>Balance outstanding</dt>
-              <dd>{money(receipt.balanceKobo)}</dd>
+              <dd>{money(receipt.balanceMinor)}</dd>
             </div>
           </dl>
           <h2>Payment history</h2>
@@ -103,7 +100,7 @@ export function SaleReceipt({
             <div className="receipt-payment-list">
               {receipt.payments.map((payment) => (
                 <div key={payment.id}>
-                  <strong>{money(payment.amountKobo)}</strong>
+                  <strong>{money(payment.amountMinor)}</strong>
                   <p>
                     {payment.method} · {new Date(payment.paidAt).toLocaleString()}
                   </p>

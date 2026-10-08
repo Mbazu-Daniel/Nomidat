@@ -1,6 +1,7 @@
 import { Select } from "@base-ui/react/select";
 import {
   IconBuildingStore,
+  IconWallet,
   IconUsers,
   IconTags,
   IconCreditCard,
@@ -9,6 +10,9 @@ import {
   IconUserCircle,
   IconChevronDown,
   IconCheck,
+  IconBell,
+  IconActivity,
+  IconWebhook,
 } from "@tabler/icons-react";
 import type { SettingsNavigationProps } from "./types/settings.type";
 
@@ -33,6 +37,7 @@ export function SettingsNavigation({
         },
         { value: "staff", label: "Staff & permissions", icon: IconUsers, visible: hasBusiness },
         { value: "categories", label: "Expense categories", icon: IconTags, visible: hasBusiness },
+        { value: "wallet", label: "Balance & payouts", icon: IconWallet, visible: hasBusiness },
         {
           value: "payments",
           label: "Payment settings",
@@ -50,6 +55,19 @@ export function SettingsNavigation({
           label: "Business access",
           icon: IconKey,
           visible: hasBusiness && hasAccess,
+        },
+      ].filter((item) => item.visible),
+    },
+    {
+      label: "Platform",
+      items: [
+        { value: "inbox", label: "Announcements & inbox", icon: IconBell, visible: hasBusiness },
+        { value: "activity", label: "Activity log", icon: IconActivity, visible: hasBusiness },
+        {
+          value: "webhooks",
+          label: "Webhooks",
+          icon: IconWebhook,
+          visible: hasBusiness && canManage,
         },
       ].filter((item) => item.visible),
     },

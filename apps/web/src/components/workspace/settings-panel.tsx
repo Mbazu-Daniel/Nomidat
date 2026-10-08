@@ -5,104 +5,49 @@ import { BusinessProfileEditor } from "./business-profile-editor";
 import { ExpenseCategories } from "./expense-categories";
 import { BusinessAccessActions } from "./business-access-actions";
 import { PaymentVerification } from "./payment-verification";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useApiResource } from "@/lib/use-api-resource";
 import { StaffPanel } from "./staff-panel";
-import { createApiRequest } from "@/lib/api";
+import { WalletPanel } from "./wallet-panel";
+import { AuditLogPanel } from "./audit-log-panel";
+import { InboxPanel } from "./inbox-panel";
+import { WebhooksPanel } from "./webhooks-panel";
+import "./engagement.css";
 
 export function SettingsPanel({ organizationId }: { organizationId: string }) {
   const [section, setSection] = useState(organizationId ? "profile" : "account");
-  const [role, setRole] = useState("");
+  const access = useApiResource<{ role: string }>(
+    organizationId ? `/organizations/${organizationId}/access` : null,
+    { role: "" },
+  );
+  const role = access.data.role;
   const canManage = role.split(",").some((value) => ["owner", "admin"].includes(value));
   const canWrite = canWriteArea(role, "sales");
-  const [connected, setConnected] = useState(false);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const path = `/organizations/${organizationId}/business-profile`;
-  useEffect(() => {
-    if (!organizationId) return;
-    let cancelled = false;
-    void createApiRequest<{ role: string }>(`/organizations/${organizationId}/access`)
-      .then((data) => {
-        if (!cancelled) setRole(data.role);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    void createApiRequest<{ paystackConnected: boolean }>(path)
-      .then((result) => {
-        if (!cancelled) setConnected(result.paystackConnected);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [organizationId, path]);
+  const error = access.error;
   function renderPaymentSettings() {
     if (!canManage) return null;
+    // No key form on purpose. Payments run on the platform's own Paystack
+    // account and tenants are paid out from the platform wallet, so there is no
+    // per-tenant secret to collect. The old form accepted a key that nothing
+    // read and then reported "Connected".
     return (
-      <form
-        className="workspace-card workspace-form"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          const form = event.currentTarget;
-          const secretKey = new FormData(form).get("key");
-          setBusy(true);
-          setError("");
-          setSaved(false);
-          try {
-            await createApiRequest(path + "/payment-key", {
-              method: "PUT",
-              body: JSON.stringify({ secretKey }),
-            });
-            setConnected(true);
-            setSaved(true);
-            form.reset();
-          } catch (reason) {
-            setError((reason as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <h2>
-          Paystack{" "}
-          <span className="workspace-badge">{connected ? "Connected" : "Not connected"}</span>
-        </h2>
+      <section className="workspace-card">
+        <h2>Payments</h2>
         <p className="workspace-readonly">
-          Only a business owner or admin can update these credentials.
+          Card payments are processed on the Nomidat platform account. Payouts are sent to the
+          payout account you registered, and you can track them in Wallet.
         </p>
-        <label>
-          Secret key
-          <input
-            type="password"
-            name="key"
-            autoComplete="off"
-            required
-            pattern="sk_(test|live)_[A-Za-z0-9]+"
-            placeholder="sk_test_…"
-            maxLength={200}
-          />
-          <small>Your key is encrypted and never shown again.</small>
-        </label>
-        {error && (
-          <p role="alert" className="workspace-error">
-            {error}
-          </p>
-        )}
-        {saved && <p role="status">Paystack key saved.</p>}
         <div className="workspace-actions">
-          <button className="workspace-primary" disabled={busy}>
-            {busy ? "Saving…" : "Save payment settings"}
-          </button>
+          <a className="workspace-primary" href="#wallet">
+            Go to Wallet
+          </a>
         </div>
-      </form>
+      </section>
     );
   }
   function renderSection() {
     if (section === "account") return <AccountPanel />;
+    if (section === "wallet") return <WalletPanel organizationId={organizationId} />;
     if (!organizationId) return null;
     switch (section) {
       case "profile":
@@ -135,6 +80,12 @@ export function SettingsPanel({ organizationId }: { organizationId: string }) {
             />
           )
         );
+      case "inbox":
+        return <InboxPanel key={organizationId} organizationId={organizationId} />;
+      case "activity":
+        return <AuditLogPanel key={organizationId} organizationId={organizationId} />;
+      case "webhooks":
+        return <WebhooksPanel key={organizationId} organizationId={organizationId} />;
       default:
         return null;
     }
@@ -150,7 +101,6 @@ export function SettingsPanel({ organizationId }: { organizationId: string }) {
       <SettingsNavigation
         value={section}
         onChange={setSection}
-        disabled={busy}
         hasBusiness={Boolean(organizationId)}
         canManage={canManage}
         canWrite={canWrite}

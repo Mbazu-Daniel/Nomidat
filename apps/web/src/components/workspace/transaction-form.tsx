@@ -1,3 +1,5 @@
+import { useCurrency } from "@/lib/currency-context";
+import { formatMoney, parseMoneyToMinor } from "@/lib/money";
 import {
   TransactionCustomerFields,
   TransactionMoneyFields,
@@ -11,10 +13,12 @@ import {
   hasIncompleteItems,
 } from "./transaction-data";
 import { TransactionLineItem } from "./transaction-line-item";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
-import { formatNaira } from "@/data/nomidat";
-import type { BusinessRecord, FormProps, LineItem } from "./types";
+import { getOrganizationProducts, type Product } from "@/data/catalog";
+import { getOrganizationContacts, type PosContact } from "@/data/pos";
+import { useLoadedResource } from "@/lib/use-api-resource";
+import type { FormProps, LineItem } from "./types";
 
 export function TransactionForm({
   organizationId,
@@ -24,8 +28,20 @@ export function TransactionForm({
   pictureItems,
   invoiceDraft,
 }: FormProps) {
-  const [contacts, setContacts] = useState<BusinessRecord[]>([]);
-  const [products, setProducts] = useState<BusinessRecord[]>([]);
+  const currency = useCurrency();
+  const loaded = useLoadedResource(
+    async () => {
+      const [contacts, products] = await Promise.all([
+        getOrganizationContacts(organizationId),
+        getOrganizationProducts(organizationId),
+      ]);
+      return { contacts, products };
+    },
+    [organizationId],
+    { contacts: [] as PosContact[], products: [] as Product[] },
+  );
+  const contacts = loaded.data.contacts;
+  const products = loaded.data.products;
   const [items, setItems] = useState<LineItem[]>(() => initialTransactionItems(pictureItems));
   const [tax, setTax] = useState<number | null>(() => draftMoney(invoiceDraft?.taxNaira));
   const [discount, setDiscount] = useState<number | null>(() =>
@@ -34,25 +50,6 @@ export function TransactionForm({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const total = transactionTotal(items, tax, discount);
-  useEffect(() => {
-    let cancelled = false;
-    void Promise.all([
-      createApiRequest<BusinessRecord[]>(`/organizations/${organizationId}/contacts`),
-      createApiRequest<BusinessRecord[]>(`/organizations/${organizationId}/products?limit=50`),
-    ])
-      .then(([people, stock]) => {
-        if (!cancelled) {
-          setContacts(people);
-          setProducts(stock);
-        }
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [organizationId]);
   function updateItem(key: string, patch: Partial<LineItem>) {
     setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
   }
@@ -70,13 +67,16 @@ export function TransactionForm({
           return;
         }
         const data = new FormData(event.currentTarget);
-        const paymentAmountKobo = Math.round(Number(data.get("paid") || 0) * 100);
-        if (paymentAmountKobo > total) {
+        // Parsed against the business's own currency: a fixed ×100 would multiply
+        // a typed amount by the wrong factor in any currency without hundredths.
+        const paymentAmountMinor =
+          parseMoneyToMinor(String(data.get("paid") ?? "0"), currency) ?? 0;
+        if (paymentAmountMinor > total) {
           setError("Payment cannot exceed the total.");
           return;
         }
         setSaving(true);
-        const body = transactionPayload(data, items, section, tax, discount, paymentAmountKobo);
+        const body = transactionPayload(data, items, section, tax, discount, paymentAmountMinor);
         try {
           await createApiRequest(`/organizations/${organizationId}/${section}`, {
             method: "POST",
@@ -124,7 +124,7 @@ export function TransactionForm({
                 productId: "",
                 description: "",
                 quantity: 1,
-                unitPriceKobo: 0,
+                unitPriceMinor: 0,
               },
             ])
           }
@@ -151,7 +151,7 @@ export function TransactionForm({
           </label>
         )}
         <p className="workspace-total">
-          Total <strong>{formatNaira(total / 100)}</strong>
+          Total <strong>{formatMoney(total, currency)}</strong>
         </p>
       </fieldset>
       {error && (

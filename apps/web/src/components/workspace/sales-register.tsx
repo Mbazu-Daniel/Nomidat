@@ -1,9 +1,12 @@
 import { IconArrowUpRight } from "@tabler/icons-react";
-import { formatInvoiceMoney } from "./invoice-format";
+import { formatMoney } from "@/lib/money";
+import { useCurrency } from "@/lib/currency-context";
 import type { SalesRegisterProps } from "./types/workspace.type";
 import "./sales-register.css";
 
 export function SalesRegister({ rows, onSelect }: SalesRegisterProps) {
+  // What was paid and what is still owed, in the business's own currency.
+  const currency = useCurrency();
   return (
     <div className="workspace-table-scroll sales-register">
       <table>
@@ -22,9 +25,9 @@ export function SalesRegister({ rows, onSelect }: SalesRegisterProps) {
         </thead>
         <tbody>
           {rows.map((row) => {
-            const total = row.totalKobo ?? 0;
-            const paid = row.paidKobo ?? 0;
-            const balance = row.balanceKobo ?? Math.max(0, total - paid);
+            const total = row.totalMinor ?? 0;
+            const paid = row.paidMinor ?? 0;
+            const balance = row.balanceMinor ?? Math.max(0, total - paid);
             const status = paymentStatus(row.status, balance, paid);
             const reference =
               row.saleReference ?? `SALE-${row.id.replaceAll("-", "").slice(-12).toUpperCase()}`;
@@ -65,16 +68,16 @@ export function SalesRegister({ rows, onSelect }: SalesRegisterProps) {
                   )}
                 </td>
                 <td className="sales-money" data-label="Total">
-                  {formatInvoiceMoney(total)}
+                  {formatMoney(total, currency)}
                 </td>
                 <td className="sales-money" data-label="Paid">
-                  {formatInvoiceMoney(paid)}
+                  {formatMoney(paid, currency)}
                 </td>
                 <td
                   data-label="Balance"
                   className={`sales-money ${balance > 0 ? "sales-owed" : ""}`}
                 >
-                  {formatInvoiceMoney(balance)}
+                  {formatMoney(balance, currency)}
                 </td>
                 <td data-label="Status">
                   <span
