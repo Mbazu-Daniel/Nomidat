@@ -48,7 +48,7 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-export function createIndexedDbSnapshotStore(): SnapshotStore {
+function createIndexedDbSnapshotStore(): SnapshotStore {
   return {
     async read<T>(key: string) {
       const row = await withStore<CachedSnapshot<T> & { key: string }>("readonly", (store) =>
@@ -69,7 +69,7 @@ export function createIndexedDbSnapshotStore(): SnapshotStore {
  * Memory fallback for private browsing, where IndexedDB may be blocked.
  * The session still works; it just does not survive a reload.
  */
-export function createMemorySnapshotStore(): SnapshotStore {
+function createMemorySnapshotStore(): SnapshotStore {
   const rows = new Map<string, CachedSnapshot<unknown>>();
   return {
     async read<T>(key: string) {

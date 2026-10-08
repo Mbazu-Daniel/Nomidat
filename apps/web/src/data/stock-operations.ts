@@ -143,7 +143,7 @@ export const receiveReturn = (organizationId: string, returnId: string, warehous
     { method: "POST" },
   );
 
-export interface PurchaseOrderLine {
+interface PurchaseOrderLine {
   id: string;
   productId: string;
   variantId: string | null;
@@ -152,7 +152,7 @@ export interface PurchaseOrderLine {
   productName: string;
 }
 
-export interface PurchaseOrderDetail extends PurchaseOrder {
+interface PurchaseOrderDetail extends PurchaseOrder {
   items: PurchaseOrderLine[];
 }
 

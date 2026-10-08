@@ -1,6 +1,6 @@
 import { createApiRequest } from "@/lib/api";
 
-export interface PlatformOverview {
+interface PlatformOverview {
   organizationCount: number;
   userCount: number;
   orderCount: number;

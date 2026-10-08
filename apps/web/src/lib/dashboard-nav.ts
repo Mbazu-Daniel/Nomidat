@@ -129,7 +129,7 @@ export function filterDashboardNav(role: string, items: DashboardNavItem[] = DAS
   return items.filter((item) => canAccess(role, item.permission));
 }
 
-export function navHref(to: OrgRoutePath, orgSlug: string): string {
+function navHref(to: OrgRoutePath, orgSlug: string): string {
   const section = to.slice("/$orgSlug".length);
   return `/${orgSlug}${section}`;
 }

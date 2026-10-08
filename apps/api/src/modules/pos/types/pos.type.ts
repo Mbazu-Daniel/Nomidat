@@ -15,15 +15,15 @@ export const ONLINE_POS_PAYMENT_METHODS: ReadonlySet<PosPaymentMethod> = new Set
 ]);
 
 /** Channel a sale was created by, matching the Order source vocabulary. */
-export const ORDER_SOURCES = ["manual", "online", "pos"] as const;
-export type OrderSource = (typeof ORDER_SOURCES)[number];
+const ORDER_SOURCES = ["manual", "online", "pos"] as const;
+type OrderSource = (typeof ORDER_SOURCES)[number];
 
 /** Lifecycle of an order. */
-export const ORDER_STATUSES = ["pending", "paid", "cancelled", "refunded"] as const;
-export type OrderStatus = (typeof ORDER_STATUSES)[number];
+const ORDER_STATUSES = ["pending", "paid", "cancelled", "refunded"] as const;
+type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 /** Two variants of one product are two lines, so identity is the pair. */
-export function cartLineKey(line: { productId: string; variantId?: string | null }) {
+function cartLineKey(line: { productId: string; variantId?: string | null }) {
   return `${line.productId}:${line.variantId ?? ""}`;
 }
 

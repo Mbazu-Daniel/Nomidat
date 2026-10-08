@@ -5,7 +5,7 @@ import { ArrayMaxSize, IsArray, IsEmail, IsIn, IsOptional, IsString, IsUrl } fro
  * passed straight through to `/transaction/initialize`, and an unvalidated string
  * would let a caller request a channel we have no handling for.
  */
-export const PAYSTACK_CHANNELS = ["card", "bank", "ussd", "mobile_money"] as const;
+const PAYSTACK_CHANNELS = ["card", "bank", "ussd", "mobile_money"] as const;
 
 export class InitializePaystackPaymentDto {
   @IsString()

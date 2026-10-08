@@ -5,7 +5,7 @@ import { createApiRequest } from "@/lib/api";
  * exactly; if the API ever widens what a share link returns, the compiler points
  * at this file rather than the page silently rendering whatever arrived.
  */
-export interface PublicInvoice {
+interface PublicInvoice {
   invoiceNumber: string;
   status: string;
   currency: string;
@@ -26,7 +26,7 @@ export interface PublicInvoice {
   }[];
 }
 
-export interface ShareCodeResult {
+interface ShareCodeResult {
   shareCode: string;
   updatedAt: string;
 }

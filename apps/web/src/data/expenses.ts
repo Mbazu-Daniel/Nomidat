@@ -8,7 +8,7 @@ import { createApiRequest } from "@/lib/api";
  */
 const base = (organizationId: string) => `/organizations/${encodeURIComponent(organizationId)}`;
 
-export interface ExpenseCategory {
+interface ExpenseCategory {
   id: string;
   name: string;
 }
@@ -17,18 +17,18 @@ export function getExpenseCategories(organizationId: string) {
   return createApiRequest<ExpenseCategory[]>(`${base(organizationId)}/expense-categories`);
 }
 
-export function getExpense(organizationId: string, expenseId: string) {
+function getExpense(organizationId: string, expenseId: string) {
   return createApiRequest<unknown>(`${base(organizationId)}/expenses/${encodeURIComponent(expenseId)}`);
 }
 
-export function saveExpense(organizationId: string, expenseId: string, body: Record<string, unknown>) {
+function saveExpense(organizationId: string, expenseId: string, body: Record<string, unknown>) {
   return createApiRequest<unknown>(`${base(organizationId)}/expenses/${encodeURIComponent(expenseId)}`, {
     method: "PATCH",
     body: JSON.stringify(body),
   });
 }
 
-export function deleteExpense(organizationId: string, expenseId: string) {
+function deleteExpense(organizationId: string, expenseId: string) {
   return createApiRequest<void>(
     `${base(organizationId)}/expenses/${encodeURIComponent(expenseId)}`,
     { method: "DELETE" },

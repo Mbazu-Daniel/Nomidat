@@ -2,7 +2,7 @@
  * Canonical action names. Kept as a union so a typo in a call site is a compile
  * error rather than a silently missing row in the audit trail.
  */
-export const AUDIT_ACTIONS = [
+const AUDIT_ACTIONS = [
   "invoice.created",
   "invoice.shared",
   "invoice.share_revoked",

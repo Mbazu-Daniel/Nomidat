@@ -77,7 +77,7 @@ export function signWebhookPayload(secret: string, body: string, timestamp: numb
   return `t=${timestamp},v1=${signature}`;
 }
 
-export function verifyWebhookSignature(
+function verifyWebhookSignature(
   secret: string,
   body: string,
   header: string,

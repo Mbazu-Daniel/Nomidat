@@ -10,19 +10,332 @@
         "count": 1
       }
     },
+    "apps/api/src/common/better-auth/send-phone-otp.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
     "apps/api/src/common/helpers/auth-http.ts": {
       "crap_critical": {
         "count": 1
       }
     },
-    "apps/api/src/modules/channel/channel-inbound.service.ts": {
+    "apps/api/src/modules/audit/audit.service.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/business-profile/member-profile.service.ts": {
       "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/business/business-auth.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/channel/channel-crypto.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/channel/channel-inbound.service.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/channel/channel.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/channel/read-media.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/action-requirements.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/action-review.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/actions.service.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/api/src/modules/conversational/ai.service.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/channel-picture-reader.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/conversational.service.ts": {
+      "crap_critical": {
+        "count": 2
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/picture-action.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/api/src/modules/conversational/picture-actions.service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/speech-transcriber.ts": {
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/api/src/modules/engagement/webhook-signing.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/expenses/expenses.service.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/api/src/modules/inventory/batch.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/catalog.service.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/api/src/modules/inventory/cycle-count.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/inventory.service.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/api/src/modules/inventory/purchase-order.service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/return.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/serial-number.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/variant.service.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/warehouse.service.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/invitation/phone-invitation.service.ts": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "apps/api/src/modules/invoices/invoice-delivery.service.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/invoices/invoice-pdf.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/member/member.controller.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/payments/payment-ledger.service.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/payments/providers/paystack/paystack.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/payouts/payout-account.service.ts": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/api/src/modules/payouts/paystack-platform.client.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/picture-import/picture-import.service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/picture-import/picture-schema.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/platform/platform-database.service.ts": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "apps/api/src/modules/pos/pos.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/reports/inventory-health.service.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/sales/sale-pricing.service.ts": {
+      "complexity_moderate": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/sales/sales-queries.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/sales/sales-serial-claims.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/domain-verification.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/hostname.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/public-storefront.controller.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/sanitize-css.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-cart.service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-catalog.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-checkout.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-rate-limit.guard.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-resolver.service.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-settings.service.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
         "count": 1
       }
     },
     "apps/api/src/modules/telegram/telegram.client.ts": {
       "crap_moderate": {
-        "count": 1
+        "count": 2
       }
     },
     "apps/api/src/modules/telegram/telegram.controller.ts": {
@@ -31,11 +344,266 @@
       }
     },
     "apps/api/src/modules/whatsapp/whatsapp.client.ts": {
+      "crap_high": {
+        "count": 1
+      },
       "crap_moderate": {
         "count": 1
       }
     },
     "apps/api/src/modules/whatsapp/whatsapp.controller.ts": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/public/sw.js": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/auth/auth-shell.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/auth/onboarding-fields.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/auth/onboarding.tsx": {
+      "complexity_high": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/web/src/components/inventory/batch-register-form.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/batches-panel.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/web/src/components/inventory/catalog-panel.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/inventory/catalog-row-actions.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/cycle-count-form.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/movements-panel.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/operations-panel.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/web/src/components/inventory/product-option-select.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/purchase-order-form.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/inventory/receive-order-button.tsx": {
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/web/src/components/inventory/serial-register-form.tsx": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/inventory/serials-panel.tsx": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/inventory/stock-levels-panel.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/stock-line-editor.tsx": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/inventory/transfer-form.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/unit-conversion-form.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/warehouses-panel.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/invoices/public-invoice-view.tsx": {
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/landing/pricing-section.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-cart.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-catalog.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-checkout.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-receipt.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-serial-picker.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-terminal.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/shell/header.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-checkout.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-domain-panel.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-home.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-product.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-seo.ts": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-settings-panel.tsx": {
+      "complexity_high": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/ui/form.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/ui/sheet.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/accept-invitation.tsx": {
       "crap_high": {
         "count": 2
       },
@@ -43,13 +611,388 @@
         "count": 2
       }
     },
-    "apps/web/src/lib/api.ts": {
+    "apps/web/src/components/workspace/account-panel.tsx": {
+      "crap_critical": {
+        "count": 1
+      },
       "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/audit-log-panel.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/business-access-actions.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/business-profile-editor.tsx": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/channel-provider-cards.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/channels-panel.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/workspace/chat-composer.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/chat-panel.tsx": {
+      "crap_high": {
+        "count": 3
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/create-business.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/dashboard-charts.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/expense-categories.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/expense-editor.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/expenses-fields.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/inbox-panel.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/inventory-fields.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/inventory-picture-review.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invitation-inbox.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-detail.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-document.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-edit-form.tsx": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/workspace/invoice-offers.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-register.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/overview-panel.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/payout-forms.tsx": {
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/workspace/picture-import.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/workspace/platform-console.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/product-categories.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/product-editor.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-detail.tsx": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/workspace/record-form-data.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-row.tsx": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-search.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/records-panel.tsx": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/reports-panel.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/sale-detail.tsx": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/sale-receipt.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/sales-register.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/settings-navigation.tsx": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/settings-panel.tsx": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/staff-invite-form.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/staff-member-row.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/staff-panel.tsx": {
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/table-pagination.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-data.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-fields.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/workspace/transaction-form.tsx": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-line-item.tsx": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/use-voice-note.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/variant-editor.tsx": {
+      "crap_moderate": {
+        "count": 3
+      }
+    },
+    "apps/web/src/components/workspace/wallet-panel.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/webhooks-panel.tsx": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/workspace/workspace-page.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 2
+      },
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/data/serials.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/lib/active-org.ts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/lib/api.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/lib/offline/register-service-worker.ts": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/lib/permissions.ts": {
+      "crap_high": {
         "count": 1
       }
     },
     "apps/web/src/lib/telegram-session.ts": {
       "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/routes/$orgSlug/route.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      },
+      "crap_moderate": {
         "count": 1
       }
     },
@@ -70,17 +1013,430 @@
         "count": 1
       }
     },
+    "apps/api/src/common/better-auth/send-phone-otp.ts\u0000sendPhoneOTP": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
     "apps/api/src/common/helpers/auth-http.ts\u0000sanitizeAuthError": {
       "crap_critical": {
         "count": 1
       }
     },
-    "apps/api/src/modules/channel/channel-inbound.service.ts\u0000createInboundReply": {
+    "apps/api/src/modules/audit/audit.service.ts\u0000record": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/business-profile/member-profile.service.ts\u0000saveProfile": {
       "crap_moderate": {
         "count": 1
       }
     },
+    "apps/api/src/modules/business/business-auth.service.ts\u0000getSession": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/channel/channel-crypto.ts\u0000getLinkCodeFromText": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/channel/channel-inbound.service.ts\u0000createInboundReply": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/channel/channel.service.ts\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/channel/read-media.ts\u0000readChannelMedia": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/action-requirements.ts\u0000sale": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/action-review.ts\u0000reviewCreateInvoice": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/actions.service.ts\u0000checkInventory": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/actions.service.ts\u0000executeAction": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/actions.service.ts\u0000recordExpense": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/actions.service.ts\u0000recordSale": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/ai.service.ts\u0000transcribeVoice": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/ai.service.ts\u0000understand": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/channel-picture-reader.ts\u0000read": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/conversational.service.ts\u0000createInboundMessage": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/conversational.service.ts\u0000createMessage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/conversational.service.ts\u0000processInbound": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/conversational.service.ts\u0000updateConfirmation": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/picture-action.ts\u0000expenseAction": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/picture-action.ts\u0000invoiceAction": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/picture-action.ts\u0000pictureAction": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/picture-action.ts\u0000productAction": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/picture-actions.service.ts\u0000execute": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/speech-transcriber.ts\u0000deepgram": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/speech-transcriber.ts\u0000openai": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/conversational/speech-transcriber.ts\u0000transcribe": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/engagement/webhook-signing.ts\u0000isPrivateAddress": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/engagement/webhook-signing.ts\u0000verifyWebhookSignature": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/expenses/expenses.service.ts\u0000create": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/expenses/expenses.service.ts\u0000createCategory": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/expenses/expenses.service.ts\u0000update": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/batch.service.ts\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/catalog.service.ts\u0000assignProductCategories": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/catalog.service.ts\u0000createCategory": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/catalog.service.ts\u0000createSupplier": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/catalog.service.ts\u0000updateCategory": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/catalog.service.ts\u0000updateSupplier": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/cycle-count.service.ts\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/inventory.service.ts\u0000createProduct": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/inventory.service.ts\u0000updateProduct": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/purchase-order.service.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/return.service.ts\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/serial-number.service.ts\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/variant.service.ts\u0000create": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/variant.service.ts\u0000update": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/inventory/warehouse.service.ts\u0000updateWarehouse": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/invitation/phone-invitation.service.ts\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/invitation/phone-invitation.service.ts\u0000phoneUser": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/invoices/invoice-delivery.service.ts\u0000deliverChannel": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/invoices/invoice-delivery.service.ts\u0000getSignedPdf": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/invoices/invoice-pdf.ts\u0000drawHeader": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/invoices/invoice-pdf.ts\u0000drawItems": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/member/member.controller.ts\u0000<anonymous>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/payments/payment-ledger.service.ts\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/payments/providers/paystack/paystack.service.ts\u0000assertTransactionMatches": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/payouts/payout-account.service.ts\u0000save": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/payouts/payout-account.service.ts\u0000setFeeBps": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/payouts/paystack-platform.client.ts\u0000getCapabilities": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/picture-import/picture-import.service.ts\u0000extract": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/picture-import/picture-schema.ts\u0000validatePicture": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/platform/platform-database.service.ts\u0000getOrganizationActivity": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/platform/platform-database.service.ts\u0000getOverview": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/pos/pos.service.ts\u0000recordSale": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/reports/inventory-health.service.ts\u0000getInventoryTotals": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/sales/sale-pricing.service.ts\u0000<arrow>": {
+      "complexity_moderate": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/sales/sales-queries.service.ts\u0000getSales": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/sales/sales-serial-claims.ts\u0000claimSerials": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/domain-verification.service.ts\u0000assertClaimableHostname": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/hostname.ts\u0000normalizeHostname": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/public-storefront.controller.ts\u0000<anonymous>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/sanitize-css.ts\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/sanitize-css.ts\u0000sanitizeStorefrontCss": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-cart.service.ts\u0000addItem": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-catalog.service.ts\u0000getProducts": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-checkout.service.ts\u0000checkout": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-rate-limit.guard.ts\u0000canActivate": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-resolver.service.ts\u0000resolveHost": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-settings.service.ts\u0000getOverview": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/storefront/storefront-settings.service.ts\u0000update": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "apps/api/src/modules/telegram/telegram.client.ts\u0000createOutboundMessage": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/api/src/modules/telegram/telegram.client.ts\u0000getInboundMedia": {
       "crap_moderate": {
         "count": 1
       }
@@ -95,13 +1451,18 @@
         "count": 1
       }
     },
+    "apps/api/src/modules/whatsapp/whatsapp.client.ts\u0000getInboundMedia": {
+      "crap_high": {
+        "count": 1
+      }
+    },
     "apps/api/src/modules/whatsapp/whatsapp.controller.ts\u0000createWhatsAppWebhook": {
       "crap_moderate": {
         "count": 1
       }
     },
     "apps/api/src/modules/whatsapp/whatsapp.controller.ts\u0000getInboundMessage": {
-      "crap_high": {
+      "crap_critical": {
         "count": 1
       }
     },
@@ -110,18 +1471,854 @@
         "count": 1
       }
     },
-    "apps/api/src/modules/whatsapp/whatsapp.controller.ts\u0000getWhatsAppWebhookChallenge": {
+    "apps/web/public/sw.js\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/auth/auth-shell.tsx\u0000AuthField": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/auth/onboarding-fields.tsx\u0000ImagePicker": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/auth/onboarding.tsx\u0000Onboarding": {
+      "complexity_high": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/auth/onboarding.tsx\u0000createAccount": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/auth/onboarding.tsx\u0000saveProfile": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/auth/onboarding.tsx\u0000setBusinessField": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/batch-register-form.tsx\u0000BatchRegisterForm": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/batch-register-form.tsx\u0000submit": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/batches-panel.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/batches-panel.tsx\u0000BatchesPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/batches-panel.tsx\u0000consume": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/batches-panel.tsx\u0000expiryLabel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/catalog-panel.tsx\u0000CatalogCreateForm": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/catalog-panel.tsx\u0000CatalogPanel": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/catalog-panel.tsx\u0000submit": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/catalog-row-actions.tsx\u0000CatalogRowActions": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/cycle-count-form.tsx\u0000CycleCountForm": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/movements-panel.tsx\u0000MovementsPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/operations-panel.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 2
+      }
+    },
+    "apps/web/src/components/inventory/operations-panel.tsx\u0000OperationsPanel": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/operations-panel.tsx\u0000TransferAction": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/product-option-select.tsx\u0000ProductOptionSelect": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/purchase-order-form.tsx\u0000PurchaseOrderForm": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/purchase-order-form.tsx\u0000built": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/purchase-order-form.tsx\u0000submit": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/receive-order-button.tsx\u0000ReceiveOrderForm": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/receive-order-button.tsx\u0000items": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/receive-order-button.tsx\u0000submit": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/serial-register-form.tsx\u0000SerialRegisterForm": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/serial-register-form.tsx\u0000submit": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/serials-panel.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/serials-panel.tsx\u0000SerialsPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/stock-levels-panel.tsx\u0000StockLevelsPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/stock-line-editor.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/stock-line-editor.tsx\u0000parseCountedLine": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/transfer-form.tsx\u0000TransferForm": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/unit-conversion-form.tsx\u0000UnitConversionForm": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/inventory/warehouses-panel.tsx\u0000WarehousesPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/invoices/public-invoice-view.tsx\u0000ProposeOffer": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/invoices/public-invoice-view.tsx\u0000PublicInvoiceView": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/invoices/public-invoice-view.tsx\u0000submit": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/landing/pricing-section.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-cart.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-catalog.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-checkout.tsx\u0000PosCheckoutDialog": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-receipt.tsx\u0000PosReceiptDialog": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-serial-picker.tsx\u0000PosSerialPicker": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-terminal.tsx\u0000PosTerminal": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/pos/pos-terminal.tsx\u0000charge": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/shell/header.tsx\u0000Header": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-checkout.tsx\u0000StorefrontCheckout": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-checkout.tsx\u0000placeOrder": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-domain-panel.tsx\u0000verify": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-home.tsx\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-home.tsx\u0000StorefrontHome": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-product.tsx\u0000StorefrontProduct": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-product.tsx\u0000add": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-seo.ts\u0000storefrontMeta": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/storefront/storefront-settings-panel.tsx\u0000StorefrontSettingsPanel": {
+      "complexity_high": {
+        "count": 1
+      },
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/ui/form.tsx\u0000FormMessage": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/ui/sheet.tsx\u0000SheetContent": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/accept-invitation.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/accept-invitation.tsx\u0000AcceptInvitation": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/accept-invitation.tsx\u0000renderSignIn": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/accept-invitation.tsx\u0000renderSignedInInvitation": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/account-panel.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/account-panel.tsx\u0000AccountPanel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/audit-log-panel.tsx\u0000AuditLogPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/business-access-actions.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/business-access-actions.tsx\u0000renderConfirmation": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/business-profile-editor.tsx\u0000BusinessProfileEditor": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/business-profile-editor.tsx\u0000metadata": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/business-profile-editor.tsx\u0000renderProfileForm": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/channel-provider-cards.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/channels-panel.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/channels-panel.tsx\u0000ChannelLinkInstructions": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/channels-panel.tsx\u0000ChannelsPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/chat-composer.tsx\u0000ChatComposer": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/chat-panel.tsx\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      },
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/chat-panel.tsx\u0000ChatPanel": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/chat-panel.tsx\u0000send": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/create-business.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/create-business.tsx\u0000CreateBusiness": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/dashboard-charts.tsx\u0000SalesTrendChart": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/expense-categories.tsx\u0000EditableCategoryRow": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/expense-categories.tsx\u0000ExpenseCategories": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/expense-editor.tsx\u0000ExpenseEditor": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/expenses-fields.tsx\u0000ExpenseFields": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/inbox-panel.tsx\u0000InboxPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/inventory-fields.tsx\u0000ProductFields": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/inventory-picture-review.tsx\u0000InventoryPictureReview": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invitation-inbox.tsx\u0000InvitationInbox": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invitation-inbox.tsx\u0000respond": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-detail.tsx\u0000InvoiceDetailPanel": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-document.tsx\u0000InvoiceDocumentPreview": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-edit-form.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-edit-form.tsx\u0000InvoiceEditForm": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-offers.tsx\u0000decide": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/invoice-register.tsx\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/overview-panel.tsx\u0000OverviewPanel": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/payout-forms.tsx\u0000PayoutAccountForm": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/payout-forms.tsx\u0000WithdrawalForm": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/picture-import.tsx\u0000PictureImport": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/picture-import.tsx\u0000PictureReview": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/platform-console.tsx\u0000PlatformConsole": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/product-categories.tsx\u0000ProductCategories": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/product-editor.tsx\u0000ProductEditor": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-detail.tsx\u0000RecordDetail": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-detail.tsx\u0000renderCustomerFolder": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-detail.tsx\u0000renderRecordBody": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-form-data.ts\u0000inventory": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-row.tsx\u0000RecordRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-row.tsx\u0000recordTitle": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/record-search.ts\u0000matchesRecord": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/records-panel.tsx\u0000RecordToolbar": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/records-panel.tsx\u0000RecordsPanel": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/records-panel.tsx\u0000renderTable": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/reports-panel.tsx\u0000ReportsPanel": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/sale-detail.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/sale-detail.tsx\u0000SaleDetail": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/sale-detail.tsx\u0000renderWriteActions": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/sale-receipt.tsx\u0000SaleReceipt": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/sales-register.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/settings-navigation.tsx\u0000SettingsNavigation": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/settings-panel.tsx\u0000SettingsPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/settings-panel.tsx\u0000renderSection": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/staff-invite-form.tsx\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/staff-invite-form.tsx\u0000StaffInviteForm": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/staff-member-row.tsx\u0000StaffMemberRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/staff-panel.tsx\u0000StaffPanel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/staff-panel.tsx\u0000renderMembers": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/table-pagination.tsx\u0000TablePagination": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-data.ts\u0000transactionPayload": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-fields.tsx\u0000TransactionCustomerFields": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-fields.tsx\u0000TransactionMoneyFields": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-fields.tsx\u0000TransactionPictureTotal": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-form.tsx\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-form.tsx\u0000TransactionForm": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/transaction-line-item.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/use-voice-note.ts\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/use-voice-note.ts\u0000startRecording": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/variant-editor.tsx\u0000<arrow>": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/variant-editor.tsx\u0000VariantEditor": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/variant-editor.tsx\u0000createFrom": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/wallet-panel.tsx\u0000WalletPanel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/webhooks-panel.tsx\u0000WebhooksPanel": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/webhooks-panel.tsx\u0000delivery": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/workspace-page.tsx\u0000<arrow>": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/workspace-page.tsx\u0000WorkspacePage": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/workspace-page.tsx\u0000renderBusinessCreation": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/workspace-page.tsx\u0000renderBusinessSection": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/components/workspace/workspace-page.tsx\u0000renderStatus": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/data/serials.ts\u0000getSerials": {
+      "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/lib/active-org.ts\u0000resolveActiveOrg": {
       "crap_moderate": {
         "count": 1
       }
     },
     "apps/web/src/lib/api.ts\u0000createApiRequest": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/lib/api.ts\u0000toApiError": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/lib/offline/register-service-worker.ts\u0000isStoragePersistent": {
       "crap_moderate": {
+        "count": 1
+      }
+    },
+    "apps/web/src/lib/offline/register-service-worker.ts\u0000requestDurableStorage": {
+      "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/lib/permissions.ts\u0000canAccess": {
+      "crap_high": {
         "count": 1
       }
     },
     "apps/web/src/lib/telegram-session.ts\u0000createTelegramSession": {
       "crap_high": {
+        "count": 1
+      }
+    },
+    "apps/web/src/routes/$orgSlug/route.tsx\u0000OrgLayout": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/routes/$orgSlug/route.tsx\u0000loaded": {
+      "crap_moderate": {
         "count": 1
       }
     },
@@ -132,5 +2329,13 @@
     }
   },
   "runtime_coverage_findings": [],
-  "target_keys": []
+  "target_keys": [
+    "apps/web/src/lib/active-org.ts:high impact",
+    "apps/web/src/components/pos/pos-cart-state.ts:high impact",
+    "apps/web/src/components/workspace/transaction-data.ts:high impact",
+    "apps/api/src/modules/conversational/picture-action.ts:untested risk",
+    "apps/web/src/components/workspace/use-voice-note.ts:untested risk",
+    "apps/web/src/components/workspace/record-row.tsx:untested risk",
+    "apps/api/src/modules/storefront/sanitize-css.ts:untested risk"
+  ]
 }

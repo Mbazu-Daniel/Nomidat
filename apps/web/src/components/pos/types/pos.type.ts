@@ -15,7 +15,7 @@ export interface PosCartItem {
   serialCode: string | null;
 }
 
-export interface PosCartSummary {
+interface PosCartSummary {
   itemCount: number;
   subtotalMinor: number;
   totalMinor: number;

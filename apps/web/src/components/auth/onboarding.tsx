@@ -48,7 +48,7 @@ const TITLES: Record<Step, { title: string; subtitle: string }> = {
 };
 
 /** Names outside a-z0-9 are dropped, so a fully non-Latin name can reduce to "". */
-export function toWorkspaceSlug(businessName: string) {
+function toWorkspaceSlug(businessName: string) {
   const slug = businessName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")

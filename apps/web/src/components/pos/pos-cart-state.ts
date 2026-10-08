@@ -94,7 +94,7 @@ export function toCartLineInput(items: PosCartItem[]): PosCartLineInput[] {
   }));
 }
 
-export function findCartItem(
+function findCartItem(
   items: PosCartItem[],
   productId: string,
   variantId: string | null,
