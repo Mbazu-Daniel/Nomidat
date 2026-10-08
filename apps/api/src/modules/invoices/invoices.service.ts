@@ -1,29 +1,48 @@
 import { getInvoiceDocument } from "./invoice-document-query";
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { and, desc, eq } from "@nomidat/db";
-import { contact, invoice, invoiceItem, order, orderItem, product } from "@nomidat/db/schema";
+import { contact, invoice, invoiceItem, order, orderItem } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
-import type { CreateInvoiceDto } from "./dto";
+import { WebhookDispatchService } from "../engagement/webhook-dispatch.service";
+import { MoneyPolicyService } from "../money/money-policy.service";
+import type { CreateInvoiceDto, UpdateInvoiceDto } from "./dto";
+import { invoiceTotals, lockOpenInvoice, validateInvoiceTotals } from "./invoice-corrections";
+import {
+  buildInvoiceItems,
+  nextInvoiceNumber,
+  resolveCustomerId,
+  validateProducts,
+} from "./invoice-write";
+import type { InvoiceDocument } from "./types";
 
 const MAX_LIMIT = 50;
 
 // fallow-ignore-file code-duplication -- invoice and receipt projections intentionally repeat small database read models for stable response contracts.
 @Injectable()
 export class InvoicesService {
-  constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
+  private readonly logger = new Logger(InvoicesService.name);
+
+  constructor(
+    @Inject(DATABASE) private readonly db: DbHandle,
+    private readonly money: MoneyPolicyService,
+    private readonly webhooks: WebhookDispatchService,
+  ) {}
 
   async createInvoice(organizationId: string, input: CreateInvoiceDto) {
     const totals = this.getInvoiceTotals(input);
-    this.validateInvoiceTotals(input, totals);
+    validateInvoiceTotals(totals, input.items.length);
+    // The business's own currency, not a constant. An invoice raised in dollars
+    // and printed as naira is wrong on the one document the customer pays from.
+    const { currency } = await this.money.getPolicy(organizationId);
 
-    return this.db.transaction(async (tx) => {
-      const customerId = await this.resolveCustomerId(tx, organizationId, input.customerId);
-      await this.validateProducts(
+    const result = await this.db.transaction(async (tx) => {
+      const customerId = await resolveCustomerId(tx, organizationId, input.customerId);
+      await validateProducts(
         tx,
         organizationId,
         input.items.map((item) => item.productId),
       );
-      const number = await this.nextInvoiceNumber(tx, organizationId);
+      const number = nextInvoiceNumber();
 
       const [created] = await tx
         .insert(invoice)
@@ -32,69 +51,64 @@ export class InvoicesService {
           contactId: customerId,
           invoiceNumber: number,
           status: "issued",
-          subtotalKobo: totals.subtotalKobo,
-          discountKobo: totals.discountKobo,
-          taxKobo: totals.taxKobo,
-          totalKobo: totals.totalKobo,
-          currency: "NGN",
+          subtotalMinor: totals.subtotalMinor,
+          discountMinor: totals.discountMinor,
+          taxMinor: totals.taxMinor,
+          totalMinor: totals.totalMinor,
+          currency,
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
           notes: input.notes,
         })
         .returning({ id: invoice.id });
 
-      await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, input.items));
-      return getInvoiceDocument(tx, organizationId, created.id);
+      await tx.insert(invoiceItem).values(buildInvoiceItems(created.id, input.items));
+      return {
+        invoiceId: created.id,
+        document: await getInvoiceDocument(tx, organizationId, created.id),
+      };
     });
+
+    this.emitCreated(organizationId, result.invoiceId, result.document);
+    return result.document;
+  }
+
+
+  /**
+   * Tells subscribers an invoice exists — after the insert has committed, and
+   * without waiting for their receiver. A subscriber being down must not turn
+   * into an invoice the seller saw fail.
+   */
+  private emitCreated(organizationId: string, invoiceId: string, document: InvoiceDocument) {
+    void this.webhooks
+      .dispatch(organizationId, "invoice.created", {
+        invoiceId,
+        invoiceNumber: document.invoiceNumber,
+        currency: document.currency,
+        totalMinor: document.totalMinor,
+      })
+      .catch((reason: unknown) =>
+        this.logger.warn(`invoice.created webhook not sent: ${String(reason)}`),
+      );
   }
 
   private getInvoiceTotals(input: CreateInvoiceDto) {
-    const subtotalKobo = input.items.reduce(
-      (total, item) => total + item.quantity * item.unitPriceKobo,
+    const subtotalMinor = input.items.reduce(
+      (total, item) => total + item.quantity * item.unitPriceMinor,
       0,
     );
-    const discountKobo = input.discountKobo ?? 0;
-    const taxKobo = input.taxKobo ?? 0;
-
-    return {
-      subtotalKobo,
-      discountKobo,
-      taxKobo,
-      totalKobo: subtotalKobo - discountKobo + taxKobo,
-    };
-  }
-
-  private validateInvoiceTotals(
-    input: CreateInvoiceDto,
-    totals: ReturnType<InvoicesService["getInvoiceTotals"]>,
-  ) {
-    if (input.items.length === 0) {
-      throw new BadRequestException("At least one invoice item is required.");
-    }
-    if (
-      !Number.isSafeInteger(totals.subtotalKobo) ||
-      totals.subtotalKobo > 2147483647 ||
-      totals.totalKobo > 2147483647
-    ) {
-      throw new BadRequestException("Invoice exceeds the supported amount.");
-    }
-    if (totals.totalKobo <= 0) {
-      throw new BadRequestException("Invoice total must be greater than zero.");
-    }
-    if (totals.discountKobo > totals.subtotalKobo) {
-      throw new BadRequestException("Discount cannot exceed the subtotal.");
-    }
+    return invoiceTotals(subtotalMinor, input.discountMinor ?? 0, input.taxMinor ?? 0);
   }
 
   async createFromSale(organizationId: string, saleId: string) {
-    return this.db.transaction(async (tx) => {
+    const result = await this.db.transaction(async (tx) => {
       const [sale] = await tx
         .select({
           id: order.id,
           customerId: order.contactId,
-          subtotalKobo: order.subtotalKobo,
-          discountKobo: order.discountKobo,
-          taxKobo: order.taxKobo,
-          totalKobo: order.totalKobo,
+          subtotalMinor: order.subtotalMinor,
+          discountMinor: order.discountMinor,
+          taxMinor: order.taxMinor,
+          totalMinor: order.totalMinor,
           currency: order.currency,
           notes: order.notes,
         })
@@ -118,15 +132,15 @@ export class InvoicesService {
           productId: orderItem.productId,
           productName: orderItem.productName,
           quantity: orderItem.quantity,
-          unitPriceKobo: orderItem.unitPriceKobo,
-          totalKobo: orderItem.totalKobo,
+          unitPriceMinor: orderItem.unitPriceMinor,
+          totalMinor: orderItem.totalMinor,
         })
         .from(orderItem)
         .where(eq(orderItem.orderId, saleId));
 
       if (items.length === 0) throw new BadRequestException("Sale has no items.");
 
-      const number = await this.nextInvoiceNumber(tx, organizationId);
+      const number = nextInvoiceNumber();
       const [created] = await tx
         .insert(invoice)
         .values({
@@ -135,22 +149,89 @@ export class InvoicesService {
           sourceSaleId: saleId,
           invoiceNumber: number,
           status: "issued",
-          subtotalKobo: sale.subtotalKobo,
-          discountKobo: sale.discountKobo,
-          taxKobo: sale.taxKobo,
-          totalKobo: sale.totalKobo,
+          subtotalMinor: sale.subtotalMinor,
+          discountMinor: sale.discountMinor,
+          taxMinor: sale.taxMinor,
+          totalMinor: sale.totalMinor,
           currency: sale.currency,
           notes: sale.notes,
         })
         .returning({ id: invoice.id });
 
-      await tx.insert(invoiceItem).values(this.buildInvoiceItems(created.id, items));
+      await tx.insert(invoiceItem).values(buildInvoiceItems(created.id, items));
 
-      return getInvoiceDocument(tx, organizationId, created.id);
+      return {
+        invoiceId: created.id,
+        document: await getInvoiceDocument(tx, organizationId, created.id),
+      };
+    });
+
+    this.emitCreated(organizationId, result.invoiceId, result.document);
+    return result.document;
+  }
+
+  /**
+   * Corrects an invoice that has already been raised.
+   *
+   * The status is read under a row lock rather than before the write: an invoice
+   * marked paid while this request is in flight must still refuse, or the guard
+   * is only as strong as the caller's timing. Only the fields that were sent are
+   * written, so fixing a due date cannot quietly drop the notes.
+   */
+  async updateInvoice(organizationId: string, invoiceId: string, input: UpdateInvoiceDto) {
+    return this.db.transaction(async (tx) => {
+      const current = await lockOpenInvoice(tx, organizationId, invoiceId);
+
+      // The lines are replaced whole, so the subtotal comes from what is being
+      // written — never from a mixture of old lines and a newly typed discount.
+      const subtotalMinor = input.items
+        ? input.items.reduce((total, item) => total + item.quantity * item.unitPriceMinor, 0)
+        : current.subtotalMinor;
+      const totals = invoiceTotals(
+        subtotalMinor,
+        input.discountMinor ?? current.discountMinor,
+        input.taxMinor ?? current.taxMinor,
+      );
+      // The count only guards against an empty invoice; when the lines are left
+      // alone the stored ones stand, and they could not have been empty.
+      validateInvoiceTotals(totals, input.items?.length ?? 1);
+
+      const values: Partial<typeof invoice.$inferInsert> = { ...totals, updatedAt: new Date() };
+      if (input.customerId !== undefined) {
+        values.contactId = await resolveCustomerId(tx, organizationId, input.customerId);
+      }
+      if (input.dueDate !== undefined) {
+        values.dueDate = input.dueDate ? new Date(input.dueDate) : null;
+      }
+      if (input.notes !== undefined) values.notes = input.notes;
+
+      if (input.items) {
+        await validateProducts(
+          tx,
+          organizationId,
+          input.items.map((item) => item.productId),
+        );
+        // Replaced rather than patched line by line: an invoice's lines are an
+        // order, and a set that is only half updated would still total.
+        await tx.delete(invoiceItem).where(eq(invoiceItem.invoiceId, invoiceId));
+        await tx.insert(invoiceItem).values(buildInvoiceItems(invoiceId, input.items));
+      }
+
+      await tx.update(invoice).set(values).where(eq(invoice.id, invoiceId));
+      return getInvoiceDocument(tx, organizationId, invoiceId);
     });
   }
 
-  async listInvoices(organizationId: string, limit = 20, offset = 0) {
+  /** Removes an invoice and, by cascade, its lines and any counter-offers on it. */
+  async removeInvoice(organizationId: string, invoiceId: string) {
+    return this.db.transaction(async (tx) => {
+      await lockOpenInvoice(tx, organizationId, invoiceId);
+      await tx.delete(invoice).where(eq(invoice.id, invoiceId));
+      return { id: invoiceId, deleted: true };
+    });
+  }
+
+  async getInvoices(organizationId: string, limit = 20, offset = 0) {
     const rows = await this.db
       .select({
         id: invoice.id,
@@ -158,7 +239,7 @@ export class InvoicesService {
         customerId: contact.id,
         customer: contact.name,
         status: invoice.status,
-        totalKobo: invoice.totalKobo,
+        totalMinor: invoice.totalMinor,
         currency: invoice.currency,
         dueDate: invoice.dueDate,
         createdAt: invoice.createdAt,
@@ -175,66 +256,5 @@ export class InvoicesService {
 
   async getInvoice(organizationId: string, invoiceId: string) {
     return getInvoiceDocument(this.db, organizationId, invoiceId);
-  }
-
-  private buildInvoiceItems(
-    invoiceId: string,
-    items: Array<{
-      productId?: string | null;
-      description?: string | null;
-      productName?: string | null;
-      quantity: number;
-      unitPriceKobo: number;
-      totalKobo?: number;
-    }>,
-  ) {
-    return items.map((item) => {
-      const { productName, description, totalKobo, ...values } = item;
-      return {
-        invoiceId,
-        ...values,
-        description: description ?? productName ?? "Item",
-        totalKobo: totalKobo ?? item.quantity * item.unitPriceKobo,
-      };
-    });
-  }
-
-  private async resolveCustomerId(
-    tx: Pick<DbHandle, "select">,
-    organizationId: string,
-    customerId?: string,
-  ) {
-    if (!customerId) return null;
-
-    const [customer] = await tx
-      .select({ id: contact.id })
-      .from(contact)
-      .where(and(eq(contact.id, customerId), eq(contact.organizationId, organizationId)))
-      .limit(1);
-
-    if (!customer) throw new NotFoundException("Customer not found.");
-    return customer.id;
-  }
-
-  private async validateProducts(
-    tx: Pick<DbHandle, "select">,
-    organizationId: string,
-    productIds: Array<string | undefined>,
-  ) {
-    const ids = [...new Set(productIds.filter((id): id is string => Boolean(id)))];
-    for (const productId of ids) {
-      const [row] = await tx
-        .select({ id: product.id })
-        .from(product)
-        .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
-        .limit(1);
-      if (!row) throw new NotFoundException("One or more products were not found.");
-    }
-  }
-
-  private async nextInvoiceNumber(_tx: Pick<DbHandle, "select">, _organizationId: string) {
-    const stamp = Date.now().toString(36).toUpperCase();
-    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-    return `INV-${stamp}-${suffix}`;
   }
 }

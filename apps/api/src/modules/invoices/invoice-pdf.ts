@@ -1,4 +1,5 @@
 import PDFDocument from "pdfkit";
+import { minorAmountPlain } from "../../common/helpers/money-format";
 import type { InvoiceDocument } from "./types";
 
 const ink = "#303842";
@@ -18,8 +19,11 @@ export function createInvoicePdf(invoice: InvoiceDocument, businessName: string)
     pdf.on("data", (chunk: Buffer) => chunks.push(chunk));
     pdf.on("error", reject);
     pdf.on("end", () => resolve(Buffer.concat(chunks)));
+    // The scale comes from the invoice's own currency: a fixed hundredth would
+    // print a yen invoice a hundred times too large, on the document the
+    // customer pays against.
     const money = (value: number) =>
-      `${invoice.currency} ${(value / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      `${invoice.currency} ${minorAmountPlain(value, invoice.currency)}`;
     const date = (value: Date) =>
       value.toLocaleDateString("en-NG", {
         day: "numeric",
@@ -146,8 +150,8 @@ export function createInvoicePdf(invoice: InvoiceDocument, businessName: string)
         }
         text(item.description ?? "Item", 60, y + 16, 230, 10);
         text(String(item.quantity), 308, y + 16, 33, 9, ink, "right");
-        text(money(item.unitPriceKobo), 350, y + 16, 89, 9, ink, "right");
-        text(money(item.totalKobo), 444, y + 16, 91, 9, ink, "right");
+        text(money(item.unitPriceMinor), 350, y + 16, 89, 9, ink, "right");
+        text(money(item.totalMinor), 444, y + 16, 91, 9, ink, "right");
         y += height;
         line(y);
       }
@@ -160,9 +164,9 @@ export function createInvoicePdf(invoice: InvoiceDocument, businessName: string)
       }
       y += 25;
       for (const [label, value] of [
-        ["Subtotal", invoice.subtotalKobo],
-        ["Discount", -invoice.discountKobo],
-        ["Tax", invoice.taxKobo],
+        ["Subtotal", invoice.subtotalMinor],
+        ["Discount", -invoice.discountMinor],
+        ["Tax", invoice.taxMinor],
       ] as const) {
         text(label, 335, y, 70, 10, muted);
         text(money(value), 406, y, 129, 10, ink, "right");
@@ -171,7 +175,7 @@ export function createInvoicePdf(invoice: InvoiceDocument, businessName: string)
       pdf.roundedRect(322, y + 5, 225, 64, 7).fill("#f5e4d9");
       pdf.roundedRect(322, y + 2, 225, 64, 7).fill(accent);
       text("INVOICE TOTAL", 335, y + 14, 185, 8, "#ffffff");
-      text(money(invoice.totalKobo), 335, y + 31, 200, 20, "#ffffff", "right");
+      text(money(invoice.totalMinor), 335, y + 31, 200, 20, "#ffffff", "right");
       y += 91;
     }
     drawTotals();
