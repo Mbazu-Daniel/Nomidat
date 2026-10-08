@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS "inbound_update" (
   "response" text,
   "created_at" timestamp DEFAULT now() NOT NULL,
   "completed_at" timestamp,
-  CONSTRAINT "inbound_update_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade
+  CONSTRAINT "inbound_update_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "organization"("id") ON DELETE cascade
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "inbound_update_provider_update_unique" ON "inbound_update" USING btree ("organization_id","provider","raw_update_id");
 CREATE INDEX IF NOT EXISTS "inbound_update_organization_id_idx" ON "inbound_update" USING btree ("organization_id");
