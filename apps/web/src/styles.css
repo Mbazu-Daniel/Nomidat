@@ -1,57 +1,472 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "./components/workspace/invoice.css";
+/*
+ * One token layer, two themes.
+ *
+ * Colours are OKLCH so lightness is perceptually even across the ramp and dark
+ * mode is a recalculation rather than 40 hand-picked inversions. Chroma is
+ * pulled back at the ends of each ramp, where high chroma reads as garish.
+ *
+ * Every neutral is tinted a few thousandths toward the brand hue, so greys sit
+ * in the same family as the rose instead of reading as a different product.
+ */
 
-@custom-variant dark (&:is(.dark *));
+/* Tailwind's engine must be pulled in before anything else: it is what
+   generates utilities like `flex-col` and `bg-background` from the classes in
+   the components. Without this the sheet defines tokens and nothing else, and
+   every utility silently resolves to nothing. */
+@import "tailwindcss";
 
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.985 0.008 55);
-  --foreground: oklch(0.19 0.02 35);
+  color-scheme: light;
+
+  /* Brand - Rose Gold */
+  --primary: oklch(0.66 0.098 10);
+  --primary-light: oklch(0.76 0.068 10);
+  --primary-dark: oklch(0.55 0.096 10);
+  --primary-soft: oklch(0.96 0.021 10);
+
+  /* Supporting - Leaf */
+  --success: oklch(0.71 0.126 130);
+  --success-light: oklch(0.8 0.086 130);
+  --success-dark: oklch(0.56 0.118 130);
+  --success-soft: oklch(0.965 0.024 130);
+
+  /* Neutrals, tinted toward the brand hue */
+  --neutral-100: oklch(0.985 0.004 20);
+  --neutral-200: oklch(0.945 0.006 20);
+  --neutral-300: oklch(0.885 0.008 20);
+  --neutral-400: oklch(0.72 0.01 20);
+  --neutral-500: oklch(0.58 0.012 20);
+  --neutral-600: oklch(0.46 0.014 20);
+  --neutral-700: oklch(0.36 0.016 20);
+  --neutral-800: oklch(0.26 0.018 20);
+  --neutral-900: oklch(0.19 0.02 20);
+
+  /* Fonts loaded in __root. Both were referenced but never defined, so the landing
+  page fell back to inherited type and `@apply font-sans` failed the build. */
+  --font-family-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-family-landing-sans: Geist, Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-family-display: Sora, Geist, ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius: 12px;
+
+  /* Surfaces */
+  --background: oklch(0.985 0.004 20);
+  --foreground: oklch(0.19 0.02 20);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.19 0.02 35);
+  --card-foreground: oklch(0.19 0.02 20);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.19 0.02 35);
-  --primary: oklch(0.646 0.222 41.116);
-  --primary-foreground: oklch(0.985 0.01 55);
-  --secondary: oklch(0.965 0.018 55);
-  --secondary-foreground: oklch(0.25 0.025 35);
-  --muted: oklch(0.965 0.018 55);
-  --muted-foreground: oklch(0.52 0.025 35);
-  --accent: oklch(0.95 0.03 55);
-  --accent-foreground: oklch(0.3 0.03 35);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.91 0.025 55);
-  --input: oklch(0.91 0.025 55);
-  --ring: oklch(0.646 0.222 41.116);
+  --popover-foreground: oklch(0.19 0.02 20);
+  --primary-foreground: oklch(0.99 0.004 20);
+  --secondary: oklch(0.945 0.006 20);
+  --secondary-foreground: oklch(0.19 0.02 20);
+  --muted: oklch(0.955 0.006 20);
+  --muted-foreground: oklch(0.52 0.012 20);
+  --accent: oklch(0.96 0.021 10);
+  --accent-foreground: oklch(0.55 0.096 10);
+  --destructive: oklch(0.58 0.208 27);
+  --destructive-foreground: oklch(0.99 0.004 20);
+  --border: oklch(0.9 0.008 20);
+  --input: oklch(0.9 0.008 20);
+  --ring: oklch(0.66 0.098 10);
+
+  /* Sidebar */
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.19 0.02 20);
+  --sidebar-primary: oklch(0.66 0.098 10);
+  --sidebar-primary-foreground: oklch(0.99 0.004 20);
+  --sidebar-accent: oklch(0.96 0.021 10);
+  --sidebar-accent-foreground: oklch(0.55 0.096 10);
+  --sidebar-border: oklch(0.9 0.008 20);
+  --sidebar-ring: oklch(0.66 0.098 10);
+
+  /* Charts */
+  --chart-1: oklch(0.66 0.098 10);
+  --chart-2: oklch(0.71 0.126 130);
+  --chart-3: oklch(0.76 0.068 10);
+  --chart-4: oklch(0.56 0.118 130);
+  --chart-5: oklch(0.58 0.012 20);
+
+  /* --- Design tokens. See design.md for what each is for. --- */
+
+  /* Space: a 4px scale and nothing else. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Ink: three levels, so a value, a label and a hint stay distinguishable.
+     --ink-subtle is only ever for text nobody must read to finish a task. */
+  --ink: oklch(0.19 0.02 20);
+  --ink-muted: oklch(0.52 0.012 20);
+  --ink-subtle: oklch(0.63 0.014 20);
+
+  /* Surface and line. Cards lift with a hairline, not a shadow: shadow is
+     reserved for things that genuinely float. */
+  --surface-base: oklch(0.985 0.004 20);
+  --surface-raised: oklch(1 0 0);
+  --surface-sunken: oklch(0.955 0.006 20);
+  --line: oklch(0.9 0.008 20);
+  --line-strong: oklch(0.82 0.01 20);
+
+  /* Status. Each pairs a solid with a soft fill and an ink readable on it. */
+  --warning: oklch(0.7 0.13 75);
+  --warning-soft: oklch(0.96 0.03 75);
+  --warning-soft-ink: oklch(0.45 0.1 75);
+  --danger: oklch(0.58 0.208 27);
+  --danger-soft: oklch(0.96 0.025 27);
+  --danger-soft-ink: oklch(0.45 0.15 27);
+  --info: oklch(0.6 0.11 240);
+  --info-soft: oklch(0.96 0.02 240);
+  --info-soft-ink: oklch(0.45 0.1 240);
+
+  /* Money and IDs need a fixed pitch or the decimal points do not line up. */
+  --font-family-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Shadows, for things that float. Cards use none. */
+  --shadow-pop: 0 12px 32px -12px oklch(0.2 0.02 20 / 0.28);
+  --shadow-dialog: 0 24px 60px -20px oklch(0.2 0.02 20 / 0.34);
+
+  /* Money columns. Applied by .money and by any tabular figure. */
+  --numeric: tabular-nums;
+
+  /* --- Design tokens. See design.md for what each is for. --- */
+
+  /* Space: a 4px scale and nothing else. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Ink: three levels, so a value, a label and a hint stay distinguishable.
+     --ink-subtle is only ever for text nobody must read to finish a task. */
+  --ink: oklch(0.19 0.02 20);
+  --ink-muted: oklch(0.52 0.012 20);
+  --ink-subtle: oklch(0.63 0.014 20);
+
+  /* Surface and line. Cards lift with a hairline, not a shadow: shadow is
+     reserved for things that genuinely float. */
+  --surface-base: oklch(0.985 0.004 20);
+  --surface-raised: oklch(1 0 0);
+  --surface-sunken: oklch(0.955 0.006 20);
+  --line: oklch(0.9 0.008 20);
+  --line-strong: oklch(0.82 0.01 20);
+
+  /* Status. Each pairs a solid with a soft fill and an ink readable on it. */
+  --warning: oklch(0.7 0.13 75);
+  --warning-soft: oklch(0.96 0.03 75);
+  --warning-soft-ink: oklch(0.45 0.1 75);
+  --danger: oklch(0.58 0.208 27);
+  --danger-soft: oklch(0.96 0.025 27);
+  --danger-soft-ink: oklch(0.45 0.15 27);
+  --info: oklch(0.6 0.11 240);
+  --info-soft: oklch(0.96 0.02 240);
+  --info-soft-ink: oklch(0.45 0.1 240);
+
+  /* Money and IDs need a fixed pitch or the decimal points do not line up. */
+  --font-family-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Shadows, for things that float. Cards use none. */
+  --shadow-pop: 0 12px 32px -12px oklch(0.2 0.02 20 / 0.28);
+  --shadow-dialog: 0 24px 60px -20px oklch(0.2 0.02 20 / 0.34);
+
+  /* Money columns. Applied by .money and by any tabular figure. */
+  --numeric: tabular-nums;
+
+  /* --- Design tokens. See design.md for what each is for. --- */
+
+  /* Space: a 4px scale and nothing else. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Ink: three levels, so a value, a label and a hint stay distinguishable.
+     --ink-subtle is only ever for text nobody must read to finish a task. */
+  --ink: oklch(0.19 0.02 20);
+  --ink-muted: oklch(0.52 0.012 20);
+  --ink-subtle: oklch(0.63 0.014 20);
+
+  /* Surface and line. Cards lift with a hairline, not a shadow: shadow is
+     reserved for things that genuinely float. */
+  --surface-base: oklch(0.985 0.004 20);
+  --surface-raised: oklch(1 0 0);
+  --surface-sunken: oklch(0.955 0.006 20);
+  --line: oklch(0.9 0.008 20);
+  --line-strong: oklch(0.82 0.01 20);
+
+  /* Status. Each pairs a solid with a soft fill and an ink readable on it. */
+  --warning: oklch(0.7 0.13 75);
+  --warning-soft: oklch(0.96 0.03 75);
+  --warning-soft-ink: oklch(0.45 0.1 75);
+  --danger: oklch(0.58 0.208 27);
+  --danger-soft: oklch(0.96 0.025 27);
+  --danger-soft-ink: oklch(0.45 0.15 27);
+  --info: oklch(0.6 0.11 240);
+  --info-soft: oklch(0.96 0.02 240);
+  --info-soft-ink: oklch(0.45 0.1 240);
+
+  /* Money and IDs need a fixed pitch or the decimal points do not line up. */
+  --font-family-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Avatars are the only pill in the product; see design.md. */
+  --radius-full: 9999px;
+
+  /* Shadows, for things that float. Cards use none. */
+  --shadow-pop: 0 12px 32px -12px oklch(0.2 0.02 20 / 0.28);
+  --shadow-dialog: 0 24px 60px -20px oklch(0.2 0.02 20 / 0.34);
+
+  /* Money columns. Applied by .money and by any tabular figure. */
+  --numeric: tabular-nums;
+}
+
+/*
+ * Dark is a recalculation, not an inversion. Surfaces lift slightly and the
+ * neutrals invert, while the brand *lightens*: a dark rose at the light-theme
+ * lightness disappears against a dark surface.
+ */
+.dark {
+  color-scheme: dark;
+
+  --primary: oklch(0.75 0.092 10);
+  --primary-light: oklch(0.84 0.062 10);
+  --primary-dark: oklch(0.64 0.1 10);
+  --primary-soft: oklch(0.3 0.042 10);
+
+  --success: oklch(0.78 0.116 130);
+  --success-light: oklch(0.86 0.08 130);
+  --success-dark: oklch(0.64 0.12 130);
+  --success-soft: oklch(0.3 0.04 130);
+
+  --neutral-100: oklch(0.24 0.018 20);
+  --neutral-200: oklch(0.28 0.02 20);
+  --neutral-300: oklch(0.34 0.022 20);
+  --neutral-400: oklch(0.52 0.016 20);
+  --neutral-500: oklch(0.62 0.014 20);
+  --neutral-600: oklch(0.72 0.012 20);
+  --neutral-700: oklch(0.82 0.01 20);
+  --neutral-800: oklch(0.9 0.008 20);
+  --neutral-900: oklch(0.96 0.006 20);
+
+  --background: oklch(0.19 0.02 20);
+  --foreground: oklch(0.96 0.006 20);
+  --card: oklch(0.24 0.018 20);
+  --card-foreground: oklch(0.96 0.006 20);
+  --popover: oklch(0.24 0.018 20);
+  --popover-foreground: oklch(0.96 0.006 20);
+  --primary-foreground: oklch(0.19 0.02 20);
+  --secondary: oklch(0.28 0.02 20);
+  --secondary-foreground: oklch(0.96 0.006 20);
+  --muted: oklch(0.27 0.02 20);
+  --muted-foreground: oklch(0.7 0.014 20);
+  --accent: oklch(0.32 0.04 10);
+  --accent-foreground: oklch(0.85 0.07 10);
+  --destructive: oklch(0.66 0.19 25);
+  --destructive-foreground: oklch(0.98 0.005 20);
+  --border: oklch(0.31 0.02 20);
+  --input: oklch(0.31 0.02 20);
+  --ring: oklch(0.75 0.092 10);
+
+  --sidebar: oklch(0.22 0.018 20);
+  --sidebar-foreground: oklch(0.96 0.006 20);
+  --sidebar-primary: oklch(0.75 0.092 10);
+  --sidebar-primary-foreground: oklch(0.19 0.02 20);
+  --sidebar-accent: oklch(0.32 0.04 10);
+  --sidebar-accent-foreground: oklch(0.85 0.07 10);
+  --sidebar-border: oklch(0.31 0.02 20);
+  --sidebar-ring: oklch(0.75 0.092 10);
+
+  --chart-1: oklch(0.75 0.092 10);
+  --chart-2: oklch(0.78 0.116 130);
+  --chart-3: oklch(0.84 0.062 10);
+  --chart-4: oklch(0.64 0.12 130);
+  --chart-5: oklch(0.62 0.014 20);
 }
 
 .dark {
-  --background: oklch(0.16 0.015 35);
-  --foreground: oklch(0.97 0.01 55);
-  --card: oklch(0.21 0.02 35);
-  --card-foreground: oklch(0.97 0.01 55);
-  --popover: oklch(0.21 0.02 35);
-  --popover-foreground: oklch(0.97 0.01 55);
-  --primary: oklch(0.7 0.19 45);
-  --primary-foreground: oklch(0.16 0.015 35);
-  --secondary: oklch(0.26 0.02 35);
-  --secondary-foreground: oklch(0.97 0.01 55);
-  --muted: oklch(0.26 0.02 35);
-  --muted-foreground: oklch(0.72 0.02 35);
-  --accent: oklch(0.28 0.025 35);
-  --accent-foreground: oklch(0.97 0.01 55);
+  --background: oklch(0.145 0.01 30);
+  --foreground: oklch(0.985 0.005 30);
+  --card: oklch(0.2 0.012 30);
+  --card-foreground: oklch(0.985 0.005 30);
+  --popover: oklch(0.2 0.012 30);
+  --popover-foreground: oklch(0.985 0.005 30);
+  --primary: oklch(0.75 0.085 15);
+  --primary-foreground: oklch(0.18 0.02 15);
+  --primary-light: oklch(0.8 0.07 15);
+  --primary-dark: oklch(0.55 0.1 15);
+  --primary-soft: oklch(0.3 0.04 15);
+  --secondary: oklch(0.27 0.01 30);
+  --secondary-foreground: oklch(0.985 0.005 30);
+  --muted: oklch(0.27 0.01 30);
+  --muted-foreground: oklch(0.72 0.01 30);
+  --accent: oklch(0.3 0.04 15);
+  --accent-foreground: oklch(0.8 0.07 15);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
+  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.72 0.15 145);
+  --success-light: oklch(0.8 0.13 145);
+  --success-dark: oklch(0.55 0.14 145);
+  --success-soft: oklch(0.28 0.05 145);
+  --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.19 45);
+  --ring: oklch(0.75 0.085 15);
+  --sidebar: oklch(0.2 0.012 30);
+  --sidebar-foreground: oklch(0.985 0.005 30);
+  --sidebar-primary: oklch(0.75 0.085 15);
+  --sidebar-primary-foreground: oklch(0.18 0.02 15);
+  --sidebar-accent: oklch(0.3 0.04 15);
+  --sidebar-accent-foreground: oklch(0.8 0.07 15);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.75 0.085 15);
+  --chart-1: oklch(0.75 0.085 15);
+  --chart-2: oklch(0.72 0.15 145);
+  --chart-3: oklch(0.8 0.07 15);
+  --chart-4: oklch(0.55 0.14 145);
+  --chart-5: oklch(0.65 0.02 30);
+
+  /* --- Dark: recalculated, not inverted. Surfaces darken, ink lightens, and
+     the accent loses chroma so it does not glow against a dark field. --- */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --ink: oklch(0.96 0.006 20);
+  --ink-muted: oklch(0.72 0.012 20);
+  --ink-subtle: oklch(0.6 0.014 20);
+
+  --surface-base: oklch(0.16 0.012 20);
+  --surface-raised: oklch(0.205 0.014 20);
+  --surface-sunken: oklch(0.13 0.012 20);
+  --line: oklch(0.3 0.014 20);
+  --line-strong: oklch(0.4 0.016 20);
+
+  --warning: oklch(0.78 0.13 80);
+  --warning-soft: oklch(0.3 0.05 80);
+  --warning-soft-ink: oklch(0.86 0.1 80);
+  --danger: oklch(0.68 0.19 27);
+  --danger-soft: oklch(0.3 0.07 27);
+  --danger-soft-ink: oklch(0.82 0.13 27);
+  --info: oklch(0.72 0.11 240);
+  --info-soft: oklch(0.28 0.05 240);
+  --info-soft-ink: oklch(0.86 0.08 240);
+
+  --shadow-pop: 0 12px 32px -12px oklch(0 0 0 / 0.55);
+  --shadow-dialog: 0 24px 60px -20px oklch(0 0 0 / 0.65);
+
+  /* --- Dark: recalculated, not inverted. Surfaces darken, ink lightens, and
+     the accent loses chroma so it does not glow against a dark field. --- */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --ink: oklch(0.96 0.006 20);
+  --ink-muted: oklch(0.72 0.012 20);
+  --ink-subtle: oklch(0.6 0.014 20);
+
+  --surface-base: oklch(0.16 0.012 20);
+  --surface-raised: oklch(0.205 0.014 20);
+  --surface-sunken: oklch(0.13 0.012 20);
+  --line: oklch(0.3 0.014 20);
+  --line-strong: oklch(0.4 0.016 20);
+
+  --warning: oklch(0.78 0.13 80);
+  --warning-soft: oklch(0.3 0.05 80);
+  --warning-soft-ink: oklch(0.86 0.1 80);
+  --danger: oklch(0.68 0.19 27);
+  --danger-soft: oklch(0.3 0.07 27);
+  --danger-soft-ink: oklch(0.82 0.13 27);
+  --info: oklch(0.72 0.11 240);
+  --info-soft: oklch(0.28 0.05 240);
+  --info-soft-ink: oklch(0.86 0.08 240);
+
+  --shadow-pop: 0 12px 32px -12px oklch(0 0 0 / 0.55);
+  --shadow-dialog: 0 24px 60px -20px oklch(0 0 0 / 0.65);
+
+  /* --- Dark: recalculated, not inverted. Surfaces darken, ink lightens, and
+     the accent loses chroma so it does not glow against a dark field. --- */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --ink: oklch(0.96 0.006 20);
+  --ink-muted: oklch(0.72 0.012 20);
+  --ink-subtle: oklch(0.6 0.014 20);
+
+  --surface-base: oklch(0.16 0.012 20);
+  --surface-raised: oklch(0.205 0.014 20);
+  --surface-sunken: oklch(0.13 0.012 20);
+  --line: oklch(0.3 0.014 20);
+  --line-strong: oklch(0.4 0.016 20);
+
+  --warning: oklch(0.78 0.13 80);
+  --warning-soft: oklch(0.3 0.05 80);
+  --warning-soft-ink: oklch(0.86 0.1 80);
+  --danger: oklch(0.68 0.19 27);
+  --danger-soft: oklch(0.3 0.07 27);
+  --danger-soft-ink: oklch(0.82 0.13 27);
+  --info: oklch(0.72 0.11 240);
+  --info-soft: oklch(0.28 0.05 240);
+  --info-soft-ink: oklch(0.86 0.08 240);
+
+  --shadow-pop: 0 12px 32px -12px oklch(0 0 0 / 0.55);
+  --shadow-dialog: 0 24px 60px -20px oklch(0 0 0 / 0.65);
+
+  /* Avatars are the only pill in the product; see design.md. */
+  --radius-full: 9999px;
+  --font-family-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  /* Tailwind builds the font-* utilities from @theme, so these must be declared
+     here as well as on :root. Declared only on :root, `font-sans` does not exist
+     as a utility and the build fails. */
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-landing-sans: Geist, Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-display: Sora, Geist, ui-sans-serif, system-ui, sans-serif;
+
+  /* Tailwind v4 only generates the font-sans utility from a token declared in
+  `@theme`. Keeping the raw stack in --font-family-* avoids a name collision. */
+  --font-sans: var(--font-family-sans);
+  --font-landing-sans: var(--font-family-landing-sans);
+  --font-display: var(--font-family-display);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -60,6 +475,9 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-soft: var(--primary-soft);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -67,9 +485,47 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-light: var(--success-light);
+  --color-success-dark: var(--success-dark);
+  --color-success-soft: var(--success-soft);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer base {
@@ -78,6 +534,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+  html {
+    @apply font-sans;
   }
 }
 
@@ -85,16 +545,16 @@
 .workspace-shell {
   display: flex;
   min-height: 100vh;
-  background: #f8f9fb;
-  color: #252b36;
+  background: var(--surface-base);
+  color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
 }
 .workspace-sidebar {
   width: 238px;
   flex-shrink: 0;
-  background: white;
-  border-right: 1px solid #e8ebef;
+  background: var(--surface-raised);
+  border-right: 1px solid var(--line);
   padding: 34px 18px;
   display: flex;
   flex-direction: column;
@@ -107,27 +567,27 @@
   font-size: 25px;
   font-weight: 750;
   letter-spacing: -1px;
-  color: #242b35;
+  color: var(--ink);
 }
 .workspace-brand > span:first-child {
   display: grid;
   place-items: center;
   width: 35px;
   height: 35px;
-  border-radius: 11px;
-  background: #ea6a32;
-  color: white;
+  border-radius: var(--radius-lg);
+  background: var(--primary);
+  color: var(--surface-raised);
   font-weight: 700;
 }
 .workspace-brand-dot {
-  color: #ea6a32;
+  color: var(--primary);
   margin-left: -9px;
 }
 .workspace-eyebrow {
   font-size: 10px;
   letter-spacing: 1.7px;
   font-weight: 650;
-  color: #8b939f;
+  color: var(--ink-subtle);
 }
 .workspace-sidebar > .workspace-eyebrow {
   margin: 36px 12px 15px;
@@ -144,32 +604,32 @@
   display: flex;
   align-items: center;
   gap: 13px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 12px 14px;
   text-align: left;
-  color: #747b88;
+  color: var(--ink-subtle);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
 }
 .workspace-sidebar nav .active {
-  color: #d96530;
-  background: #fff0e8;
+  color: var(--primary);
+  background: var(--surface-base);
 }
 .workspace-sidebar nav a:hover,
 .workspace-sidebar nav button:hover {
-  background: #fff6f1;
-  color: #ba5323;
+  background: var(--surface-base);
+  color: var(--primary);
 }
 .workspace-sidebar-note {
   margin-top: auto;
   padding: 50px 12px 5px;
   font-size: 10px;
-  color: #687383;
+  color: var(--ink-muted);
   line-height: 1.8;
 }
 .workspace-sidebar-note p {
-  color: #959da9;
+  color: var(--ink-subtle);
   margin-top: 8px;
 }
 .workspace-dot {
@@ -177,7 +637,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #67a08b;
+  background: var(--primary);
   margin-right: 4px;
 }
 .workspace-body {
@@ -185,11 +645,11 @@
   flex: 1;
 }
 .workspace-topbar {
-  box-shadow: 0 3px 12px rgb(35 46 61 / 3%);
-  background: #fff;
+  box-shadow: 0 3px 12px var(--line-strong);
+  background: var(--surface-raised);
   min-height: 84px;
   padding: 18px 42px;
-  border-bottom: 1px solid #e8ebef;
+  border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -197,17 +657,17 @@
 }
 .workspace-breadcrumb {
   font-size: 12px;
-  color: #757e8b;
+  color: var(--ink-subtle);
 }
 .workspace-breadcrumb span {
-  color: #c1c6cf;
+  color: var(--line);
   padding: 0 13px;
 }
 .workspace-business {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #89919c;
+  color: var(--ink-subtle);
   font-size: 11px;
 }
 .workspace-business select {
@@ -233,7 +693,7 @@
   line-height: 1.2;
 }
 .workspace-heading p:not(.workspace-eyebrow) {
-  color: #87909d;
+  color: var(--ink-subtle);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -250,31 +710,31 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   padding: 11px 17px;
   font-size: 12px;
   font-weight: 550;
   white-space: nowrap;
 }
 .workspace-primary {
-  background: #e76b35;
-  color: white;
-  border: 1px solid #e76b35;
+  background: var(--primary);
+  color: var(--surface-raised);
+  border: 1px solid var(--line-strong);
   box-shadow:
-    0 2px 4px rgb(180 78 32 / 12%),
-    0 5px 12px rgb(216 103 48 / 16%);
+    0 2px 4px var(--line-strong),
+    0 5px 12px var(--line-strong);
 }
 .workspace-primary:hover {
-  background: #d65b26;
+  background: var(--primary);
   box-shadow:
-    0 3px 6px rgb(180 78 32 / 14%),
-    0 7px 16px rgb(216 103 48 / 20%);
+    0 3px 6px var(--line-strong),
+    0 7px 16px var(--line-strong);
 }
 .workspace-secondary {
-  box-shadow: 0 2px 4px rgb(35 46 61 / 5%);
-  color: #626c7c;
-  background: #fff;
-  border: 1px solid #dfe4ea;
+  box-shadow: 0 2px 4px var(--line-strong);
+  color: var(--ink-muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
 }
 .workspace-shell button:disabled,
 .workspace-shell fieldset:disabled {
@@ -282,16 +742,13 @@
   cursor: not-allowed;
 }
 .workspace-shell :focus-visible {
-  outline: 2px solid #d65b26;
+  outline: 2px solid var(--line-strong);
   outline-offset: 3px;
 }
 .workspace-card {
-  box-shadow:
-    0 2px 5px rgb(35 46 61 / 3%),
-    0 10px 26px rgb(35 46 61 / 5%);
-  border: 1px solid #e5e8ed;
-  border-radius: 12px;
-  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
 }
 .workspace-card h2 {
   font-size: 16px;
@@ -305,23 +762,20 @@
   margin-bottom: 28px;
 }
 .workspace-stat {
-  box-shadow:
-    0 2px 5px rgb(35 46 61 / 4%),
-    0 8px 20px rgb(35 46 61 / 6%);
-  background: white;
-  border: 1px solid #e5e8ed;
-  border-radius: 10px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   padding: 22px;
 }
 .workspace-stat > div {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #85909c;
+  color: var(--ink-subtle);
   font-size: 11px;
 }
 .workspace-stat svg {
-  color: #c8a18a;
+  color: var(--primary-soft);
 }
 .workspace-stat strong {
   display: block;
@@ -332,7 +786,7 @@
 }
 .workspace-stat p {
   font-size: 10px;
-  color: #9099a6;
+  color: var(--ink-subtle);
 }
 .workspace-overview-grid {
   display: grid;
@@ -340,25 +794,21 @@
   gap: 24px;
 }
 .workspace-assistant-card {
-  box-shadow:
-    0 3px 6px rgb(119 75 45 / 3%),
-    0 12px 28px rgb(119 75 45 / 7%);
-  background: #fcf1e9;
-  border: 1px solid #f3dfd0;
+  background: var(--surface-base);
+  border: 1px solid var(--line);
   padding: 32px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 .workspace-icon {
-  box-shadow: 0 3px 8px rgb(119 75 45 / 7%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 50px;
   height: 50px;
-  background: #fff;
-  border: 1px solid #f0dfd1;
-  border-radius: 13px;
-  color: #da7a4d;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--primary);
   margin-bottom: 28px;
 }
 .workspace-assistant-card h2 {
@@ -368,7 +818,7 @@
   margin: 8px 0 13px;
 }
 .workspace-assistant-card > p:not(.workspace-eyebrow) {
-  color: #9b877a;
+  color: var(--ink-subtle);
   line-height: 1.8;
   max-width: 340px;
   font-size: 12px;
@@ -377,11 +827,11 @@
   padding: 17px;
   font-size: 12px;
   line-height: 1.8;
-  background: #fff8f3;
-  border: 1px solid #efdfd1;
-  border-radius: 8px;
+  background: var(--surface-base);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   margin: 23px 0;
-  color: #9a7359;
+  color: var(--primary);
 }
 .workspace-get-started {
   padding: 30px;
@@ -395,7 +845,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  border-bottom: 1px solid #eff1f5;
+  border-bottom: 1px solid var(--line);
   padding: 22px 0;
 }
 .workspace-get-started > a:last-child {
@@ -408,12 +858,12 @@
 }
 .workspace-get-started small {
   display: block;
-  color: #919aa7;
+  color: var(--ink-subtle);
   font-size: 11px;
   margin-top: 5px;
 }
 .workspace-get-started svg {
-  color: #aeb5bd;
+  color: var(--line-strong);
 }
 .workspace-table-toolbar {
   padding: 22px 25px;
@@ -423,15 +873,15 @@
   align-items: center;
 }
 .workspace-table-toolbar p {
-  color: #a0a7b1;
+  color: var(--line-strong);
   font-size: 10px;
   margin-top: 6px;
 }
 .workspace-count {
-  background: #f0f2f5;
-  color: #969eaa;
+  background: var(--surface-base);
+  color: var(--ink-subtle);
   padding: 3px 7px;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   font-size: 10px;
   margin-left: 6px;
 }
@@ -443,10 +893,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #e5e8ed;
-  border-radius: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   padding-left: 11px;
-  color: #a3aab5;
+  color: var(--line-strong);
 }
 .workspace-search input {
   border: none !important;
@@ -456,11 +906,11 @@
 .workspace-shell input,
 .workspace-shell select,
 .workspace-shell textarea {
-  border: 1px solid #dfe4ea;
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   padding: 10px 12px;
-  background: white;
-  color: #495363;
+  background: var(--surface-raised);
+  color: var(--ink-muted);
   font-size: 12px;
   min-width: 0;
 }
@@ -472,68 +922,74 @@
   width: 100%;
   text-align: left;
   white-space: nowrap;
+  /* design.md: figures in a ledger must line up on the decimal point. Applied at
+     the table rather than per-cell so a new money column inherits it for free
+     instead of each one having to remember. */
+  font-variant-numeric: tabular-nums;
 }
 .workspace-shell th {
   text-align: start;
-  background: #fff1e7;
-  font-weight: 500;
-  color: #986342;
-  font-size: 10px;
+  /* design.md: table headers are a sunken well with muted uppercase ink. A
+     coloured header on every table made the accent appear far more than the one
+     time per view the accent is supposed to appear. */
+  background: var(--surface-sunken);
+  font-weight: 600;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   padding: 13px 24px;
-  border-block: 1px solid #f5dfcf;
+  border-block: 1px solid var(--line);
 }
 .workspace-shell td {
   text-align: start;
   padding: 20px 24px;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--line);
   font-size: 12px;
-  color: #6e7887;
+  color: var(--ink-subtle);
 }
 .workspace-record-name {
-  color: #3e4858;
+  color: var(--ink);
   font-weight: 550;
   text-align: left;
 }
 .workspace-shell td small {
   display: block;
-  color: #a4acb8;
+  color: var(--line-strong);
   font-size: 10px;
   margin-top: 6px;
 }
 .workspace-badge {
   display: inline-block;
   font-size: 10px;
-  background: #edf5ef;
-  color: #6e9680;
-  border-radius: 5px;
+  background: var(--surface-base);
+  color: var(--info);
+  border-radius: var(--radius-sm);
   padding: 5px 8px;
   text-transform: capitalize;
 }
 .workspace-badge.warning {
-  color: #c68a4b;
-  background: #fdf3e6;
+  color: var(--primary);
+  background: var(--surface-base);
   margin-left: 10px;
 }
 .workspace-icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #99a4b0;
-  border: 1px solid #e9edf1;
-  border-radius: 7px;
+  color: var(--line-strong);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   padding: 8px;
 }
 .workspace-shell table .workspace-icon-button {
   width: 30px;
   height: 30px;
   padding: 5px;
-  color: #fff;
-  background: #e76b35;
-  border-color: #e76b35;
-  border-radius: 6px;
-  box-shadow:
-    0 2px 4px rgb(180 78 32 / 14%),
-    0 4px 9px rgb(216 103 48 / 18%);
+  color: var(--surface-raised);
+  background: var(--primary);
+  border-color: var(--line-strong);
+  border-radius: var(--radius-md);
   transition:
     background-color 160ms ease,
     box-shadow 160ms ease;
@@ -543,11 +999,11 @@
   height: 16px;
 }
 .workspace-shell table .workspace-icon-button:hover {
-  background: #d65b26;
-  border-color: #d65b26;
+  background: var(--primary);
+  border-color: var(--line-strong);
   box-shadow:
-    0 3px 6px rgb(180 78 32 / 20%),
-    0 5px 12px rgb(216 103 48 / 22%);
+    0 3px 6px var(--line-strong),
+    0 5px 12px var(--line-strong);
 }
 .workspace-save-note {
   margin-top: 20px;
@@ -556,16 +1012,16 @@
   display: flex;
   justify-content: space-between;
   padding: 17px 24px;
-  color: #a0a8b4;
+  color: var(--line-strong);
   font-size: 10px;
 }
 .workspace-empty {
   padding: 65px 25px;
   text-align: center;
-  color: #929aa6;
+  color: var(--ink-subtle);
 }
 .workspace-empty h3 {
-  color: #586372;
+  color: var(--ink-muted);
   margin: 16px 0 8px;
   font-size: 15px;
   font-weight: 500;
@@ -578,16 +1034,16 @@
   place-items: center;
   width: 48px;
   height: 48px;
-  color: #d99778;
-  background: #fcf2ec;
-  border-radius: 12px;
+  color: var(--primary-soft);
+  background: var(--surface-base);
+  border-radius: var(--radius-lg);
   font-size: 28px;
 }
 .workspace-error {
-  color: #a83939;
-  background: #fff0ef;
-  border: 1px solid #f5d9d7;
-  border-radius: 8px;
+  color: var(--primary);
+  background: var(--surface-base);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   padding: 15px;
   margin: 16px 0;
   overflow-wrap: anywhere;
@@ -597,7 +1053,7 @@
   text-decoration: underline;
 }
 .workspace-readonly {
-  color: #a2a9b2;
+  color: var(--line-strong);
   font-size: 11px;
   margin: -15px 0 20px;
 }
@@ -614,10 +1070,10 @@
   gap: 8px;
   font-size: 12px;
   font-weight: 500;
-  color: #737d8b;
+  color: var(--ink-subtle);
 }
 .workspace-form label small {
-  color: #a0a8b3;
+  color: var(--line-strong);
   font-size: 10px;
   font-weight: 400;
 }
@@ -639,7 +1095,7 @@
 .workspace-record-form > .workspace-actions {
   justify-content: flex-end;
   padding-top: 20px;
-  border-top: 1px solid #edf0f4;
+  border-top: 1px solid var(--line);
 }
 .workspace-form-grid {
   display: grid;
@@ -660,13 +1116,13 @@
   display: flex;
   justify-content: space-between;
   padding: 20px 0;
-  border-top: 1px solid #edf0f4;
+  border-top: 1px solid var(--line);
   margin-top: 20px;
 }
 .workspace-total strong {
   font-size: 21px;
   font-weight: 600;
-  color: #384452;
+  color: var(--ink);
 }
 .workspace-line-items {
   margin-bottom: 20px;
@@ -677,7 +1133,7 @@
   gap: 10px;
   align-items: end;
   padding: 15px 0;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--line);
 }
 .workspace-line-item button {
   padding-bottom: 10px;
@@ -697,7 +1153,7 @@
   margin: 16px 0 12px;
 }
 .workspace-detail p {
-  color: #818b99;
+  color: var(--ink-subtle);
   font-size: 12px;
   line-height: 1.8;
 }
@@ -710,15 +1166,15 @@
   gap: 20px;
 }
 .workspace-detail blockquote {
-  background: #f8f9fb;
-  border-left: 2px solid #e6ad8d;
+  background: var(--surface-base);
+  border-left: 2px solid var(--line-strong);
   padding: 15px;
   margin: 10px 0;
   white-space: pre-wrap;
 }
 .workspace-detail blockquote small {
   display: block;
-  color: #a4acb5;
+  color: var(--line-strong);
   font-size: 10px;
   margin-top: 6px;
 }
@@ -742,7 +1198,7 @@
   margin-bottom: 12px;
 }
 .workspace-chat-welcome p {
-  color: #929caa;
+  color: var(--ink-subtle);
   font-size: 12px;
 }
 .workspace-chat-welcome > div {
@@ -755,19 +1211,19 @@
 .workspace-chat-message {
   padding: 15px 18px;
   margin: 14px 0;
-  background: #f7f8fa;
-  border-radius: 10px;
+  background: var(--surface-base);
+  border-radius: var(--radius-md);
   max-width: 85%;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .workspace-chat-message.user {
   margin-left: auto;
-  background: #fdf0e8;
+  background: var(--surface-base);
 }
 .workspace-chat-message small {
   font-size: 10px;
-  color: #969faa;
+  color: var(--ink-subtle);
 }
 .workspace-chat-message p {
   margin-top: 7px;
@@ -779,8 +1235,8 @@
   gap: 10px;
   align-items: center;
   margin: 16px 24px 10px;
-  border: 1px solid #dfe4ea;
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   padding: 9px;
 }
 .workspace-chat-composer textarea {
@@ -794,7 +1250,7 @@
 }
 .workspace-chat-hint {
   text-align: center;
-  color: #a2aab6;
+  color: var(--line-strong);
   font-size: 10px;
   padding: 3px 16px 18px;
 }
@@ -824,7 +1280,7 @@
     width: 100%;
     padding: 17px 16px 0;
     border-right: none;
-    border-bottom: 1px solid #e8ebef;
+    border-bottom: 1px solid var(--line);
   }
   .workspace-sidebar > .workspace-eyebrow,
   .workspace-sidebar-note {
@@ -960,8 +1416,8 @@
   align-items: center;
   gap: 16px;
   padding: 28px 32px;
-  border-bottom: 1px solid #edf0f4;
-  background: linear-gradient(120deg, #fff8f2, #fff);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(120deg, var(--surface-base), var(--surface-raised));
 }
 .business-create-heading h2 {
   margin: 0 0 6px;
@@ -970,7 +1426,7 @@
 .business-create-heading p,
 .business-form-section > p {
   margin: 0;
-  color: #7a8595;
+  color: var(--ink-subtle);
   font-size: 14px;
 }
 .business-create-icon {
@@ -979,9 +1435,9 @@
   flex-shrink: 0;
   width: 52px;
   height: 52px;
-  border-radius: 15px;
-  color: #ed6b30;
-  background: #ffecdf;
+  border-radius: var(--radius-lg);
+  color: var(--primary);
+  background: var(--surface-base);
 }
 .business-create fieldset {
   border: 0;
@@ -998,12 +1454,12 @@
 .business-logo-preview {
   width: 80px;
   height: 80px;
-  border: 1px dashed #e3c3af;
-  background: #fff8f2;
-  border-radius: 18px;
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-base);
+  border-radius: var(--radius-lg);
   display: grid;
   place-items: center;
-  color: #bc886a;
+  color: var(--primary);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -1020,7 +1476,7 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  color: #df642c;
+  color: var(--primary);
 }
 .business-logo-upload input {
   position: absolute;
@@ -1030,12 +1486,12 @@
   cursor: pointer;
 }
 .business-logo-upload:focus-within {
-  outline: 2px solid #ed6b30;
+  outline: 2px solid var(--line-strong);
   outline-offset: 5px;
 }
 .business-logo-row p {
   font-size: 12px;
-  color: #8992a1;
+  color: var(--ink-subtle);
   margin: 7px 0;
 }
 .business-logo-row button {
@@ -1043,7 +1499,7 @@
   text-decoration: underline;
 }
 .business-form-section {
-  border-top: 1px solid #edf0f4;
+  border-top: 1px solid var(--line);
   padding: 22px 0;
 }
 .business-form-section h3 {
@@ -1061,26 +1517,26 @@
   gap: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #626d7c;
+  color: var(--ink-muted);
 }
 .business-create label small {
   font-weight: 400;
-  color: #98a0ad;
+  color: var(--line-strong);
   margin-left: auto;
 }
 .business-create label input:not([type="file"]) {
   width: 100%;
   min-width: 0;
-  border: 1px solid #dfe4ec;
-  border-radius: 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   padding: 12px 14px;
   font-size: 14px;
   font-weight: 400;
-  color: #364152;
-  background: #fff;
+  color: var(--ink);
+  background: var(--surface-raised);
 }
 .business-create input:focus {
-  outline: 2px solid #f7b894;
+  outline: 2px solid var(--line-strong);
   outline-offset: 2px;
 }
 .business-field-wide {
@@ -1091,19 +1547,19 @@
   margin-top: 16px;
 }
 .business-invoice-note {
-  background: #f8f9fb;
-  border-radius: 10px;
+  background: var(--surface-base);
+  border-radius: var(--radius-md);
   margin: 0 32px 24px;
   padding: 14px 16px;
-  color: #7b8493;
+  color: var(--ink-subtle);
   font-size: 12px;
   line-height: 1.7;
 }
 .business-create-actions {
   justify-content: flex-end;
   padding: 20px 32px;
-  border-top: 1px solid #edf0f4;
-  background: #fcfcfd;
+  border-top: 1px solid var(--line);
+  background: var(--surface-raised);
 }
 .business-create > .workspace-error {
   margin: 0 32px 20px;
@@ -1116,7 +1572,7 @@
   object-position: left;
 }
 .invoice-business-details {
-  color: #7b8493;
+  color: var(--ink-subtle);
   font-size: 12px;
   max-width: 320px;
   overflow-wrap: anywhere;
@@ -1164,7 +1620,7 @@
 .staff-role-description,
 .staff-role-guide p,
 .staff-member-row p {
-  color: #7b8595;
+  color: var(--ink-subtle);
   font-size: 13px;
   line-height: 1.6;
   margin: 5px 0;
@@ -1175,9 +1631,9 @@
   gap: 8px;
 }
 .staff-add-form {
-  background: #fff8f3;
-  border: 1px solid #f3dfcf;
-  border-radius: 14px;
+  background: var(--surface-base);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   padding: 22px;
   margin-bottom: 20px;
 }
@@ -1191,26 +1647,26 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: #6d7787;
+  color: var(--ink-subtle);
   font-size: 13px;
 }
 .staff-panel input,
 .staff-panel select,
 .staff-invite-auth input {
   min-width: 0;
-  border: 1px solid #dfe4eb;
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   padding: 10px 12px;
-  background: white;
-  color: #434e60;
+  background: var(--surface-raised);
+  color: var(--ink-muted);
 }
 .staff-role-description {
   margin: 14px 0 20px;
 }
 .staff-role-guide {
   padding: 14px 18px;
-  background: #f8f9fb;
-  border-radius: 10px;
+  background: var(--surface-base);
+  border-radius: var(--radius-md);
   margin-bottom: 20px;
   font-size: 13px;
 }
@@ -1224,7 +1680,7 @@
   justify-content: space-between;
   gap: 20px;
   padding: 18px 0;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--line);
 }
 .staff-person {
   display: flex;
@@ -1240,9 +1696,9 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  background: #fff0e5;
-  color: #cb6a35;
+  border-radius: var(--radius-lg);
+  background: var(--surface-base);
+  color: var(--primary);
   flex-shrink: 0;
   font-weight: 600;
 }
@@ -1258,10 +1714,10 @@
   font-size: 12px;
 }
 .staff-member-actions button:not(.workspace-primary) {
-  border: 1px solid #dfe4eb;
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   padding: 9px 12px;
-  background: white;
+  background: var(--surface-raised);
 }
 .staff-invitations {
   margin-top: 24px;
@@ -1271,14 +1727,14 @@
 }
 .staff-account-id {
   font-size: 11px;
-  color: #9099a6;
+  color: var(--ink-subtle);
   overflow-wrap: anywhere;
   margin: 22px 0 0;
 }
 .staff-notice {
   padding: 12px;
-  background: #eef7f0;
-  border-radius: 8px;
+  background: var(--surface-base);
+  border-radius: var(--radius-md);
   font-size: 13px;
 }
 .invitation-page {
@@ -1331,7 +1787,7 @@
   font-size: 20px;
 }
 .settings-section > p {
-  color: #7b8595;
+  color: var(--ink-subtle);
   font-size: 13px;
   line-height: 1.6;
   margin-bottom: 18px;
@@ -1351,24 +1807,31 @@
   margin: 18px 0;
 }
 .settings-danger {
+  /* A destructive zone is one of the few places a soft status fill is right,
+     because the whole panel is the warning. See design.md on status colour. */
   padding: 18px;
-  border: 1px solid #efc9c6;
-  border-radius: 12px;
-  background: #fff6f4;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-lg);
+  background: var(--danger-soft);
+  color: var(--danger-soft-ink);
   margin-top: 20px;
+}
+.settings-danger h2,
+.settings-danger h3 {
+  color: var(--danger-soft-ink);
 }
 .settings-danger p {
   margin-bottom: 16px;
 }
 .settings-session {
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--line);
   padding: 16px 0;
   overflow-wrap: anywhere;
   font-size: 12px;
-  color: #778191;
+  color: var(--ink-subtle);
 }
 .settings-session strong {
-  color: #374151;
+  color: var(--ink);
 }
 .account-settings > .workspace-actions {
   margin-bottom: 20px;
@@ -1393,15 +1856,14 @@
 }
 .receipt-paper {
   padding: 40px;
-  border: 1px solid #e4e7ed;
-  border-top: 4px solid #ed6b30;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 6px 28px #23354a0b;
-  color: #374151;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  color: var(--ink);
 }
 .receipt-paper header {
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--line);
   padding-bottom: 20px;
   margin-bottom: 24px;
 }
@@ -1414,7 +1876,7 @@
   margin: 20px 0 12px;
 }
 .receipt-paper p {
-  color: #7b8595;
+  color: var(--ink-subtle);
   font-size: 13px;
   margin: 6px 0;
   overflow-wrap: anywhere;
@@ -1426,14 +1888,17 @@
   font-size: 13px;
 }
 .receipt-paper th {
-  background: #fff1e7;
-  color: #986342;
+  /* A printed document has no dark mode and no sunken well, so it stays a light
+     fill — but the header ink is muted rather than accent, so the one accent on
+     the page stays the totals. */
+  background: var(--surface-base);
+  color: var(--ink-muted);
   text-align: left;
 }
 .receipt-paper th,
 .receipt-paper td {
   padding: 12px 8px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--line);
   overflow-wrap: anywhere;
 }
 .receipt-totals {
@@ -1450,14 +1915,14 @@
   font-weight: 600;
 }
 .receipt-payment-list > div {
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--line);
   padding: 14px 0;
   break-inside: avoid;
 }
 .receipt-paper footer {
   margin-top: 30px;
   font-size: 12px;
-  color: #8b94a3;
+  color: var(--ink-subtle);
 }
 @media (max-width: 600px) {
   .settings-section {
@@ -1475,7 +1940,7 @@
 }
 @media print {
   body:has(.receipt-page) {
-    background: white;
+    background: var(--surface-raised);
   }
   .receipt-controls {
     display: none !important;
@@ -1510,7 +1975,7 @@
   flex-shrink: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #657084;
+  color: var(--ink-muted);
 }
 
 .settings-menu-trigger {
@@ -1520,19 +1985,19 @@
   width: min(100%, 360px);
   min-height: 46px;
   padding: 11px 14px;
-  border: 1px solid #eed7c9;
-  border-radius: 12px;
-  background: #fff8f2;
-  color: #a65730;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-base);
+  color: var(--primary);
   font: inherit;
   font-size: 14px;
   font-weight: 600;
   text-align: left;
-  box-shadow: 0 2px 4px #70412008;
+  box-shadow: 0 2px 4px var(--line-strong);
   cursor: pointer;
 }
 .settings-menu-trigger:focus-visible {
-  outline: 3px solid #f66c3026;
+  outline: 3px solid var(--line-strong);
   outline-offset: 3px;
 }
 .settings-menu-trigger:disabled {
@@ -1555,17 +2020,17 @@
   max-height: var(--available-height);
   overflow-y: auto;
   padding: 8px;
-  border: 1px solid #e8eaf0;
-  border-radius: 14px;
-  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
   box-shadow:
-    0 14px 40px #2630441a,
-    0 3px 10px #2630440a;
-  color: #525e70;
+    0 14px 40px var(--line-strong),
+    0 3px 10px var(--line-strong);
+  color: var(--ink-muted);
 }
 .settings-menu-group {
   padding: 10px 12px 7px;
-  color: #939baa;
+  color: var(--ink-subtle);
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1577,7 +2042,7 @@
   gap: 10px;
   min-height: 42px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 13px;
   line-height: 1.4;
   cursor: pointer;
@@ -1585,11 +2050,11 @@
   user-select: none;
 }
 .settings-menu-item[data-highlighted] {
-  background: #f6f7fa;
+  background: var(--surface-base);
 }
 .settings-menu-item[data-selected] {
-  background: #fff0e6;
-  color: #c15c2b;
+  background: var(--surface-base);
+  color: var(--primary);
   font-weight: 600;
 }
 .settings-menu-check {
@@ -1608,8 +2073,8 @@
 }
 .staff-custom-permissions {
   width: 100%;
-  border: 1px solid #e8eaf0;
-  border-radius: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   padding: 16px;
   margin-top: 16px;
 }
@@ -1619,7 +2084,7 @@
 }
 .staff-custom-permissions p {
   font-size: 12px;
-  color: #7b8595;
+  color: var(--ink-subtle);
   margin-bottom: 12px;
 }
 .staff-custom-permissions label {
@@ -1633,5 +2098,5 @@
 .staff-custom-permissions input {
   width: 16px;
   height: 16px;
-  accent-color: #f36b30;
+  accent-color: var(--primary);
 }
