@@ -12,8 +12,8 @@ import {
   IconPlug,
   IconChartBar,
 } from "@tabler/icons-react";
-import { getOrganizations } from "@/data/nomidat";
-import { createApiRequest } from "@/lib/api";
+import { getOrganizations, type OrganizationSummary } from "@/data/nomidat";
+import { useApiResource, useLoadedResource } from "@/lib/use-api-resource";
 import { createTelegramSession } from "@/lib/telegram-session";
 import { ReportsPanel } from "./reports-panel";
 import { ChannelsPanel } from "./channels-panel";
@@ -68,57 +68,60 @@ const navigation = [
 ] as const;
 
 export function WorkspacePage({ section, miniApp = false }: WorkspaceProps) {
-  const [organizations, setOrganizations] = useState<{ id: string; name: string }[]>([]);
   const [organizationId, setOrganizationId] = useState("");
   const [active, setActive] = useState(section);
-  const [status, setStatus] = useState("Loading your workspace…");
   const current = miniApp ? active : section;
-  const [canWrite, setCanWrite] = useState(false);
+  const [status, setStatus] = useState("Loading your workspace…");
   const [error, setError] = useState(false);
   const [creatingBusiness, setCreatingBusiness] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
+  const loaded = useLoadedResource(
+    async () => {
+      // Inside Telegram the shell needs a session before the API will answer, so
+      // the exchange has to happen before the business list is asked for.
       if (miniApp) {
         const result = await createTelegramSession(window.Telegram?.WebApp);
         if (!result.ok) throw new Error(result.message);
       }
-      const rows = await getOrganizations();
-      if (cancelled) return;
-      const saved = sessionStorage.getItem("nomidat.organization");
-      setOrganizations(rows);
-      setOrganizationId(rows.find((row) => row.id === saved)?.id ?? rows[0]?.id ?? "");
-      setStatus(rows.length ? "" : "Create a business to start tracking your stock and sales.");
-    }
-    void load().catch((reason: Error) => {
-      if (!cancelled) {
-        setStatus(reason.message);
-        setError(true);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [miniApp]);
+      return getOrganizations();
+    },
+    [miniApp],
+    null,
+  );
+  const organizations: OrganizationSummary[] = loaded.data ?? [];
+  const access = useApiResource<{ role: string }>(
+    organizationId ? `/organizations/${organizationId}/access` : null,
+    { role: "" },
+  );
+
+  // Remembered in sessionStorage rather than per-render state: a reload should land
+  // the seller back in the business they were in, and only a sign-out clears it.
+  useEffect(() => {
+    if (!organizations.length || organizationId) return;
+    const saved = sessionStorage.getItem("nomidat.organization");
+    setOrganizationId(
+      organizations.find((row) => row.id === saved)?.id ?? organizations[0]?.id ?? "",
+    );
+    setStatus(
+      organizations.length ? "" : "Create a business to start tracking your stock and sales.",
+    );
+  }, [organizations, organizationId]);
+
   useEffect(() => {
     if (!organizationId) return;
-    let cancelled = false;
     sessionStorage.setItem("nomidat.organization", organizationId);
-    setCanWrite(false);
-    void createApiRequest<{ role: string }>(`/organizations/${organizationId}/access`)
-      .then(({ role }) => {
-        if (!cancelled) setCanWrite(canWriteArea(role, current));
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) {
-          setStatus(reason.message);
-          setError(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [organizationId, current]);
+  }, [organizationId]);
+
+  useEffect(() => {
+    if (loaded.error) {
+      setStatus(loaded.error);
+      setError(true);
+    } else if (access.error) {
+      setStatus(access.error);
+      setError(true);
+    }
+  }, [loaded.error, access.error]);
+
+  const canWrite = Boolean(organizationId) && canWriteArea(access.data.role, current);
   function renderBusinessSection() {
     if (current === "settings") return null;
     return current === "overview" ? (
@@ -171,8 +174,7 @@ export function WorkspacePage({ section, miniApp = false }: WorkspaceProps) {
       <CreateBusiness
         onCancel={organizationId ? () => setCreatingBusiness(false) : undefined}
         onCreated={(business) => {
-          setOrganizations((rows) => [...rows, business]);
-          setCanWrite(false);
+          loaded.setData((rows) => [...(rows ?? []), business]);
           sessionStorage.setItem("nomidat.organization", business.id);
           setOrganizationId(business.id);
           setCreatingBusiness(false);

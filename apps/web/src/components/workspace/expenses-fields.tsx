@@ -1,33 +1,26 @@
 import type { FormProps } from "./types";
-import { useEffect, useState } from "react";
-import { createApiRequest } from "@/lib/api";
+import { useState } from "react";
+import { getExpenseCategories } from "@/data/expenses";
+import { useLoadedResource } from "@/lib/use-api-resource";
+import { useCurrency } from "@/lib/currency-context";
 
 export function ExpenseFields(props: FormProps) {
   const expense = props.expenseDraft;
-  const [category, setCategory] = useState("");
-  const [error, setError] = useState("");
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    void createApiRequest<{ id: string; name: string }[]>(
-      `/organizations/${props.organizationId}/expense-categories`,
-    )
-      .then((rows) => {
-        if (!cancelled) {
-          setCategories(rows);
-          const match = rows.find(
-            (row) => row.name.toLowerCase() === expense?.category?.toLowerCase(),
-          );
-          setCategory(match?.id ?? "");
-        }
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [props.organizationId, props.section, expense?.category]);
+  const currency = useCurrency();
+  const loaded = useLoadedResource(
+    () => getExpenseCategories(props.organizationId),
+    [props.organizationId, props.section],
+    [],
+  );
+  const categories = loaded.data;
+  const { error } = loaded;
+  // The draft names a category by name; the form needs its id. Derived rather than
+  // stored, so choosing a different category does not leave the two out of step.
+  const [chosen, setCategory] = useState("");
+  const category =
+    chosen ||
+    categories.find((row) => row.name.toLowerCase() === expense?.category?.toLowerCase())?.id ||
+    "";
   return (
     <>
       <label>
@@ -41,7 +34,7 @@ export function ExpenseFields(props: FormProps) {
         />
       </label>
       <label>
-        Amount (₦)
+        Amount ({currency})
         <input
           defaultValue={expense?.amountNaira ?? ""}
           name="amount"

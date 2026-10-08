@@ -7,7 +7,7 @@
   margin: 0 0 8px;
 }
 .picture-import p {
-  color: #737e8e;
+  color: var(--ink-subtle);
   line-height: 1.6;
 }
 .picture-review-heading {
@@ -24,10 +24,10 @@
   gap: 12px;
   padding: 32px 20px;
   margin: 20px 0 12px;
-  border: 1px dashed #edac8c;
-  border-radius: 14px;
-  background: #fff8f3;
-  color: #d75b25;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-base);
+  color: var(--primary);
   text-align: center;
   cursor: pointer;
 }
@@ -43,12 +43,12 @@
   font-size: 13px;
 }
 .picture-dropzone:focus-within {
-  outline: 2px solid #ed763d;
+  outline: 2px solid var(--line-strong);
   outline-offset: 3px;
 }
 .picture-preview {
   margin: 20px 0;
-  color: #637080;
+  color: var(--ink-muted);
 }
 .picture-preview summary {
   cursor: pointer;
@@ -60,18 +60,18 @@
   max-height: 320px;
   object-fit: contain;
   margin-top: 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 .picture-review-notice,
 .picture-warnings {
   padding: 14px 20px;
-  border-radius: 10px;
-  background: #fff3e8;
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
   font-size: 14px;
 }
 .picture-warnings {
   padding-left: 36px;
-  color: #975b33;
+  color: var(--primary);
 }
 .picture-import .workspace-form {
   margin-bottom: 0;
@@ -87,9 +87,9 @@
 .picture-product-choice select {
   min-height: 42px;
   padding: 8px 12px;
-  border: 1px solid #dce2eb;
-  border-radius: 8px;
-  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
 }
 @media (max-width: 640px) {
   .picture-import {
@@ -117,5 +117,5 @@
   height: 18px;
   min-height: 18px;
   flex-shrink: 0;
-  accent-color: #eb7038;
+  accent-color: var(--primary);
 }
