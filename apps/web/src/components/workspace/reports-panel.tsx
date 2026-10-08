@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCurrency } from "@/lib/currency-context";
+import { formatMoney } from "@/lib/money";
+import { useState } from "react";
+import { useLoadedResource } from "@/lib/use-api-resource";
 import {
   IconCalendar,
   IconRefresh,
@@ -10,7 +13,6 @@ import {
   IconTrendingUp,
 } from "@tabler/icons-react";
 import {
-  formatNaira,
   getReportSummary,
   getReportSales,
   getReportExpenseBreakdown,
@@ -24,81 +26,71 @@ import { ReportBreakdowns } from "./report-breakdowns";
 import "./reports.css";
 
 export function ReportsPanel({ organizationId }: ReportsPanelProps) {
+  const currency = useCurrency();
   const [days, setDays] = useState(30);
   const [from, setFrom] = useState(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const [productLimit, setProductLimit] = useState(10);
   const [customerLimit, setCustomerLimit] = useState(20);
   const [version, setVersion] = useState(0);
-  const [data, setData] = useState<ReportsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    if (days === 0 && (!from || !to || from > to)) {
-      setError("Choose a valid date range.");
-      setLoading(false);
-      return;
-    }
-    const range = days || { from, to };
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    void Promise.all([
-      getReportSummary(organizationId, range),
-      getReportSales(organizationId, range),
-      getReportExpenseBreakdown(organizationId, range),
-      getReportProducts(organizationId, range, productLimit),
-      getReportCustomerBalances(organizationId, customerLimit),
-      getReportInventory(organizationId),
-    ])
-      .then(([summary, sales, expenses, products, customers, inventory]) => {
-        if (!cancelled) setData({ summary, sales, expenses, products, customers, inventory });
-      })
-      .catch(() => {
-        if (!cancelled) setError("Could not load your reports. Please try again.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [organizationId, days, from, to, productLimit, customerLimit, version]);
+  // A custom range with its dates the wrong way round is refused here rather than
+  // asked for, so the seller sees why nothing loaded instead of a generic failure.
+  const rangeValid = days !== 0 || (Boolean(from) && Boolean(to) && from <= to);
+  const loaded = useLoadedResource<ReportsData | null>(
+    async () => {
+      const range = days || { from, to };
+      const [summary, sales, expenses, products, customers, inventory] = await Promise.all([
+        getReportSummary(organizationId, range),
+        getReportSales(organizationId, range),
+        getReportExpenseBreakdown(organizationId, range),
+        getReportProducts(organizationId, range, productLimit),
+        getReportCustomerBalances(organizationId, customerLimit),
+        getReportInventory(organizationId),
+      ]);
+      return { summary, sales, expenses, products, customers, inventory };
+    },
+    [organizationId, days, from, to, productLimit, customerLimit, version],
+    null,
+    rangeValid,
+  );
+  const data = loaded.data;
+  const loading = loaded.loading;
+  const error = rangeValid ? loaded.error : "Choose a valid date range.";
   const metrics = data
     ? [
         {
           label: "Recorded sales",
-          amount: data.summary.salesKobo,
+          amount: data.summary.salesMinor,
           detail: `Sales recorded: ${data.summary.salesCount}`,
           icon: IconReceipt,
         },
         {
           label: "Money collected",
-          amount: data.summary.collectedKobo,
+          amount: data.summary.collectedMinor,
           detail: `Payments received: ${data.summary.paymentCount}`,
           icon: IconArrowDownLeft,
         },
         {
           label: "Business expenses",
-          amount: data.summary.expensesKobo,
+          amount: data.summary.expensesMinor,
           detail: `Expenses recorded: ${data.summary.expenseCount}`,
           icon: IconWallet,
         },
         {
           label: "Net cash flow",
-          amount: data.summary.netCashflowKobo,
+          amount: data.summary.netCashflowMinor,
           detail: "Collections minus expenses",
           icon: IconTrendingUp,
         },
         {
           label: "Approximate profit",
-          amount: data.summary.profitApproxKobo,
+          amount: data.summary.profitApproxMinor,
           detail: "Sales less product costs and expenses",
           icon: IconChartBar,
         },
         {
           label: "Outstanding credit",
-          amount: data.summary.outstandingCreditKobo,
+          amount: data.summary.outstandingCreditMinor,
           detail: "Current balance across all sales",
           icon: IconCreditCard,
         },
@@ -197,7 +189,7 @@ export function ReportsPanel({ organizationId }: ReportsPanelProps) {
                 month: "short",
                 year: "numeric",
               })}
-              <span>All amounts in NGN</span>
+              <span>All amounts in {currency}</span>
             </div>
             <section className="report-metrics" aria-label="Financial summary">
               {metrics.map((metric) => (
@@ -206,7 +198,7 @@ export function ReportsPanel({ organizationId }: ReportsPanelProps) {
                     {metric.label}
                     <metric.icon size={18} />
                   </div>
-                  <strong>{formatNaira(metric.amount / 100)}</strong>
+                  <strong>{formatMoney(metric.amount, currency)}</strong>
                   <p>{metric.detail}</p>
                 </div>
               ))}

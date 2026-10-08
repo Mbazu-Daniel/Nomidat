@@ -8,12 +8,11 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #b37f5c;
+  color: var(--primary);
   padding-left: 14px;
-  background: white;
-  border: 1px solid #e5e8ed;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px #232e3d08;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
 }
 .report-controls select {
   border: 0;
@@ -25,7 +24,7 @@
   display: flex;
   gap: 9px;
   align-items: center;
-  color: #8d96a2;
+  color: var(--ink-subtle);
   font-size: 11px;
   margin: -8px 0 18px;
 }
@@ -39,11 +38,11 @@
   margin-bottom: 26px;
 }
 .report-metrics .workspace-stat:nth-child(4) {
-  background: #fff6ef;
-  border-color: #f1ddcc;
+  background: var(--surface-base);
+  border-color: var(--line);
 }
 .report-metrics .workspace-stat:nth-child(4) strong {
-  color: #b26539;
+  color: var(--primary);
 }
 .report-chart-grid {
   display: grid;
@@ -57,16 +56,16 @@
 }
 .report-card > header {
   padding: 24px;
-  border-bottom: 1px solid #eef0f3;
+  border-bottom: 1px solid var(--line);
 }
 .report-card > header p {
-  color: #99a1ad;
+  color: var(--line-strong);
   font-size: 11px;
   margin-top: 7px;
   line-height: 1.6;
 }
 .report-empty {
-  color: #9aa2ad;
+  color: var(--line-strong);
   font-size: 12px;
   line-height: 1.8;
   text-align: center;
@@ -89,18 +88,22 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  border-bottom: 1px solid #efe6df;
-  background: repeating-linear-gradient(to top, transparent 0, transparent 47px, #f4f1ed 48px);
+  border-bottom: 1px solid var(--line);
+  background: repeating-linear-gradient(
+    to top,
+    transparent 0,
+    transparent 47px,
+    var(--surface-base) 48px
+  );
 }
 .report-bar {
   width: 34px;
-  border-radius: 6px 6px 0 0;
-  background: linear-gradient(to top, #e76b35, #efab78);
-  box-shadow: 0 3px 8px #c67c4620;
+  border-radius: var(--radius-md) 6px 0 0;
+  background: linear-gradient(to top, var(--primary), var(--primary-soft));
 }
 .report-bar-value {
   display: block;
-  color: #7d8794;
+  color: var(--ink-subtle);
   font-size: 10px;
   margin-bottom: 12px;
   white-space: nowrap;
@@ -108,11 +111,11 @@
 .report-bar-date {
   display: block;
   font-size: 10px;
-  color: #717d8c;
+  color: var(--ink-subtle);
   margin-top: 12px;
 }
 .report-bar-column small {
-  color: #a8afb8;
+  color: var(--line-strong);
   font-size: 9px;
 }
 .report-expenses {
@@ -124,7 +127,7 @@
   align-items: center;
   padding-bottom: 21px;
   margin-bottom: 17px;
-  border-bottom: 1px solid #eef0f3;
+  border-bottom: 1px solid var(--line);
 }
 .report-expense-total strong {
   font-size: 24px;
@@ -132,7 +135,7 @@
   font-weight: 600;
 }
 .report-expense-total > span {
-  color: #a0a7b0;
+  color: var(--line-strong);
   font-size: 10px;
 }
 .report-expense {
@@ -146,30 +149,30 @@
   justify-content: space-between;
   gap: 15px;
   font-size: 11px;
-  color: #737d8a;
+  color: var(--ink-subtle);
 }
 .report-expense strong {
   font-weight: 550;
 }
 .report-progress {
   height: 6px;
-  background: #faf0e8;
-  border-radius: 5px;
+  background: var(--surface-base);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   margin: 10px 0 6px;
 }
 .report-progress span {
   display: block;
   height: 100%;
-  background: #dd945f;
-  border-radius: 5px;
+  background: var(--primary-soft);
+  border-radius: var(--radius-sm);
 }
 .report-expense small {
   font-size: 9px;
-  color: #a0a8b2;
+  color: var(--line-strong);
 }
 .report-rank {
-  color: #c6aa95;
+  color: var(--primary-soft);
   font-size: 10px;
   margin-right: 12px;
 }
@@ -188,7 +191,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid #eff1f3;
+  border-bottom: 1px solid var(--line);
   padding: 17px 0;
 }
 .report-customer-list strong {
@@ -198,7 +201,7 @@
   overflow-wrap: anywhere;
 }
 .report-customer-list > div > span:last-child {
-  color: #9a6844;
+  color: var(--primary);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -209,19 +212,19 @@
   height: 32px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #fff1e7;
-  color: #b37b50;
+  background: var(--surface-base);
+  color: var(--primary);
   font-size: 12px;
 }
 .report-card-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #bc774b;
+  color: var(--primary);
   font-size: 11px;
   padding: 18px 24px;
-  background: #fffcf9;
-  border-top: 1px solid #f3ece5;
+  background: var(--surface-raised);
+  border-top: 1px solid var(--line);
 }
 .report-stock-stats {
   display: grid;
@@ -232,7 +235,7 @@
 .report-stock-stats span {
   display: block;
   font-size: 11px;
-  color: #929ca9;
+  color: var(--ink-subtle);
   margin-bottom: 12px;
 }
 .report-stock-stats strong {
@@ -242,19 +245,19 @@
 }
 .report-stock-stats > div:nth-child(2) strong,
 .report-stock-stats > div:nth-child(3) strong {
-  color: #b87946;
+  color: var(--primary);
 }
 .report-stock-alert {
   display: flex;
   gap: 24px;
   align-items: center;
   padding: 22px 24px;
-  background: #fff8f2;
-  border-top: 1px solid #f7e8dc;
+  background: var(--surface-base);
+  border-top: 1px solid var(--line);
 }
 .report-stock-alert p {
   font-size: 11px;
-  color: #a08e80;
+  color: var(--ink-subtle);
   margin-top: 7px;
 }
 .report-stock-alert > div:last-child {
@@ -266,15 +269,15 @@
   display: flex;
   gap: 12px;
   padding: 9px 11px;
-  border: 1px solid #efdac9;
-  border-radius: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   font-size: 10px;
-  color: #9c7c65;
-  background: #fffdfb;
+  color: var(--primary);
+  background: var(--surface-raised);
 }
 .report-stock-chip strong {
   font-weight: 600;
-  color: #b07244;
+  color: var(--primary);
 }
 @media (max-width: 1050px) {
   .report-chart-grid {
@@ -314,13 +317,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #778194;
+  color: var(--ink-subtle);
   font-size: 13px;
 }
 .report-range-controls input,
 .report-range-controls select {
   padding: 9px 12px;
-  border: 1px solid #e1e5ed;
-  border-radius: 8px;
-  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
 }

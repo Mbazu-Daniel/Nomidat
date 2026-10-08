@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
+import { formatMoney } from "@/lib/money";
 export function PaymentVerification({ organizationId }: { organizationId: string }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState("");
@@ -29,7 +30,7 @@ export function PaymentVerification({ organizationId }: { organizationId: string
               `/organizations/${organizationId}/payments/paystack/${encodeURIComponent(reference)}/verify`,
             );
             setResult(
-              `${data.status} · ${data.currency} ${(data.amount / 100).toLocaleString()} · ${data.reference}`,
+              `${data.status} · ${formatMoney(data.amount, data.currency)} · ${data.reference}`,
             );
           } catch (reason) {
             setError((reason as Error).message);
