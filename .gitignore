@@ -37,5 +37,8 @@ packages/*/src/**/*.js.map
 .github/skills 
 agent*
 .codex*
-scripts/
-.github/hooks/  
+# The lint gate runs scripts/check-design-tokens.cjs, so that one ships; the
+# migration pipeline beside it was one-off and stays on the machine that ran it.
+scripts/*
+!scripts/check-design-tokens.cjs
+.github/hooks/ 
