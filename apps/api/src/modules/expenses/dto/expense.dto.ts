@@ -25,12 +25,12 @@ abstract class ExpenseFieldsDto {
 export class CreateExpenseDto extends ExpenseFieldsDto {
   @IsInt()
   @Min(1)
-  amountKobo!: number;
+  amountMinor!: number;
 }
 
 export class UpdateExpenseDto extends ExpenseFieldsDto {
   @IsOptional()
   @IsInt()
   @Min(1)
-  amountKobo?: number;
+  amountMinor?: number;
 }

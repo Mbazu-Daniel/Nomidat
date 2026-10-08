@@ -22,20 +22,13 @@ export type OrderSource = (typeof ORDER_SOURCES)[number];
 export const ORDER_STATUSES = ["pending", "paid", "cancelled", "refunded"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-export interface PosCartLine {
-  productId: string;
-  /** Present only when the product has variants; a variant is its own Stock Level. */
-  variantId?: string | null;
-  quantity: number;
-  unitPriceMinor: number;
-}
-
 /** Two variants of one product are two lines, so identity is the pair. */
-export function cartLineKey(line: Pick<PosCartLine, "productId" | "variantId">) {
+export function cartLineKey(line: { productId: string; variantId?: string | null }) {
   return `${line.productId}:${line.variantId ?? ""}`;
 }
 
-export interface PosTotals {
+/** What the till reads back after a sale: the priced figures plus the change due. */
+export interface PosCheckoutTotals {
   subtotalMinor: number;
   discountMinor: number;
   taxMinor: number;

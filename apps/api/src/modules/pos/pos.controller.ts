@@ -18,20 +18,14 @@ export class PosController {
 
   @Get("money-policy")
   @ApiOperation({ summary: "The business currency and tax rate" })
-  async getMoneyPolicy(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-  ) {
+  async getMoneyPolicy(@Param("organizationId") organizationId: string, @Req() req: Request) {
     await authorizeOrganization(this.auth, req, organizationId, "sales");
     return this.money.getPolicy(organizationId);
   }
 
   @Get("catalog")
   @ApiOperation({ summary: "List products available to the point-of-sale terminal" })
-  async getCatalog(
-    @Param("organizationId") organizationId: string,
-    @Req() req: Request,
-  ) {
+  async getCatalog(@Param("organizationId") organizationId: string, @Req() req: Request) {
     await authorizeOrganization(this.auth, req, organizationId, "sales");
     return this.pos.getCatalogProducts(organizationId);
   }

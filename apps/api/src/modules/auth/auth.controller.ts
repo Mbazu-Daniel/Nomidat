@@ -1,7 +1,8 @@
-import { Controller, Post, Get, Body, Req, Res } from "@nestjs/common";
+import { Controller, Post, Get, Body, Req, Res, UseGuards } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import type { Request, Response as ExpressResponse } from "express";
 import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-http";
+import { AuthRateLimitGuard } from "../../common/rate-limit/auth-rate-limit.guard";
 import { AuthService } from "./auth.service";
 import { AuthSocialService } from "./auth-social.service";
 import { AuthTelegramService } from "./auth-telegram.service";
@@ -12,9 +13,14 @@ import {
   SignInGoogleDto,
   LinkSocialDto,
   CreateTelegramMiniAppSessionDto,
+  SignInTelegramDto,
 } from "./dto";
 
 @ApiTags("Auth")
+// Every route here verifies a credential, and each verification costs an Argon2id
+// hash at 64 MB. Better Auth's limiter covers the paths it mounts itself, not
+// these, so without this the guess rate is bounded only by the network.
+@UseGuards(AuthRateLimitGuard)
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -90,6 +96,21 @@ export class AuthController {
   }
 
   @Post("sign-in/telegram")
+  @ApiOperation({ summary: "Sign in from the Telegram Login Widget on a web page" })
+  @ApiResponse({ status: 200, description: "Session created from a verified Telegram payload" })
+  @ApiResponse({ status: 400, description: "Signature or expiry check failed" })
+  async createSessionWithTelegramLogin(
+    @Body() body: SignInTelegramDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    return proxyAuthResponse(
+      res,
+      await this.authTelegramService.createSessionWithTelegramLogin(body, extractHeaders(req)),
+    );
+  }
+
+  @Post("sign-in/telegram-mini-app")
   @ApiOperation({ summary: "Sign in from a Telegram Mini App via initData" })
   @ApiResponse({ status: 200, description: "Session created from verified Telegram initData" })
   @ApiResponse({ status: 401, description: "Invalid or expired initData" })

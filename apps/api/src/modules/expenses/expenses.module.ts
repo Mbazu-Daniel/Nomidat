@@ -12,4 +12,3 @@ import { ExpensesService } from "./expenses.service";
   exports: [ExpensesService],
 })
 export class ExpensesModule {}
-

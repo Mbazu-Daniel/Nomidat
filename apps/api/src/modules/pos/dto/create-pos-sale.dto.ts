@@ -5,6 +5,7 @@ import {
   IsArray,
   IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -26,14 +27,24 @@ class PosSaleLineDto {
   @IsUUID()
   variantId?: string;
 
-  @IsInt()
-  @Max(2147483647)
-  @Min(1)
+  /**
+   * Decimal, because a till weighs produce: 1.5 kg of mangos is one sale.
+   *
+   * Capped at three places to match `order_item.quantity` and `stock.on_hand`.
+   * The cap is in the DTO rather than left to the column, because Postgres
+   * *rounds* a fourth place instead of refusing it — the stored quantity would
+   * then disagree with the line total the cashier was shown.
+   */
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Max(999_999_999)
+  @Min(0.001)
   quantity!: number;
 
   /**
    * The exact units being sold, for a product tracked by serial. One per unit:
-   * a serial is one physical item, so a serialised line is always one long.
+   * a serial is one physical item, so a serialised line is always one long, and
+   * its quantity stays whole.
    */
   @IsOptional()
   @IsArray()

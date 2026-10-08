@@ -14,7 +14,12 @@ import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeOrganization } from "../../common/helpers/organization-auth";
 import { BusinessAuthService } from "../business/business-auth.service";
-import { CreateExpenseCategoryDto, CreateExpenseDto, UpdateExpenseDto } from "./dto";
+import {
+  CreateExpenseCategoryDto,
+  CreateExpenseDto,
+  UpdateExpenseCategoryDto,
+  UpdateExpenseDto,
+} from "./dto";
 import { ExpensesService } from "./expenses.service";
 
 @ApiTags("Expenses")
@@ -85,9 +90,9 @@ export class ExpensesController {
 
   @Get("expense-categories")
   @ApiOperation({ summary: "List expense categories" })
-  async listCategories(@Param("organizationId") organizationId: string, @Req() req: Request) {
+  async getCategories(@Param("organizationId") organizationId: string, @Req() req: Request) {
     await this.authorize(req, organizationId);
-    return this.expenses.listCategories(organizationId);
+    return this.expenses.getCategories(organizationId);
   }
 
   @Post("expense-categories")
@@ -99,6 +104,29 @@ export class ExpensesController {
   ) {
     await this.authorize(req, organizationId);
     return this.expenses.createCategory(organizationId, body);
+  }
+
+  @Patch("expense-categories/:categoryId")
+  @ApiOperation({ summary: "Rename an expense category" })
+  async updateCategory(
+    @Param("organizationId") organizationId: string,
+    @Param("categoryId") categoryId: string,
+    @Body() body: UpdateExpenseCategoryDto,
+    @Req() req: Request,
+  ) {
+    await this.authorize(req, organizationId);
+    return this.expenses.updateCategory(organizationId, categoryId, body);
+  }
+
+  @Delete("expense-categories/:categoryId")
+  @ApiOperation({ summary: "Delete an expense category" })
+  async removeCategory(
+    @Param("organizationId") organizationId: string,
+    @Param("categoryId") categoryId: string,
+    @Req() req: Request,
+  ) {
+    await this.authorize(req, organizationId);
+    return this.expenses.removeCategory(organizationId, categoryId);
   }
 
   private authorize(req: Request, organizationId: string) {

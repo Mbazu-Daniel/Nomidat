@@ -1,7 +1,20 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Request, Response as ExpressResponse } from "express";
 import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-http";
+import { AuthRateLimitGuard } from "../../common/rate-limit/auth-rate-limit.guard";
 import { OrganizationService } from "./organization.service";
 import {
   CheckOrganizationPermissionDto,
@@ -18,6 +31,12 @@ import {
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
 
+  /**
+   * Creating a business writes a row per call, so an unbounded loop here is a
+   * way to fill someone's database from one address. The same guard as sign-in:
+   * a handful a minute is generous for a human, useless for a script.
+   */
+  @UseGuards(AuthRateLimitGuard)
   @Post()
   @ApiOperation({ summary: "Create an organization" })
   @ApiResponse({ status: 200, description: "Organization created" })
@@ -32,6 +51,7 @@ export class OrganizationController {
     );
   }
 
+  @UseGuards(AuthRateLimitGuard)
   @Post("check-slug")
   @ApiOperation({ summary: "Check if an organization slug is available" })
   async checkOrganizationSlug(
