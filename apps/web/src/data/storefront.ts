@@ -1,4 +1,4 @@
-import { createApiRequest, http } from "@/lib/api";
+import { createApiRequest } from "@/lib/api";
 
 const PUBLIC = "/public/storefront";
 
@@ -61,12 +61,6 @@ export interface StoreVariant {
   inStock: boolean;
 }
 
-interface StoreCategory {
-  id: string;
-  name: string;
-  slug: string;
-}
-
 export interface StoreCart {
   token: string;
   items: {
@@ -85,10 +79,6 @@ export interface StoreCart {
 
 export function getStorefrontConfig(slug: string) {
   return createApiRequest<StorefrontConfig>(`${PUBLIC}/${encodeURIComponent(slug)}/config`);
-}
-
-function getStoreCategories(slug: string) {
-  return createApiRequest<StoreCategory[]>(`${PUBLIC}/${encodeURIComponent(slug)}/categories`);
 }
 
 export function getStoreProducts(
@@ -159,22 +149,3 @@ export function checkoutStoreCart(
  * The API is usually a different origin, so the browser would send the API's own
  * Host header. The shopper's hostname is forwarded explicitly instead.
  */
-async function resolveShopFromHost(): Promise<
-  { resolved: true; slug: string; template: string } | { resolved: false }
-> {
-  const host = typeof window === "undefined" ? "" : window.location.host;
-  if (!host) return { resolved: false };
-
-  try {
-    // Asked for by Host rather than by path, because a storefront can be served
-    // from its own domain and this is how the API knows which shop that is.
-    const { data } = await http.get<{ resolved: true; slug: string; template: string }>(
-      `/${PUBLIC}/resolve`,
-      { headers: { "X-Storefront-Host": host } },
-    );
-    return data;
-  } catch {
-    // An unreachable API must not break the shop page; fall back to the path slug.
-    return { resolved: false };
-  }
-}

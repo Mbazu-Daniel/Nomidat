@@ -14,19 +14,6 @@ export const ONLINE_POS_PAYMENT_METHODS: ReadonlySet<PosPaymentMethod> = new Set
   POS_PAYMENT_METHODS.CARD,
 ]);
 
-/** Channel a sale was created by, matching the Order source vocabulary. */
-const ORDER_SOURCES = ["manual", "online", "pos"] as const;
-type OrderSource = (typeof ORDER_SOURCES)[number];
-
-/** Lifecycle of an order. */
-const ORDER_STATUSES = ["pending", "paid", "cancelled", "refunded"] as const;
-type OrderStatus = (typeof ORDER_STATUSES)[number];
-
-/** Two variants of one product are two lines, so identity is the pair. */
-function cartLineKey(line: { productId: string; variantId?: string | null }) {
-  return `${line.productId}:${line.variantId ?? ""}`;
-}
-
 /** What the till reads back after a sale: the priced figures plus the change due. */
 export interface PosCheckoutTotals {
   subtotalMinor: number;

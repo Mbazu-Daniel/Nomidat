@@ -77,7 +77,17 @@ export function signWebhookPayload(secret: string, body: string, timestamp: numb
   return `t=${timestamp},v1=${signature}`;
 }
 
-function verifyWebhookSignature(
+/**
+ * How a receiver checks a delivery, kept here so the contract is testable rather
+ * than described in a README nobody runs.
+ *
+ * Nomidat only ever sends webhooks, so nothing in this codebase calls this. It is
+ * the reference implementation of what `signWebhookPayload` produces: same HMAC,
+ * same canonical input, constant-time comparison, and a timestamp window that
+ * bounds replay. A receiver that skips any of those steps accepts deliveries it
+ * did not send, which is the whole point of signing.
+ */
+export function verifyWebhookSignature(
   secret: string,
   body: string,
   header: string,

@@ -15,12 +15,6 @@ export interface PosCartItem {
   serialCode: string | null;
 }
 
-interface PosCartSummary {
-  itemCount: number;
-  subtotalMinor: number;
-  totalMinor: number;
-}
-
 export type PosPaymentMethod = "cash" | "bank_transfer" | "card";
 
 export interface PosCartLineInput {

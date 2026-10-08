@@ -22,17 +22,3 @@ export function normalizeHostname(rawHost: string | undefined | null): string {
 
   return host.replace(/\.+$/, "");
 }
-
-/** The registrable part: `shop.example.com` -> `example.com`. */
-function baseDomain(hostname: string): string {
-  const parts = hostname.split(".").filter(Boolean);
-  if (parts.length <= 2) return hostname;
-  return parts.slice(-2).join(".");
-}
-
-/** The subdomain a shop can be reached on: `shop.example.com` -> `shop`. */
-function subdomainOf(hostname: string): string {
-  const base = baseDomain(hostname);
-  if (!base || hostname === base) return "";
-  return hostname.slice(0, -(base.length + 1));
-}

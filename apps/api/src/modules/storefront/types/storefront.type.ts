@@ -28,13 +28,7 @@ export const STOREFRONT_PAYMENT_METHODS = Object.values(StorefrontPaymentMethod)
  * A shop's theme. Only these tokens may be set, and only to colour values, so a
  * seller cannot smuggle arbitrary CSS into a public page through the theme.
  */
-const STOREFRONT_THEME_TOKENS = [
-  "accent",
-  "background",
-  "surface",
-  "text",
-  "muted",
-] as const;
+const STOREFRONT_THEME_TOKENS = ["accent", "background", "surface", "text", "muted"] as const;
 export type StorefrontThemeToken = (typeof STOREFRONT_THEME_TOKENS)[number];
 
 export type StorefrontTheme = Partial<Record<StorefrontThemeToken, string>>;
@@ -60,20 +54,6 @@ export function sanitizeStorefrontTheme(theme: unknown): StorefrontTheme {
 }
 
 /** The public shape of a shop, safe to hand to an unauthenticated browser. */
-interface StorefrontConfig {
-  organizationId: string;
-  slug: string;
-  name: string;
-  /** ISO 4217 code; a shop is not assumed to trade in one country. */
-  currency: string;
-  template: string;
-  theme: StorefrontTheme;
-  seo: Record<string, unknown>;
-  checkout: Record<string, unknown>;
-  pages: Record<string, unknown>;
-  /** Already sanitised by the API; never the raw stored text. */
-  customCss: string;
-}
 
 export interface ResolvedStore {
   organizationId: string;
