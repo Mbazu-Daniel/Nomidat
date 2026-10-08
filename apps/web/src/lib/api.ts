@@ -78,7 +78,7 @@ export async function signInWithTelegramWidget(payload: {
  * already queued. That distinction lives in this module's interceptors so no
  * caller re-implements it.
  */
-export const http = axios.create({
+const http = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
   // Sessions are httpOnly cookies, so every call has to present them.
   withCredentials: true,
