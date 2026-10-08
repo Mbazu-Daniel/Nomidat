@@ -1,9 +1,3 @@
-interface PosCatalogSnapshot {
-  products: unknown[];
-  contacts: unknown[];
-  cachedAt: number;
-}
-
 export interface QueuedPosSale {
   id: string;
   organizationId: string;

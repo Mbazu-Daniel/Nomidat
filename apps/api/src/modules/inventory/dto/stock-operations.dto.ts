@@ -76,19 +76,6 @@ export class CreateCycleCountDto {
   notes?: string;
 }
 
-class ReceiveCountDto {
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(500)
-  @ValidateNested({ each: true })
-  @Type(() => CountLineDto)
-  items!: CountLineDto[];
-
-  @IsOptional()
-  @IsString()
-  notes?: string;
-}
-
 class ReturnLineDto {
   @IsUUID()
   productId!: string;

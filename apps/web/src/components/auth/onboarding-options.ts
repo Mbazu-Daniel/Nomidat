@@ -25,9 +25,6 @@ export const BUSINESS_THEMES = [
   { value: "rose", label: "Rose", hint: "Soft and rose gold" },
 ] as const;
 
-type BusinessType = (typeof BUSINESS_TYPES)[number]["value"];
-type BusinessTheme = (typeof BUSINESS_THEMES)[number]["value"];
-
 /** Staff bands, rather than an exact headcount nobody keeps up to date. */
 export const EMPLOYEE_BANDS = [
   { value: "1", label: "Just me" },
@@ -36,5 +33,3 @@ export const EMPLOYEE_BANDS = [
   { value: "21-100", label: "21–100 people" },
   { value: "100+", label: "More than 100" },
 ] as const;
-
-type EmployeeBand = (typeof EMPLOYEE_BANDS)[number]["value"];

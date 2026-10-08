@@ -16,21 +16,3 @@ interface ExpenseCategory {
 export function getExpenseCategories(organizationId: string) {
   return createApiRequest<ExpenseCategory[]>(`${base(organizationId)}/expense-categories`);
 }
-
-function getExpense(organizationId: string, expenseId: string) {
-  return createApiRequest<unknown>(`${base(organizationId)}/expenses/${encodeURIComponent(expenseId)}`);
-}
-
-function saveExpense(organizationId: string, expenseId: string, body: Record<string, unknown>) {
-  return createApiRequest<unknown>(`${base(organizationId)}/expenses/${encodeURIComponent(expenseId)}`, {
-    method: "PATCH",
-    body: JSON.stringify(body),
-  });
-}
-
-function deleteExpense(organizationId: string, expenseId: string) {
-  return createApiRequest<void>(
-    `${base(organizationId)}/expenses/${encodeURIComponent(expenseId)}`,
-    { method: "DELETE" },
-  );
-}

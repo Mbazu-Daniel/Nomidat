@@ -93,16 +93,3 @@ export function toCartLineInput(items: PosCartItem[]): PosCartLineInput[] {
     ...(item.serialNumberId ? { serialNumberIds: [item.serialNumberId] } : {}),
   }));
 }
-
-function findCartItem(
-  items: PosCartItem[],
-  productId: string,
-  variantId: string | null,
-  serialNumberId: string | null = null,
-) {
-  return (
-    items.find(
-      (item) => lineKey(item) === `${productId}:${variantId ?? ""}:${serialNumberId ?? ""}`,
-    ) ?? null
-  );
-}
