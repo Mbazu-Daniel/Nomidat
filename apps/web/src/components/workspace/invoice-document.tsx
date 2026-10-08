@@ -1,8 +1,10 @@
+import { useCurrency } from "@/lib/currency-context";
 import "./invoice.css";
-import { formatInvoiceMoney } from "./invoice-format";
+import { formatMoney } from "@/lib/money";
 import type { InvoiceDocumentProps } from "./types";
 
 export function InvoiceDocumentPreview({ invoice }: InvoiceDocumentProps) {
+  const currency = useCurrency();
   const date = (value: string) =>
     new Date(value).toLocaleDateString("en-NG", {
       day: "numeric",
@@ -88,10 +90,10 @@ export function InvoiceDocumentPreview({ invoice }: InvoiceDocumentProps) {
                   {item.quantity}
                 </td>
                 <td className="invoice-number" data-label="Unit price">
-                  {formatInvoiceMoney(item.unitPriceKobo)}
+                  {formatMoney(item.unitPriceMinor, currency)}
                 </td>
                 <td className="invoice-number" data-label="Amount">
-                  <strong>{formatInvoiceMoney(item.totalKobo)}</strong>
+                  <strong>{formatMoney(item.totalMinor, currency)}</strong>
                 </td>
               </tr>
             ))}
@@ -109,21 +111,21 @@ export function InvoiceDocumentPreview({ invoice }: InvoiceDocumentProps) {
         <dl className="invoice-totals">
           <div>
             <dt>Subtotal</dt>
-            <dd>{formatInvoiceMoney(invoice.subtotalKobo)}</dd>
+            <dd>{formatMoney(invoice.subtotalMinor, currency)}</dd>
           </div>
           <div>
             <dt>Discount</dt>
-            <dd>−{formatInvoiceMoney(invoice.discountKobo)}</dd>
+            <dd>−{formatMoney(invoice.discountMinor, currency)}</dd>
           </div>
           <div>
             <dt>Tax</dt>
-            <dd>{formatInvoiceMoney(invoice.taxKobo)}</dd>
+            <dd>{formatMoney(invoice.taxMinor, currency)}</dd>
           </div>
           <div className="invoice-grand-total">
             <dt>
-              Invoice total<span>NGN</span>
+              Invoice total<span>{currency}</span>
             </dt>
-            <dd>{formatInvoiceMoney(invoice.totalKobo ?? 0)}</dd>
+            <dd>{formatMoney(invoice.totalMinor ?? 0, currency)}</dd>
           </div>
         </dl>
       </div>
