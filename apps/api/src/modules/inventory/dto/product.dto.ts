@@ -64,7 +64,7 @@ export class UpdateProductDto {
    */
   @IsOptional()
   @ValidateIf((_value, address) => address !== null)
-  @Matches(/^[0-9a-f-]{36}\/(product-images|business-logos|avatars)\//, {
+  @Matches(/^[0-9a-f-]{36}\/product-images\//, {
     message:
       "imageKey must be a key from this organization, of the form {organizationId}/{location}/{unique}-{fileName}",
   })

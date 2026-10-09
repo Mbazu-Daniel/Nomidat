@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { createApiRequest } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 import { useLoadedResource } from "@/lib/use-api-resource";
-import type { ReceiptData, BusinessProfile } from "./types/settings.type";
+import type { ReceiptData, OrganizationProfile } from "./types/settings.type";
 export function SaleReceipt({
   organizationId,
   saleId,
@@ -15,14 +15,14 @@ export function SaleReceipt({
       const path = `/organizations/${organizationId}`;
       const [receipt, business] = await Promise.all([
         createApiRequest<ReceiptData>(`${path}/sales/${saleId}/receipt`),
-        createApiRequest<BusinessProfile>(path),
+        createApiRequest<OrganizationProfile>(path),
       ]);
       return { receipt, business };
     },
     [organizationId, saleId],
     { receipt: undefined, business: undefined } as {
       receipt: ReceiptData | undefined;
-      business: BusinessProfile | undefined;
+      business: OrganizationProfile | undefined;
     },
   );
   const receipt = data.receipt;
@@ -51,7 +51,7 @@ export function SaleReceipt({
         <article className="receipt-paper">
           <header>
             {business?.logo && (
-              <img className="invoice-business-logo" src={business.logo} alt="Business logo" />
+              <img className="invoice-organization-logo" src={business.logo} alt="Business logo" />
             )}
             <h1>{business?.name ?? "Sales receipt"}</h1>
             <p>{receipt.receiptNumber}</p>

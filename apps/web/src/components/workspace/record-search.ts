@@ -1,5 +1,5 @@
-import type { BusinessRecord } from "./types";
-export function matchesRecord(row: BusinessRecord, query: string, filter: string) {
+import type { OrganizationRecord } from "./types";
+export function matchesRecord(row: OrganizationRecord, query: string, filter: string) {
   const text = [
     row.saleReference,
     row.saleItems?.map((item) => item.productName).join(" "),

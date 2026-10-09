@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CreateBusiness } from "@/components/workspace/create-business";
+import { CreateOrganization } from "@/components/workspace/create-organization";
 import { rememberActiveOrg, resolveOrgSlug } from "@/lib/active-org";
 
-export const Route = createFileRoute("/create-business")({
+export const Route = createFileRoute("/create-organization")({
   component: CreateBusinessPage,
 });
 
@@ -10,7 +10,7 @@ function CreateBusinessPage() {
   const navigate = useNavigate();
   return (
     <main className="workspace-main">
-      <CreateBusiness
+      <CreateOrganization
         onCancel={() => void navigate({ to: "/" })}
         onCreated={async (business) => {
           rememberActiveOrg(business.id);

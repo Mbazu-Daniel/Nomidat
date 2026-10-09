@@ -8,7 +8,7 @@ const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 
 @Injectable()
-export class BusinessService {
+export class OrganizationSummaryService {
   constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
 
   async getSales(organizationId: string, limit = DEFAULT_LIMIT) {

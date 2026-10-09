@@ -3,7 +3,7 @@ import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req } from "@n
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { SalesService } from "./sales.service";
 import { CreateSaleDto, RecordPaymentDto } from "./dto";
 
@@ -11,7 +11,7 @@ import { CreateSaleDto, RecordPaymentDto } from "./dto";
 @Controller("organizations/:organizationId")
 export class SalesController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly sales: SalesService,
     private readonly queries: SalesQueriesService,
   ) {}

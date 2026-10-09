@@ -3,7 +3,7 @@ import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { PayoutAccountService } from "./payout-account.service";
 import { PaystackPlatformClient } from "./paystack-platform.client";
 import { assertCanManagePayouts } from "./payout-permissions";
@@ -15,7 +15,7 @@ import { WalletService } from "./wallet.service";
 @Controller("organizations/:organizationId/wallet")
 export class WalletController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly wallet: WalletService,
     private readonly paystack: PaystackPlatformClient,
     private readonly accounts: PayoutAccountService,

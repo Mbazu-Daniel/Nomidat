@@ -2,7 +2,7 @@ import { ChannelPictureReader } from "./channel-picture-reader";
 import { PictureActionsService } from "./picture-actions.service";
 import { InventoryModule } from "../inventory/inventory.module";
 import { PictureImportModule } from "../picture-import/picture-import.module";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { ActionsService } from "./actions.service";
 import { AiService } from "./ai.service";
 import { ConversationalController } from "./conversational.controller";
@@ -24,7 +24,7 @@ import { ConversationalService } from "./conversational.service";
     ContactsModule,
     InvoicesModule,
     PaymentsModule,
-    BusinessModule,
+    OrganizationSummaryModule,
     DbModule,
     SalesModule,
     ReportsModule,

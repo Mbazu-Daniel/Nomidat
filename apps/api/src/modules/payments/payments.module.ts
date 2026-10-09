@@ -7,14 +7,14 @@ import { WhatsAppClient } from "../whatsapp/whatsapp.client";
 import { PaymentLedgerService } from "./payment-ledger.service";
 import { Module } from "@nestjs/common";
 import { DbModule } from "../../common/db/db.module";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { EngagementModule } from "../engagement/engagement.module";
 import { PaymentsController } from "./payments.controller";
 import { PayoutsModule } from "../payouts/payouts.module";
 import { PaystackService } from "./providers/paystack/paystack.service";
 
 @Module({
-  imports: [PayoutsModule, DbModule, BusinessModule, EngagementModule],
+  imports: [PayoutsModule, DbModule, OrganizationSummaryModule, EngagementModule],
   controllers: [PaymentsController],
   providers: [
     PaystackService,

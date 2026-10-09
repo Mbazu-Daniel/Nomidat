@@ -3,7 +3,7 @@ import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { AuditService } from "./audit.service";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 
 const SUMMARY_DAYS = 30;
 
@@ -11,7 +11,7 @@ const SUMMARY_DAYS = 30;
 @Controller("organizations/:organizationId")
 export class AuditController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly audit: AuditService,
   ) {}
 

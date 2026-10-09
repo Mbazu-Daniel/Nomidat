@@ -1,4 +1,4 @@
-export type BusinessDetails = {
+export type OrganizationDetails = {
   ownerName?: string;
   address?: string;
   phone?: string;
@@ -6,7 +6,7 @@ export type BusinessDetails = {
   shopNumber?: string;
   registrationNumber?: string;
 };
-export type BusinessProfile = {
+export type OrganizationProfile = {
   id: string;
   name: string;
   slug: string;

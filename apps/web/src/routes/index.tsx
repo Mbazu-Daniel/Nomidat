@@ -12,7 +12,7 @@ export const Route = createFileRoute("/")({
     if (typeof window === "undefined") return;
     const { signedIn, slug } = await resolveActiveOrg();
     if (slug) throw redirect({ to: "/$orgSlug", params: { orgSlug: slug } });
-    if (signedIn) throw redirect({ to: "/create-business" });
+    if (signedIn) throw redirect({ to: "/create-organization" });
   },
   component: LandingPage,
 });

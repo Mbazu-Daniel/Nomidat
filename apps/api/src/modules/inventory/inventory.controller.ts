@@ -13,7 +13,7 @@ import {
 import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeOrganization } from "../../common/helpers/organization-auth";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { AdjustStockDto, CreateProductDto, UpdateProductDto } from "./dto";
 import { InventoryService } from "./inventory.service";
 
@@ -21,7 +21,7 @@ import { InventoryService } from "./inventory.service";
 @Controller("organizations/:organizationId")
 export class InventoryController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly inventory: InventoryService,
   ) {}
 

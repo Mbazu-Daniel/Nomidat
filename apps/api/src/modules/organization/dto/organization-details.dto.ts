@@ -1,6 +1,6 @@
 import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 
-export class BusinessDetailsDto {
+export class OrganizationDetailsDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)

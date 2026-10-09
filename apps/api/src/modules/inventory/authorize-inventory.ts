@@ -1,6 +1,6 @@
 import type { Request } from "express";
 import { authorizeOrganization } from "../../common/helpers/organization-auth";
-import type { BusinessAuthService } from "../business/business-auth.service";
+import type { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 
 /**
  * The inventory permission check, in one place.
@@ -11,7 +11,7 @@ import type { BusinessAuthService } from "../business/business-auth.service";
  * — `inventory` is the single area — so one method that says what it guarantees.
  */
 export function authorizeInventory(
-  auth: BusinessAuthService,
+  auth: OrganizationAuthService,
   req: Request,
   organizationId: string,
 ) {

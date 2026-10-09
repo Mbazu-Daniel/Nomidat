@@ -18,7 +18,7 @@ import { InvitationModule } from "./modules/invitation/invitation.module";
 import { ChannelModule } from "./modules/channel/channel.module";
 import { TelegramModule } from "./modules/telegram/telegram.module";
 import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
-import { BusinessModule } from "./modules/business/business.module";
+import { OrganizationSummaryModule } from "./modules/organization-summary/organization-summary.module";
 import { MemberProfileModule } from "./modules/member-profile/member-profile.module";
 import { ConversationalModule } from "./modules/conversational/conversational.module";
 import { MoneyModule } from "./modules/money/money.module";
@@ -52,7 +52,7 @@ import { OrgContextGuard } from "./common/guards/org-context.guard";
     ChannelModule,
     TelegramModule,
     WhatsAppModule,
-    BusinessModule,
+    OrganizationSummaryModule,
     MemberProfileModule,
     SalesModule,
     PosModule,

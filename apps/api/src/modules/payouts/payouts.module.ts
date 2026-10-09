@@ -2,7 +2,7 @@ import { PayoutAccountController } from "./payout-account.controller";
 import { WalletController } from "./wallet.controller";
 import { PayoutAccountService } from "./payout-account.service";
 import { Module } from "@nestjs/common";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { DbModule } from "../../common/db/db.module";
 import { EnvModule } from "../../common/config/env.module";
 import { PaystackPlatformClient } from "./paystack-platform.client";
@@ -14,7 +14,7 @@ import { WalletService } from "./wallet.service";
  * module is the only place that talks to Paystack with a platform credential.
  */
 @Module({
-  imports: [BusinessModule, DbModule, EnvModule],
+  imports: [OrganizationSummaryModule, DbModule, EnvModule],
   controllers: [PayoutAccountController, WalletController],
   providers: [PaystackPlatformClient, PayoutAccountService, WalletRepository, WalletService],
   // The repository is deliberately not exported. Nothing outside WalletService may

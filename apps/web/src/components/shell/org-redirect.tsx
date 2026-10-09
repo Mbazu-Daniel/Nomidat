@@ -11,7 +11,7 @@ export function OrgRedirect({ section }: { section: string }) {
       [...DASHBOARD_NAV, SETTINGS_NAV].find((item) => item.section === section)?.to ?? "/$orgSlug";
     void resolveActiveOrg().then(({ signedIn, slug }) => {
       if (slug) void navigate({ to: target, params: { orgSlug: slug } });
-      else if (signedIn) void navigate({ to: "/create-business" });
+      else if (signedIn) void navigate({ to: "/create-organization" });
       else void navigate({ to: "/login" });
     });
     // Nothing is written to, so there is no stale answer to discard: the redirect

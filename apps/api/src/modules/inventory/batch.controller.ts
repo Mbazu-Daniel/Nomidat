@@ -13,7 +13,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeInventory } from "./authorize-inventory";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { BatchService } from "./batch.service";
 import { ConsumeBatchDto, CreateBatchDto } from "./dto/batch.dto";
 import { RegisterSerialDto, UpdateSerialStatusDto } from "./dto/serial-number.dto";
@@ -23,7 +23,7 @@ import { SerialNumberService } from "./serial-number.service";
 @Controller("organizations/:organizationId")
 export class BatchController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly batches: BatchService,
     private readonly serials: SerialNumberService,
   ) {}

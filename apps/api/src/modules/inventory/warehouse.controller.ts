@@ -13,7 +13,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeInventory } from "./authorize-inventory";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { CreateWarehouseDto, UpdateWarehouseDto } from "./dto/warehouse.dto";
 import { WarehouseService } from "./warehouse.service";
 
@@ -21,7 +21,7 @@ import { WarehouseService } from "./warehouse.service";
 @Controller("organizations/:organizationId")
 export class WarehouseController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly warehouses: WarehouseService,
   ) {}
 

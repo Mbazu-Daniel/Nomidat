@@ -17,7 +17,7 @@ import { and, desc, eq } from "@nomidat/db";
 import { storefrontDomain } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { authorizeOrganization } from "../../common/helpers/organization-auth";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { DomainVerificationService, dnsRecordFor } from "./domain-verification.service";
 import { AddDomainDto } from "./dto/domain.dto";
 import { StorefrontDomainKind } from "./types/storefront.type";
@@ -28,7 +28,7 @@ import { StorefrontDomainKind } from "./types/storefront.type";
 @Controller("organizations/:organizationId/storefront-domains")
 export class StorefrontDomainController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly domains: DomainVerificationService,
     @Inject(DATABASE) private readonly db: DbHandle,
   ) {}

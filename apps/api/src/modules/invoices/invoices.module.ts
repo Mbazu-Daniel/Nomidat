@@ -1,6 +1,6 @@
 import { ReceiptsService } from "./receipts.service";
 import { AuditModule } from "../audit/audit.module";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { EngagementModule } from "../engagement/engagement.module";
 import { InvoiceDocumentsController } from "./invoice-documents.controller";
 import { InvoiceDeliveryService } from "./invoice-delivery.service";
@@ -22,7 +22,7 @@ import { InvoicesService } from "./invoices.service";
   imports: [
     AuditModule,
     EmailModule,
-    BusinessModule,
+    OrganizationSummaryModule,
     BetterAuthModule,
     DbModule,
     // For the logo bytes the PDF embeds. Without a bucket the invoice still

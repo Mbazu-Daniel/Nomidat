@@ -17,12 +17,12 @@ import { Module } from "@nestjs/common";
 import { BetterAuthModule } from "../../common/better-auth/better-auth.module";
 import { DbModule } from "../../common/db/db.module";
 import { FilesModule } from "../../common/files/files.module";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { InventoryController } from "./inventory.controller";
 import { InventoryService } from "./inventory.service";
 
 @Module({
-  imports: [BetterAuthModule, DbModule, FilesModule, BusinessModule],
+  imports: [BetterAuthModule, DbModule, FilesModule, OrganizationSummaryModule],
   controllers: [
     InventoryController,
     CatalogController,

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createApiRequest } from "@/lib/api";
-export function BusinessAccessActions({
+export function OrganizationAccessActions({
   organizationId,
   owner,
 }: {

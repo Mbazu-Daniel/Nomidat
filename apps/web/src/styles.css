@@ -1334,13 +1334,13 @@
 }
 
 /* Business setup */
-.business-create {
+.organization-create {
   padding: 0;
   overflow: hidden;
   max-width: 1000px;
   margin-inline: auto;
 }
-.business-create-heading {
+.organization-create-heading {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -1348,17 +1348,17 @@
   border-bottom: 1px solid var(--line);
   background: linear-gradient(120deg, var(--surface-base), var(--surface-raised));
 }
-.business-create-heading h2 {
+.organization-create-heading h2 {
   margin: 0 0 6px;
   font-size: 24px;
 }
-.business-create-heading p,
-.business-form-section > p {
+.organization-create-heading p,
+.organization-form-section > p {
   margin: 0;
   color: var(--ink-subtle);
   font-size: 14px;
 }
-.business-create-icon {
+.organization-create-icon {
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -1368,19 +1368,19 @@
   color: var(--primary);
   background: var(--surface-base);
 }
-.business-create fieldset {
+.organization-create fieldset {
   border: 0;
   margin: 0;
   padding: 28px 32px 0;
   min-width: 0;
 }
-.business-logo-row {
+.organization-logo-row {
   display: flex;
   align-items: center;
   gap: 18px;
   margin-bottom: 28px;
 }
-.business-logo-preview {
+.organization-logo-preview {
   width: 80px;
   height: 80px;
   border: 1px dashed var(--line-strong);
@@ -1392,12 +1392,12 @@
   overflow: hidden;
   flex-shrink: 0;
 }
-.business-logo-preview img {
+.organization-logo-preview img {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
-.business-logo-upload {
+.organization-logo-upload {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -1407,40 +1407,40 @@
   font-weight: 600;
   color: var(--primary);
 }
-.business-logo-upload input {
+.organization-logo-upload input {
   position: absolute;
   inset: 0;
   width: 100%;
   opacity: 0;
   cursor: pointer;
 }
-.business-logo-upload:focus-within {
+.organization-logo-upload:focus-within {
   outline: 2px solid var(--line-strong);
   outline-offset: 5px;
 }
-.business-logo-row p {
+.organization-logo-row p {
   font-size: 12px;
   color: var(--ink-subtle);
   margin: 7px 0;
 }
-.business-logo-row button {
+.organization-logo-row button {
   font-size: 12px;
   text-decoration: underline;
 }
-.business-form-section {
+.organization-form-section {
   border-top: 1px solid var(--line);
   padding: 22px 0;
 }
-.business-form-section h3 {
+.organization-form-section h3 {
   margin: 0 0 16px;
   font-size: 16px;
 }
-.business-form-grid {
+.organization-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px 24px;
 }
-.business-create label:not(.business-logo-upload) {
+.organization-create label:not(.organization-logo-upload) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1448,12 +1448,12 @@
   font-weight: 600;
   color: var(--ink-muted);
 }
-.business-create label small {
+.organization-create label small {
   font-weight: 400;
   color: var(--line-strong);
   margin-left: auto;
 }
-.business-create label input:not([type="file"]) {
+.organization-create label input:not([type="file"]) {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
@@ -1464,18 +1464,18 @@
   color: var(--ink);
   background: var(--surface-raised);
 }
-.business-create input:focus {
+.organization-create input:focus {
   outline: 2px solid var(--line-strong);
   outline-offset: 2px;
 }
-.business-field-wide {
+.organization-field-wide {
   grid-column: 1 / -1;
 }
-.business-handle {
+.organization-handle {
   max-width: 440px;
   margin-top: 16px;
 }
-.business-invoice-note {
+.organization-invoice-note {
   background: var(--surface-base);
   border-radius: var(--radius-md);
   margin: 0 32px 24px;
@@ -1484,46 +1484,46 @@
   font-size: 12px;
   line-height: 1.7;
 }
-.business-create-actions {
+.organization-create-actions {
   justify-content: flex-end;
   padding: 20px 32px;
   border-top: 1px solid var(--line);
   background: var(--surface-raised);
 }
-.business-create > .workspace-error {
+.organization-create > .workspace-error {
   margin: 0 32px 20px;
 }
-.invoice-business-logo {
+.invoice-seller-logo {
   width: auto;
   max-width: 170px;
   height: 58px;
   object-fit: contain;
   object-position: left;
 }
-.invoice-business-details {
+.invoice-seller-details {
   color: var(--ink-subtle);
   font-size: 12px;
   max-width: 320px;
   overflow-wrap: anywhere;
 }
-.invoice-business-details p {
+.invoice-seller-details p {
   margin: 5px 0;
 }
 @media (max-width: 640px) {
-  .business-create-heading,
-  .business-create-actions {
+  .organization-create-heading,
+  .organization-create-actions {
     padding: 20px;
   }
-  .business-create fieldset {
+  .organization-create fieldset {
     padding: 20px 20px 0;
   }
-  .business-form-grid {
+  .organization-form-grid {
     grid-template-columns: 1fr;
   }
-  .business-invoice-note {
+  .organization-invoice-note {
     margin-inline: 20px;
   }
-  .business-create-heading h2 {
+  .organization-create-heading h2 {
     font-size: 20px;
   }
 }

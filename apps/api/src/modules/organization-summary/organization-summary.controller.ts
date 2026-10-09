@@ -2,27 +2,27 @@ import { Controller, Get, Param, ParseIntPipe, Query, Req } from "@nestjs/common
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { BusinessAuthService } from "./business-auth.service";
-import { BusinessService } from "./business.service";
+import { OrganizationAuthService } from "./organization-auth.service";
+import { OrganizationSummaryService } from "./organization-summary.service";
 
 @ApiTags("Business")
 @Controller("organizations/:organizationId")
-export class BusinessController {
+export class OrganizationSummaryController {
   constructor(
-    private readonly businessAuthService: BusinessAuthService,
-    private readonly businessService: BusinessService,
+    private readonly organizationAuth: OrganizationAuthService,
+    private readonly organizationSummary: OrganizationSummaryService,
   ) {}
 
   @Get("access")
   async getAccess(@Param("organizationId") organizationId: string, @Req() req: Request) {
-    return this.businessAuthService.getSession(extractHeaders(req), organizationId);
+    return this.organizationAuth.getSession(extractHeaders(req), organizationId);
   }
 
   @Get("summary")
   @ApiOperation({ summary: "Get business summary for an organization" })
   async getSummary(@Param("organizationId") organizationId: string, @Req() req: Request) {
-    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
-    return this.businessService.getSummary(organizationId);
+    await this.organizationAuth.authorize(extractHeaders(req), organizationId);
+    return this.organizationSummary.getSummary(organizationId);
   }
 
   @Get("customers")
@@ -32,7 +32,7 @@ export class BusinessController {
     @Req() req: Request,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    await this.businessAuthService.authorize(extractHeaders(req), organizationId);
-    return this.businessService.getCustomers(organizationId, limit);
+    await this.organizationAuth.authorize(extractHeaders(req), organizationId);
+    return this.organizationSummary.getCustomers(organizationId, limit);
   }
 }

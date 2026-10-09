@@ -15,7 +15,7 @@ import {
 import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import type { Request, Response as ExpressResponse } from "express";
 import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-http";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { MemberService } from "./member.service";
 import {
   AddMemberDto,
@@ -29,7 +29,7 @@ import {
 export class MemberController {
   constructor(
     private readonly memberService: MemberService,
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
   ) {}
 
   @Get("organizations/:organizationId/members")

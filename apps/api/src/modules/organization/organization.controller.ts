@@ -17,7 +17,7 @@ import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-htt
 import { AuthRateLimitGuard } from "../../common/rate-limit/auth-rate-limit.guard";
 import { OrganizationService } from "./organization.service";
 import { OrganizationLogoService } from "./organization-logo.service";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import {
   CheckOrganizationPermissionDto,
   CheckOrganizationSlugDto,
@@ -34,7 +34,7 @@ import {
 export class OrganizationController {
   constructor(
     private readonly organizationService: OrganizationService,
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly logos: OrganizationLogoService,
   ) {}
 

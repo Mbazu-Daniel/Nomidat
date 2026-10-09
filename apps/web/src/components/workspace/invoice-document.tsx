@@ -17,7 +17,7 @@ export function InvoiceDocumentPreview({ invoice }: InvoiceDocumentProps) {
         <div>
           {invoice.businessLogo ? (
             <img
-              className="invoice-business-logo"
+              className="invoice-organization-logo"
               src={invoice.businessLogo}
               alt={`${invoice.businessName ?? "Business"} logo`}
             />
@@ -30,7 +30,7 @@ export function InvoiceDocumentPreview({ invoice }: InvoiceDocumentProps) {
             </div>
           )}
           <p className="invoice-issuer">{invoice.businessName ?? "Your business"}</p>
-          <div className="invoice-business-details">
+          <div className="invoice-seller-details">
             {invoice.businessDetails?.shopNumber && (
               <p>Shop {invoice.businessDetails.shopNumber}</p>
             )}

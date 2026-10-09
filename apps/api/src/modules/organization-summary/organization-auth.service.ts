@@ -6,7 +6,7 @@ import { BETTER_AUTH, type BetterAuthInstance } from "../../common/better-auth";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 
 @Injectable()
-export class BusinessAuthService {
+export class OrganizationAuthService {
   constructor(
     @Inject(BETTER_AUTH) private readonly auth: BetterAuthInstance,
     @Inject(DATABASE) private readonly db: DbHandle,

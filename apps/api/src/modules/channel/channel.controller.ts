@@ -2,7 +2,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Post, Delete, Req } from "@nestj
 import { ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { ChannelService } from "./channel.service";
 import { ChannelIdentityParamsDto } from "./dto";
 
@@ -11,7 +11,7 @@ import { ChannelIdentityParamsDto } from "./dto";
 export class ChannelController {
   constructor(
     private readonly channelService: ChannelService,
-    private readonly channelAuthService: BusinessAuthService,
+    private readonly channelAuthService: OrganizationAuthService,
   ) {}
 
   @Get("organizations/:organizationId/channels")

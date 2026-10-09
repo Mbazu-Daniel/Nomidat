@@ -3,7 +3,7 @@ import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { assertCanManagePayouts } from "./payout-permissions";
 import { extractHeaders } from "../../common/helpers/auth-http";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { SetPayoutAccountDto, SetPayoutFeeDto } from "./dto/set-payout-account.dto";
 import { PayoutAccountService } from "./payout-account.service";
 import { PaystackPlatformClient } from "./paystack-platform.client";
@@ -18,7 +18,7 @@ import { PaystackPlatformClient } from "./paystack-platform.client";
 @Controller("organizations/:organizationId/payout-account")
 export class PayoutAccountController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly accounts: PayoutAccountService,
     private readonly paystack: PaystackPlatformClient,
   ) {}

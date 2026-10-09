@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { AuthDivider, AuthError, AuthField, AuthShell, PasswordField } from "./auth-shell";
 import {
-  BusinessStepForm,
+  OrganizationStepForm,
   LogoPicker,
   ProfileStepForm,
-  type BusinessField,
+  type OrganizationField,
   type ProfileField,
 } from "./onboarding-steps";
 import { TelegramSignIn } from "./telegram-sign-in";
-import { BUSINESS_THEMES, BUSINESS_TYPES, EMPLOYEE_BANDS } from "./onboarding-options";
+import { ORGANIZATION_THEMES, ORGANIZATION_TYPES, EMPLOYEE_BANDS } from "./onboarding-options";
 import { Button } from "@/components/ui/button";
 import {
   authClient,
@@ -17,7 +17,7 @@ import {
   TELEGRAM_BOT_USERNAME,
 } from "@/lib/api";
 import { rememberActiveOrg, resolveOrgSlug } from "@/lib/active-org";
-import { uploadToBucket } from "@/lib/upload-to-bucket";
+import { createOrganization } from "@/data/nomidat";
 import { IconBrandGoogle, IconCheck } from "@tabler/icons-react";
 
 /**
@@ -68,9 +68,9 @@ export function Onboarding({ initialStep = "account" }: { initialStep?: Step }) 
   const [password, setPassword] = useState("");
 
   const [businessName, setBusinessName] = useState("");
-  const [businessType, setBusinessType] = useState<string>(BUSINESS_TYPES[0].value);
+  const [businessType, setBusinessType] = useState<string>(ORGANIZATION_TYPES[0].value);
   const [employees, setEmployees] = useState<string>(EMPLOYEE_BANDS[0].value);
-  const [theme, setTheme] = useState<string>(BUSINESS_THEMES[0].value);
+  const [theme, setTheme] = useState<string>(ORGANIZATION_THEMES[0].value);
   // The chosen logo is held as a Blob, not a data URL: the Blob is what the
   // upload takes, and a URL would only have to be turned back into bytes.
   const [logoFile, setLogoFile] = useState<Blob | null>(null);
@@ -85,7 +85,7 @@ export function Onboarding({ initialStep = "account" }: { initialStep?: Step }) 
   const stepIndex = STEP_ORDER.indexOf(step);
 
   /** Updates from the extracted step forms, which hold no state of their own. */
-  function setBusinessField(field: BusinessField, value: string) {
+  function setBusinessField(field: OrganizationField, value: string) {
     if (field === "businessName") setBusinessName(value);
     else if (field === "businessType") setBusinessType(value);
     else if (field === "employees") setEmployees(value);
@@ -132,43 +132,24 @@ export function Onboarding({ initialStep = "account" }: { initialStep?: Step }) 
     setSaving(true);
     setError("");
     try {
-      // The organization is created first and the logo uploaded second, because a
-      // presigned URL is scoped to an organization and there is no organization
-      // until this call returns. Uploading before it would mean signing a key
-      // under a business that does not exist yet.
-      const business = await createApiRequest<{ id: string }>("/organizations", {
-        method: "POST",
-        body: JSON.stringify({
+      // `createOrganization` owns the ordering: the organization is created first
+      // and the logo attached second, because a presigned URL is scoped to an
+      // organization and there is none until the create returns.
+      const created = await createOrganization(
+        {
           name: businessName,
           slug,
           // These are onboarding answers, not invoice fields, so they live in
-          // organization metadata rather than the business profile document.
+          // organization metadata rather than the seller document.
           metadata: { businessType, employees, theme },
-        }),
-      });
-      setOrganizationId(business.id);
+        },
+        logoFile,
+      );
+      setOrganizationId(created.id);
 
-      if (logoFile) {
-        try {
-          // The Blob carries no original file name, so it is named for the
-          // organization rather than for something the seller never named.
-          const { fileKey } = await uploadToBucket(
-            business.id,
-            logoFile,
-            "business-logos",
-            `logo.${logoFile.type.split("/")[1] ?? "png"}`,
-          );
-          await createApiRequest(`/organizations/${business.id}/logo`, {
-            method: "PATCH",
-            body: JSON.stringify({ logoKey: fileKey }),
-          });
-        } catch (reason) {
-          // Shown but not fatal: the business now exists and the seller can set a
-          // logo from settings. Blocking onboarding on a picture would be worse
-          // than handing them an organization without one.
-          setLogoError(reason instanceof Error ? reason.message : "Could not upload the logo.");
-        }
-      }
+      // Reported, not fatal: the organization now exists and a logo can be set
+      // from settings. Blocking onboarding on a picture would be worse.
+      if (created.logoError) setLogoError(created.logoError);
 
       setStep("profile");
     } catch (reason) {
@@ -182,7 +163,7 @@ export function Onboarding({ initialStep = "account" }: { initialStep?: Step }) 
     setSaving(true);
     setError("");
     try {
-      await createApiRequest(`/organizations/${organizationId}/business-profile/member`, {
+      await createApiRequest(`/organizations/${organizationId}/member-profile`, {
         method: "POST",
         body: JSON.stringify({
           firstName,
@@ -292,7 +273,7 @@ export function Onboarding({ initialStep = "account" }: { initialStep?: Step }) 
       )}
 
       {step === "business" && (
-        <BusinessStepForm
+        <OrganizationStepForm
           logoLabel={<LogoPicker onChange={setLogoFile} />}
           businessName={businessName}
           businessType={businessType}

@@ -8,7 +8,7 @@ const details = z.object({
   registrationNumber: z.string().max(80).optional(),
 });
 
-export function invoiceBusinessDetails(metadata: string | null) {
+export function invoiceSellerDetails(metadata: string | null) {
   try {
     const result = details.safeParse(JSON.parse(metadata ?? "{}").businessDetails ?? {});
     return result.success ? result.data : {};
@@ -32,7 +32,7 @@ export function invoiceBusinessDetails(metadata: string | null) {
  * failing. Logos in the bucket have no such ceiling, which is most of why this
  * moved.
  */
-export function invoiceBusinessLogo(
+export function invoiceSellerLogo(
   logoKey: string | null | undefined,
   legacyLogo: string | null | undefined,
 ): { kind: "key"; fileKey: string } | { kind: "data-url"; dataUrl: string } | undefined {

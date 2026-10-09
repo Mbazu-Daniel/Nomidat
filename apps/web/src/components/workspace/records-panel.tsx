@@ -11,7 +11,7 @@ import { RecordRow } from "./record-row";
 import { PictureImport } from "./picture-import";
 import { RecordForm } from "./record-form";
 import { RecordDetail } from "./record-detail";
-import type { BusinessRecord, Section } from "./types";
+import type { OrganizationRecord, Section } from "./types";
 
 export function RecordsPanel({
   organizationId,
@@ -30,13 +30,13 @@ export function RecordsPanel({
   const [filter, setFilter] = useState("all");
   const [uploading, setUploading] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [selected, setSelected] = useState<BusinessRecord | null>(null);
+  const [selected, setSelected] = useState<OrganizationRecord | null>(null);
   const [version, setVersion] = useState(0);
   const {
     data: rows,
     loading,
     error,
-  } = useApiResource<BusinessRecord[]>(
+  } = useApiResource<OrganizationRecord[]>(
     `/organizations/${organizationId}/${meta.resource}?limit=${PAGE_SIZE}&offset=${offset}`,
     [],
     version,

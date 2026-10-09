@@ -12,7 +12,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { InboundRateLimitGuard } from "../../common/rate-limit/inbound-rate-limit.guard";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { ExtractPictureDto } from "./dto/extract-picture.dto";
 import { PictureImportService } from "./picture-import.service";
 import type { PictureFile } from "./types/picture.type";
@@ -21,7 +21,7 @@ import type { PictureFile } from "./types/picture.type";
 @UseGuards(InboundRateLimitGuard)
 export class PictureImportController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly pictures: PictureImportService,
   ) {}
 

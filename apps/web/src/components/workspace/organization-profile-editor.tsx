@@ -1,12 +1,12 @@
-import { BusinessHandle } from "./business-handle";
+import { OrganizationHandle } from "./organization-handle";
 import { useMemo, useState } from "react";
 import { createApiRequest } from "@/lib/api";
 import { useApiResource, useSubmit } from "@/lib/use-api-resource";
 import { downscaleImage } from "@/lib/browser-image";
 import { uploadToBucket } from "@/lib/upload-to-bucket";
-import type { BusinessDetails, BusinessProfile } from "./types/settings.type";
+import type { OrganizationDetails, OrganizationProfile } from "./types/settings.type";
 
-export function BusinessProfileEditor({
+export function OrganizationProfileEditor({
   organizationId,
   canManage,
 }: {
@@ -15,7 +15,7 @@ export function BusinessProfileEditor({
 }) {
   const [handle, setHandle] = useState("");
   const path = `/organizations/${organizationId}`;
-  const loaded = useApiResource<BusinessProfile>(path, undefined as unknown as BusinessProfile);
+  const loaded = useApiResource<OrganizationProfile>(path, undefined as unknown as OrganizationProfile);
   const profile = loaded.data;
   // Metadata arrives as a JSON string from some rows and an object from others, so
   // it is parsed once here rather than at each of the four places that read it.
@@ -30,7 +30,7 @@ export function BusinessProfileEditor({
     }
     return raw ?? {};
   }, [profile]);
-  const details = (metadata.businessDetails ?? {}) as BusinessDetails;
+  const details = (metadata.businessDetails ?? {}) as OrganizationDetails;
   // The organization's logo, resolved from the bucket by the API. Read separately
   // from the Better Auth row because `logo` there is the legacy inline value and
   // the storefront and invoice both render this one.
@@ -64,7 +64,7 @@ export function BusinessProfileEditor({
       const { fileKey, publicUrl } = await uploadToBucket(
         organizationId,
         file,
-        "business-logos",
+        "organization-logos",
         fileName,
       );
 
@@ -121,8 +121,8 @@ export function BusinessProfileEditor({
         }}
       >
         <fieldset disabled={busy || !canManage} className="settings-fieldset">
-          <div className="business-logo-row">
-            {logo && <img className="invoice-business-logo" src={logo} alt="Business logo" />}
+          <div className="organization-logo-row">
+            {logo && <img className="invoice-organization-logo" src={logo} alt="Business logo" />}
             <label>
               Business logo
               <input
@@ -179,7 +179,7 @@ export function BusinessProfileEditor({
                 pattern="[a-z0-9-]+"
                 maxLength={100}
               />
-              {handle && handle !== profile.slug && <BusinessHandle value={handle} />}
+              {handle && handle !== profile.slug && <OrganizationHandle value={handle} />}
             </label>
             <label>
               Your name

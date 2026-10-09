@@ -4,7 +4,7 @@ import { BadRequestException, ForbiddenException, Inject, Injectable } from "@ne
 import { and, desc, eq, isNull, sql } from "@nomidat/db";
 import { channelIdentity, conversation, inboundUpdate, member, message } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import type { ChannelAdapter, InboundMessage } from "../channel/types";
 import { ActionsService } from "./actions.service";
 import { AiService } from "./ai.service";
@@ -19,7 +19,7 @@ export class ConversationalService {
     @Inject(DATABASE) private readonly db: DbHandle,
     private readonly ai: AiService,
     private readonly actions: ActionsService,
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly channelPictures: ChannelPictureReader,
     private readonly money: MoneyPolicyService,
   ) {}

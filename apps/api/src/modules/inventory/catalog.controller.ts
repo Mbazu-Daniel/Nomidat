@@ -14,7 +14,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeInventory } from "./authorize-inventory";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { CatalogService } from "./catalog.service";
 import {
   AssignProductToCategoriesDto,
@@ -32,7 +32,7 @@ import { UnitOfMeasureService } from "./unit-of-measure.service";
 @Controller("organizations/:organizationId")
 export class CatalogController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly catalog: CatalogService,
     private readonly units: UnitOfMeasureService,
   ) {}

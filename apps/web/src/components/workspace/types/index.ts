@@ -8,7 +8,7 @@ export type {
   SaleDetailProps,
   InvoiceDetailProps,
   Section,
-  BusinessRecord,
+  OrganizationRecord,
   ClientFolder,
   ChatMessage,
   FormProps,

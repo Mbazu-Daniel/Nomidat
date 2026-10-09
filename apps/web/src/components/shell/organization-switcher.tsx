@@ -34,7 +34,7 @@ export function OrganizationSwitcher() {
     if (target.id === organization.id) return;
     rememberActiveOrg(target.id);
     if (target.slug) void navigate({ to: "/$orgSlug", params: { orgSlug: target.slug } });
-    else void navigate({ to: "/create-business" });
+    else void navigate({ to: "/create-organization" });
   }
 
   return (
@@ -78,7 +78,7 @@ export function OrganizationSwitcher() {
                 value="__create_business__"
                 onSelect={() => {
                   setOpen(false);
-                  void navigate({ to: "/create-business" });
+                  void navigate({ to: "/create-organization" });
                 }}
               >
                 <PlusIcon className="size-4" />

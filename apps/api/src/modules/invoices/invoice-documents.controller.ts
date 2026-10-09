@@ -11,7 +11,7 @@ import {
   StreamableFile,
 } from "@nestjs/common";
 import type { Request } from "express";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { InvoiceDeliveryService } from "./invoice-delivery.service";
 import { SendInvoiceDto } from "./dto";
@@ -19,7 +19,7 @@ import { SendInvoiceDto } from "./dto";
 @Controller()
 export class InvoiceDocumentsController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly delivery: InvoiceDeliveryService,
   ) {}
 

@@ -1,13 +1,13 @@
 import { Module } from "@nestjs/common";
 import { DbModule } from "../../common/db/db.module";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { ChannelController } from "./channel.controller";
 import { ConversationalModule } from "../conversational/conversational.module";
 import { ChannelInboundService } from "./channel-inbound.service";
 import { ChannelService } from "./channel.service";
 
 @Module({
-  imports: [BusinessModule, DbModule, ConversationalModule],
+  imports: [OrganizationSummaryModule, DbModule, ConversationalModule],
   controllers: [ChannelController],
   providers: [ChannelService, ChannelInboundService],
   exports: [ChannelService, ChannelInboundService],

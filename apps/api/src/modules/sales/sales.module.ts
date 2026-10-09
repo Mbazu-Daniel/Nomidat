@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { BetterAuthModule } from "../../common/better-auth/better-auth.module";
 import { DbModule } from "../../common/db/db.module";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { EngagementModule } from "../engagement/engagement.module";
 import { InventoryModule } from "../inventory/inventory.module";
 import { MoneyModule } from "../money/money.module";
@@ -15,7 +15,7 @@ import { SalesService } from "./sales.service";
   imports: [
     BetterAuthModule,
     DbModule,
-    BusinessModule,
+    OrganizationSummaryModule,
     InventoryModule,
     MoneyModule,
     EngagementModule,

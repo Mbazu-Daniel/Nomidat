@@ -2,7 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { and, eq } from "@nomidat/db";
 import { contact, invoice, invoiceItem, organization } from "@nomidat/db/schema";
 import type { DbHandle } from "../../common/db/db.provider";
-import { invoiceBusinessDetails, invoiceBusinessLogo } from "./invoice-business";
+import { invoiceSellerDetails, invoiceSellerLogo } from "./invoice-seller";
 
 export async function getInvoiceDocument(
   tx: Pick<DbHandle, "select">,
@@ -58,8 +58,8 @@ export async function getInvoiceDocument(
     // The organization's own logo, which is also what the storefront shows. Falls
     // back to the legacy inline value so a business that set its logo before the
     // bucket existed keeps it on its invoices.
-    businessLogo: invoiceBusinessLogo(logoKey, legacyLogo),
-    businessDetails: invoiceBusinessDetails(businessMetadata),
+    businessLogo: invoiceSellerLogo(logoKey, legacyLogo),
+    businessDetails: invoiceSellerDetails(businessMetadata),
     items,
   };
 }

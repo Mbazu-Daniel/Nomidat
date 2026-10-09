@@ -21,7 +21,7 @@ import { SettingsPanel } from "./settings-panel";
 import { RecordsPanel } from "./records-panel";
 import { ChatPanel } from "./chat-panel";
 import { OverviewPanel } from "./overview-panel";
-import { CreateBusiness } from "./create-business";
+import { CreateOrganization } from "./create-organization";
 import type { WorkspaceProps } from "./types";
 
 const navigation = [
@@ -171,7 +171,7 @@ export function WorkspacePage({ section, miniApp = false }: WorkspaceProps) {
     )
       return null;
     return (
-      <CreateBusiness
+      <CreateOrganization
         onCancel={organizationId ? () => setCreatingBusiness(false) : undefined}
         onCreated={(business) => {
           loaded.setData((rows) => [...(rows ?? []), business]);

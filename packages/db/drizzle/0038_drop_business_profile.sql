@@ -1,0 +1,24 @@
+-- Drop the business_profile table. The organization is the business.
+--
+-- Nothing writes or reads this table. The only production read was
+-- BusinessProfileService.getStatus, which selected `updated_at` and returned
+-- `{ hasProfile: false }` for every organization, because no code path has ever
+-- inserted a row. PaystackService injected that service and never called it.
+--
+-- The table was a second home for facts the organization already owns, and it
+-- lost the race: the live logo lives in `organization.logo` and the live invoice
+-- details in `organization.metadata->businessDetails`, both written through
+-- Better Auth. What remained here — logo, business_details, currency,
+-- payment_provider, provider_secret_key_encrypted — were either duplicates of
+-- those or leftovers from the per-tenant Paystack secret design that was removed
+-- when the platform took over the merchant relationship. The service's own
+-- docstring says so.
+--
+-- Member profile data is untouched: first name, last name and avatar live on
+-- `member`, not here.
+--
+-- No data migration. There is nothing to copy, and anything a caller had written
+-- into these columns has had no effect on any behaviour since the table stopped
+-- being read.
+
+DROP TABLE IF EXISTS "business_profile";

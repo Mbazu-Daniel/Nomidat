@@ -9,7 +9,7 @@ import { StorefrontResolver } from "./storefront-resolver.service";
 import { StorefrontSettingsController } from "./storefront-settings.controller";
 import { StorefrontSettingsService } from "./storefront-settings.service";
 import { Module } from "@nestjs/common";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { DbModule } from "../../common/db/db.module";
 import { InventoryModule } from "../inventory/inventory.module";
 import { MoneyModule } from "../money/money.module";
@@ -19,11 +19,11 @@ import { SalesModule } from "../sales/sales.module";
  * The public shop. Depends on sales and inventory so a storefront order is
  * recorded exactly like a counter sale — there is only one path to selling.
  *
- * BusinessModule is imported for BusinessAuthService, which the seller-facing
+ * OrganizationSummaryModule is imported for OrganizationAuthService, which the seller-facing
  * domain and settings controllers need to check who is calling them.
  */
 @Module({
-  imports: [BusinessModule, DbModule, SalesModule, InventoryModule, MoneyModule],
+  imports: [OrganizationSummaryModule, DbModule, SalesModule, InventoryModule, MoneyModule],
   controllers: [
     PublicStorefrontController,
     StorefrontDomainController,

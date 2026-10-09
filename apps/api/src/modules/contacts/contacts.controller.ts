@@ -15,7 +15,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeOrganization } from "../../common/helpers/organization-auth";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { ContactsService } from "./contacts.service";
 import { CreateContactDto, CreateNoteDto, UpdateContactDto } from "./dto";
 
@@ -23,7 +23,7 @@ import { CreateContactDto, CreateNoteDto, UpdateContactDto } from "./dto";
 @Controller("organizations/:organizationId/contacts")
 export class ContactsController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly contacts: ContactsService,
   ) {}
 

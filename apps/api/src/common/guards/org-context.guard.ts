@@ -10,7 +10,7 @@ import type { Request } from "express";
 import { BETTER_AUTH, type BetterAuthInstance } from "../better-auth";
 import { DATABASE, type DbHandle } from "../db/db.provider";
 import { extractHeaders } from "../helpers/auth-http";
-import { requireMembership } from "../../modules/business/organization-membership";
+import { requireMembership } from "../../modules/organization-summary/organization-membership";
 import { PUBLIC_ROUTE } from "./public-route.decorator";
 
 /** Path parameters that name the business a request is about. */

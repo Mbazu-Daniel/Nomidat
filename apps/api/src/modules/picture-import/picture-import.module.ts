@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { PictureImportController } from "./picture-import.controller";
 import { PictureImportService } from "./picture-import.service";
 
 @Module({
-  imports: [BusinessModule],
+  imports: [OrganizationSummaryModule],
   controllers: [PictureImportController],
   providers: [PictureImportService],
   exports: [PictureImportService],

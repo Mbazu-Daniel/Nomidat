@@ -1,9 +1,9 @@
 import { canWriteArea } from "./staff-permissions";
 import { SettingsNavigation } from "./settings-navigation";
 import { AccountPanel } from "./account-panel";
-import { BusinessProfileEditor } from "./business-profile-editor";
+import { OrganizationProfileEditor } from "./organization-profile-editor";
 import { ExpenseCategories } from "./expense-categories";
-import { BusinessAccessActions } from "./business-access-actions";
+import { OrganizationAccessActions } from "./organization-access-actions";
 import { PaymentVerification } from "./payment-verification";
 import { useState } from "react";
 import { useApiResource } from "@/lib/use-api-resource";
@@ -52,7 +52,7 @@ export function SettingsPanel({ organizationId }: { organizationId: string }) {
     switch (section) {
       case "profile":
         return (
-          <BusinessProfileEditor
+          <OrganizationProfileEditor
             key={`profile-${organizationId}`}
             organizationId={organizationId}
             canManage={canManage}
@@ -74,7 +74,7 @@ export function SettingsPanel({ organizationId }: { organizationId: string }) {
       case "access":
         return (
           role && (
-            <BusinessAccessActions
+            <OrganizationAccessActions
               organizationId={organizationId}
               owner={role.split(",").includes("owner")}
             />

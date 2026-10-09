@@ -1,16 +1,16 @@
 import { useCurrency } from "@/lib/currency-context";
 import { formatMoney } from "@/lib/money";
 import { IconArrowUpRight } from "@tabler/icons-react";
-import type { BusinessRecord, Section } from "./types";
+import type { OrganizationRecord, Section } from "./types";
 
 export function RecordRow({
   row,
   section,
   onSelect,
 }: {
-  row: BusinessRecord;
+  row: OrganizationRecord;
   section: Section;
-  onSelect: (row: BusinessRecord) => void;
+  onSelect: (row: OrganizationRecord) => void;
 }) {
   const currency = useCurrency();
   return (
@@ -69,6 +69,6 @@ export function RecordRow({
   );
 }
 
-function recordTitle(row: BusinessRecord) {
+function recordTitle(row: OrganizationRecord) {
   return row.name ?? row.invoiceNumber ?? row.description ?? row.customer ?? "Walk-in sale";
 }

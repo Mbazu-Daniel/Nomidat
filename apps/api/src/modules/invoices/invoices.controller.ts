@@ -14,7 +14,7 @@ import {
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { CreateInvoiceDto, DecideInvoiceOfferDto, UpdateInvoiceDto } from "./dto";
 import { InvoiceNegotiationService } from "./invoice-negotiation.service";
 import { InvoiceShareService } from "./invoice-share.service";
@@ -24,7 +24,7 @@ import { InvoicesService } from "./invoices.service";
 @Controller("organizations/:organizationId")
 export class InvoicesController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly invoices: InvoicesService,
     private readonly shares: InvoiceShareService,
     private readonly negotiations: InvoiceNegotiationService,
@@ -181,7 +181,7 @@ export class InvoicesController {
   }
   /**
    * Returns the session so callers can record who acted in the audit trail.
-   * BusinessAuthService.authorize discards it, so the same checks are re-applied
+   * OrganizationAuthService.authorize discards it, so the same checks are re-applied
    * here through getSession + authorizeWrite rather than duplicating the rules.
    */
   private async authorize(req: Request, organizationId: string) {

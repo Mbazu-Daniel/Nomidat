@@ -11,7 +11,7 @@ import {
   IconUsers,
   IconWallet,
 } from "@tabler/icons-react";
-import { getBusinessSummary } from "@/data/nomidat";
+import { getOrganizationSummary } from "@/data/nomidat";
 import { getReportProducts, getReportSales } from "@/data/reports";
 import { SalesCategoryRing, SalesTrendChart } from "./dashboard-charts";
 import {
@@ -34,7 +34,7 @@ export function OverviewPanel({ organizationId }: { organizationId: string }) {
   const loaded = useLoadedResource(
     async () => {
       const [summary, sales, products] = await Promise.all([
-        getBusinessSummary(organizationId),
+        getOrganizationSummary(organizationId),
         getReportSales(organizationId, 30).catch(() => []),
         getReportProducts(organizationId, 30, 5).catch(() => []),
       ]);

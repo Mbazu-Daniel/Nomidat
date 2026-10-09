@@ -3,7 +3,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { Public } from "../../common/guards/public-route.decorator";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { InitializePaystackPaymentDto } from "./dto";
 import { PaystackService } from "./providers/paystack/paystack.service";
 import { PaymentProviderRegistry } from "./providers/payment-provider-registry.service";
@@ -13,7 +13,7 @@ import type { PaystackWebhookRequest } from "./providers/paystack/paystack.inter
 @Controller()
 export class PaymentsController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly paystack: PaystackService,
     private readonly registry: PaymentProviderRegistry,
   ) {}

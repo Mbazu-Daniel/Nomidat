@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type { Request } from "express";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { ConversationalService } from "./conversational.service";
 import { AiService } from "./ai.service";
@@ -23,7 +23,7 @@ import { CreateChatDto, ConfirmActionDto } from "./dto";
 @UseGuards(InboundRateLimitGuard)
 export class ConversationalController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly chat: ConversationalService,
     private readonly ai: AiService,
   ) {}

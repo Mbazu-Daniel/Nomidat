@@ -1,12 +1,11 @@
-import { BusinessHandle } from "./business-handle";
+import { OrganizationHandle } from "./organization-handle";
 import { useState } from "react";
 import { IconBuildingStore, IconPhotoPlus } from "@tabler/icons-react";
-import { createApiRequest } from "@/lib/api";
 import { downscaleImage } from "@/lib/browser-image";
-import { uploadToBucket } from "@/lib/upload-to-bucket";
-import type { CreateBusinessProps } from "./types/create-business.type";
+import { createOrganization } from "@/data/nomidat";
+import type { CreateOrganizationProps } from "./types/create-organization.type";
 
-export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
+export function CreateOrganization({ onCreated, onCancel }: CreateOrganizationProps) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
@@ -16,7 +15,7 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
   const [editedSlug, setEditedSlug] = useState(false);
   return (
     <form
-      className="workspace-card business-create"
+      className="workspace-card organization-create"
       onSubmit={async (event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
@@ -24,52 +23,31 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
         setSaving(true);
         setError("");
         try {
-          // Created first, logo second: a presigned URL is scoped to an
-          // organization, and there is none until this call returns. A logo that
-          // fails to upload does not block the business from existing — it is a
-          // picture, and one can be set later from settings.
-          const business = await createApiRequest<{ id: string; name: string }>(
-            "/organizations",
+          // `createOrganization` owns the ordering: the organization is created
+          // first and the logo attached second, because a presigned URL is scoped
+          // to an organization and there is none until the create returns.
+          const created = await createOrganization(
             {
-              method: "POST",
-              body: JSON.stringify({
-                name: value("name"),
-                slug,
-                businessDetails: {
-                  ownerName: value("ownerName"),
-                  phone: value("phone"),
-                  address: value("address"),
-                  shopNumber: value("shopNumber") || undefined,
-                  email: value("email") || undefined,
-                  registrationNumber: value("registrationNumber") || undefined,
-                },
-              }),
+              name: value("name"),
+              slug,
+              businessDetails: {
+                ownerName: value("ownerName"),
+                phone: value("phone"),
+                address: value("address"),
+                shopNumber: value("shopNumber") || undefined,
+                email: value("email") || undefined,
+                registrationNumber: value("registrationNumber") || undefined,
+              },
             },
+            logoFile,
           );
 
-          if (logoFile) {
-            try {
-              const { fileKey } = await uploadToBucket(
-                business.id,
-                logoFile,
-                "business-logos",
-                "logo",
-              );
-              await createApiRequest(`/organizations/${business.id}/logo`, {
-                method: "PATCH",
-                body: JSON.stringify({ logoKey: fileKey }),
-              });
-            } catch {
-              // The business already exists, so this is not fatal: it is reported
-              // and the seller carries on. Blocking creation on a picture would
-              // be worse than handing them a business they can finish later.
-              setError(
-                "Your business was created, but the logo could not be uploaded. You can add it from settings.",
-              );
-            }
-          }
+          // Reported, not fatal: the organization now exists and a logo can be
+          // set from settings. Blocking creation on a picture would be worse than
+          // handing the seller a business they can finish later.
+          if (created.logoError) setError(created.logoError);
 
-          onCreated(business);
+          onCreated({ id: created.id, name: value("name") });
         } catch (reason) {
           setError((reason as Error).message);
         } finally {
@@ -77,8 +55,8 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
         }
       }}
     >
-      <header className="business-create-heading">
-        <span className="business-create-icon">
+      <header className="organization-create-heading">
+        <span className="organization-create-icon">
           <IconBuildingStore size={26} />
         </span>
         <div>
@@ -87,12 +65,12 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
         </div>
       </header>
       <fieldset disabled={saving}>
-        <div className="business-logo-row">
-          <div className="business-logo-preview">
+        <div className="organization-logo-row">
+          <div className="organization-logo-preview">
             {logo ? <img src={logo} alt="Your business logo" /> : <IconBuildingStore size={32} />}
           </div>
           <div>
-            <label className="business-logo-upload">
+            <label className="organization-logo-upload">
               <IconPhotoPlus size={18} /> {logo ? "Change logo" : "Upload your logo"}
               <input
                 type="file"
@@ -125,9 +103,9 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
             )}
           </div>
         </div>
-        <section className="business-form-section">
+        <section className="organization-form-section">
           <h3>Business details</h3>
-          <div className="business-form-grid">
+          <div className="organization-form-grid">
             <label>
               Business name
               <input
@@ -178,7 +156,7 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
                 placeholder="hello@yourbusiness.com"
               />
             </label>
-            <label className="business-field-wide">
+            <label className="organization-field-wide">
               Shop address
               <input
                 name="address"
@@ -198,10 +176,10 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
             </label>
           </div>
         </section>
-        <section className="business-form-section">
+        <section className="organization-form-section">
           <h3>Workspace handle</h3>
           <p>A unique name for your business on Nomidat. We’ve suggested one for you.</p>
-          <label className="business-handle">
+          <label className="organization-handle">
             Business handle
             <input
               name="slug"
@@ -215,11 +193,11 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
               maxLength={100}
               placeholder="ada-stores"
             />
-            <BusinessHandle value={slug} />
+            <OrganizationHandle value={slug} />
           </label>
         </section>
       </fieldset>
-      <p className="business-invoice-note">
+      <p className="organization-invoice-note">
         Your logo, business name, address, phone and any provided email, shop or registration number
         will appear on invoices. Your personal name stays in your business profile.
       </p>
@@ -228,7 +206,7 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
           {error}
         </p>
       )}
-      <footer className="workspace-actions business-create-actions">
+      <footer className="workspace-actions organization-create-actions">
         {onCancel && (
           <button
             type="button"

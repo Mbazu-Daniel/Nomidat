@@ -3,7 +3,7 @@ import { Controller, Get, Param, ParseIntPipe, Query, Req } from "@nestjs/common
 import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { InventoryHealthService } from "./inventory-health.service";
 import { parseReportRange, type ReportRange } from "./report-range";
 import { ReportsService } from "./reports.service";
@@ -12,7 +12,7 @@ import { ReportsService } from "./reports.service";
 @Controller("organizations/:organizationId/reports")
 export class ReportsController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly reports: ReportsService,
     private readonly inventoryHealth: InventoryHealthService,
   ) {}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { checkBusinessHandle } from "@/data/nomidat";
+import { checkOrganizationHandle } from "@/data/nomidat";
 
 /** How long to wait after the last keystroke before asking the API. */
 const SETTLE_MS = 400;
@@ -12,7 +12,7 @@ const SETTLE_MS = 400;
  * deliberately softer than the error: failing to check must not stop the seller
  * saving, and saying so is better than a red sentence they cannot act on.
  */
-export function BusinessHandle({ value }: { value: string }) {
+export function OrganizationHandle({ value }: { value: string }) {
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export function BusinessHandle({ value }: { value: string }) {
 
     const timer = setTimeout(() => {
       setStatus("Checking availability…");
-      void checkBusinessHandle(value)
+      void checkOrganizationHandle(value)
         .then((free) => {
           setStatus(free ? "This handle is available." : "This handle is already taken.");
         })

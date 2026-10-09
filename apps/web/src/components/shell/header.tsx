@@ -89,7 +89,7 @@ export function Header() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/create-business">
+            <Link to="/create-organization">
               <PlusIcon className="size-4" />
               New business
             </Link>

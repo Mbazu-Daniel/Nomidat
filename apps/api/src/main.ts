@@ -30,7 +30,7 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix("api/v1");
 
   // The validated value, not process.env. Reading the raw variable let CORS and
-  // the per-request origin check in BusinessAuthService disagree about which
+  // the per-request origin check in OrganizationAuthService disagree about which
   // origins are allowed, and defaulted to a port this app never serves.
   const env = app.get<ApiEnv>(API_ENV);
   app.enableCors({

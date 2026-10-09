@@ -2,8 +2,8 @@ import { eq } from "@nomidat/db";
 import { createDb, type DatabaseClient } from "@nomidat/db";
 import { member, organization, user } from "@nomidat/db/schema";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { requireMembership } from "../src/modules/business/organization-membership";
-import { BusinessAuthService } from "../src/modules/business/business-auth.service";
+import { requireMembership } from "../src/modules/organization-summary/organization-membership";
+import { OrganizationAuthService } from "../src/modules/organization-summary/organization-auth.service";
 import { SalesQueriesService } from "../src/modules/sales/sales-queries.service";
 
 /**
@@ -39,7 +39,7 @@ describe.skipIf(!connectionString)("the staff boundary", () => {
     // prototype: a real instance would need a session and an env block, and
     // neither is what is under test here.
     authorizeWrite = (role, area) =>
-      BusinessAuthService.prototype.authorizeWrite.call(null, role, area);
+      OrganizationAuthService.prototype.authorizeWrite.call(null, role, area);
 
     const [org] = await db
       .insert(organization)

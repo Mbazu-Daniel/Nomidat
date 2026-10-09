@@ -7,7 +7,7 @@
  * same vocabulary.
  */
 
-export const BUSINESS_TYPES = [
+export const ORGANIZATION_TYPES = [
   { value: "retail", label: "Retail", hint: "Shops and market stalls" },
   { value: "wholesale", label: "Wholesale", hint: "Bulk supply and distribution" },
   { value: "services", label: "Services", hint: "Salons, studios, repairs" },
@@ -18,7 +18,7 @@ export const BUSINESS_TYPES = [
   { value: "other", label: "Something else", hint: "Tell us later in settings" },
 ] as const;
 
-export const BUSINESS_THEMES = [
+export const ORGANIZATION_THEMES = [
   { value: "violet", label: "Violet", hint: "The default" },
   { value: "emerald", label: "Emerald", hint: "Calm and green" },
   { value: "amber", label: "Amber", hint: "Warm and bright" },

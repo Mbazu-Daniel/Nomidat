@@ -3,7 +3,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { extractHeaders } from "../../common/helpers/auth-http";
 import { BadRequestException } from "@nestjs/common";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { CreateOutboundWebhookDto } from "./dto/create-outbound-webhook.dto";
 import { EngagementService } from "./engagement.service";
 
@@ -11,7 +11,7 @@ import { EngagementService } from "./engagement.service";
 @Controller("organizations/:organizationId")
 export class EngagementController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly engagement: EngagementService,
   ) {}
 

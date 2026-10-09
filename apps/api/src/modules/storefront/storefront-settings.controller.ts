@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Patch, Req } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeOrganization } from "../../common/helpers/organization-auth";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { UpdateStorefrontSettingsDto } from "./dto/storefront-settings.dto";
 import { StorefrontSettingsService } from "./storefront-settings.service";
 
@@ -17,7 +17,7 @@ import { StorefrontSettingsService } from "./storefront-settings.service";
 @Controller("organizations/:organizationId/storefront")
 export class StorefrontSettingsController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly settings: StorefrontSettingsService,
   ) {}
 

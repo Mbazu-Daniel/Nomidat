@@ -11,7 +11,7 @@ import { and, eq, gt, sql } from "@nomidat/db";
 import { member, organization, phoneInvitation, user } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { BETTER_AUTH, type BetterAuthInstance } from "../../common/better-auth";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import type { PhoneInvitationDto } from "./dto/phone-invitation.dto";
 
 @Injectable()
@@ -20,7 +20,7 @@ export class PhoneInvitationService {
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(BETTER_AUTH) private readonly auth: BetterAuthInstance,
     @Inject(API_ENV) private readonly env: ApiEnv,
-    private readonly businessAuth: BusinessAuthService,
+    private readonly businessAuth: OrganizationAuthService,
   ) {}
   private async manager(headers: Headers, org: string) {
     const actor = await this.businessAuth.getSession(headers, org);

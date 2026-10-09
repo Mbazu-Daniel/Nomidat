@@ -11,7 +11,7 @@ export type Section =
   | "settings"
   | "channels"
   | "reports";
-export type BusinessRecord = {
+export type OrganizationRecord = {
   id: string;
   name?: string;
   email?: string | null;
@@ -42,9 +42,9 @@ export type BusinessRecord = {
   spentAt?: string;
 };
 export type ClientFolder = {
-  contact: BusinessRecord;
-  orders: BusinessRecord[];
-  invoices: BusinessRecord[];
+  contact: OrganizationRecord;
+  orders: OrganizationRecord[];
+  invoices: OrganizationRecord[];
   notes: { id: string; body: string; createdAt: string }[];
   balanceMinor: number;
 };
@@ -72,7 +72,7 @@ export type LineItem = {
   quantity: number | null;
   unitPriceMinor: number | null;
 };
-export type InvoiceDetail = BusinessRecord & {
+export type InvoiceDetail = OrganizationRecord & {
   businessName?: string;
   businessLogo?: string;
   businessDetails?: {
@@ -108,14 +108,14 @@ export type InvoiceDetail = BusinessRecord & {
 export type RecordDetailProps = {
   organizationId: string;
   section: Section;
-  record: BusinessRecord;
+  record: OrganizationRecord;
   canWrite: boolean;
   onSaved: () => void;
   onClose: () => void;
 };
 export type SaleDetailProps = {
   path: string;
-  record: BusinessRecord;
+  record: OrganizationRecord;
   canWrite: boolean;
   onSaved: () => void;
 };
@@ -131,7 +131,7 @@ export type InvoiceDetailProps = {
 
 export type ProductEditorProps = {
   organizationId: string;
-  record: BusinessRecord;
+  record: OrganizationRecord;
   busy: boolean;
   save: (resource: string, body: object, method?: string) => Promise<void>;
   onSaved: () => void;
@@ -139,8 +139,8 @@ export type ProductEditorProps = {
 
 export type InvoiceRegisterProps = {
   organizationId: string;
-  rows: BusinessRecord[];
-  onSelect: (row: BusinessRecord) => void;
+  rows: OrganizationRecord[];
+  onSelect: (row: OrganizationRecord) => void;
 };
 export type InvoiceDocumentProps = { invoice: InvoiceDetail };
 
@@ -160,19 +160,19 @@ export type SalePaymentSummary = {
 };
 
 export type SalesRegisterProps = {
-  rows: BusinessRecord[];
-  onSelect: (row: BusinessRecord) => void;
+  rows: OrganizationRecord[];
+  onSelect: (row: OrganizationRecord) => void;
 };
 
 export interface RecordTableProps {
   section: Exclude<Section, "overview" | "chat" | "settings" | "channels" | "reports">;
   organizationId: string;
-  rows: BusinessRecord[];
+  rows: OrganizationRecord[];
   query: string;
   error: string;
   loading: boolean;
   retry(): void;
-  onSelect(record: BusinessRecord): void;
+  onSelect(record: OrganizationRecord): void;
 }
 
 export type ChannelLinkInstructionsProps = {

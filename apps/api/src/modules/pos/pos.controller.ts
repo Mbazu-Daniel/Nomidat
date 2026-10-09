@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeOrganization } from "../../common/helpers/organization-auth";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { CreatePosSaleDto } from "./dto";
 import { PosService } from "./pos.service";
 import { MoneyPolicyService } from "../money/money-policy.service";
@@ -11,7 +11,7 @@ import { MoneyPolicyService } from "../money/money-policy.service";
 @Controller("organizations/:organizationId/pos")
 export class PosController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly pos: PosService,
     private readonly money: MoneyPolicyService,
   ) {}

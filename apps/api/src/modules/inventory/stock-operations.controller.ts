@@ -13,7 +13,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { authorizeInventory } from "./authorize-inventory";
-import { BusinessAuthService } from "../business/business-auth.service";
+import { OrganizationAuthService } from "../organization-summary/organization-auth.service";
 import { CycleCountService } from "./cycle-count.service";
 import {
   CreateCycleCountDto,
@@ -32,7 +32,7 @@ import { VariantService } from "./variant.service";
 @Controller("organizations/:organizationId")
 export class StockOperationsController {
   constructor(
-    private readonly auth: BusinessAuthService,
+    private readonly auth: OrganizationAuthService,
     private readonly transfers: TransferService,
     private readonly counts: CycleCountService,
     private readonly returns: ReturnService,

@@ -1,7 +1,7 @@
 import { AuthError, AuthField } from "./auth-shell";
 import { ChoiceGroup, ImagePicker } from "./onboarding-fields";
 import { downscaleImage } from "@/lib/browser-image";
-import { BUSINESS_THEMES, BUSINESS_TYPES, EMPLOYEE_BANDS } from "./onboarding-options";
+import { ORGANIZATION_THEMES, ORGANIZATION_TYPES, EMPLOYEE_BANDS } from "./onboarding-options";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
  * the values and the submit action stay with the parent flow.
  */
 
-export type BusinessField = "logo" | "businessName" | "businessType" | "employees" | "theme";
+export type OrganizationField = "logo" | "businessName" | "businessType" | "employees" | "theme";
 export type ProfileField = "avatar" | "firstName" | "lastName";
 
 /**
@@ -85,7 +85,7 @@ export function LogoPicker({
   );
 }
 
-export function BusinessStepForm(props: {
+export function OrganizationStepForm(props: {
   logoLabel: React.ReactNode;
   businessName: string;
   businessType: string;
@@ -94,7 +94,7 @@ export function BusinessStepForm(props: {
   slug: string;
   error: string;
   saving: boolean;
-  onChange: (field: BusinessField, value: string) => void;
+  onChange: (field: OrganizationField, value: string) => void;
   onSubmit: () => void;
 }) {
   const {
@@ -134,7 +134,7 @@ export function BusinessStepForm(props: {
 
       <ChoiceGroup
         legend="Type of business"
-        options={BUSINESS_TYPES}
+        options={ORGANIZATION_TYPES}
         value={businessType}
         onChange={(value) => onChange("businessType", value)}
       />
@@ -148,7 +148,7 @@ export function BusinessStepForm(props: {
 
       <ChoiceGroup
         legend="Theme"
-        options={BUSINESS_THEMES}
+        options={ORGANIZATION_THEMES}
         value={theme}
         onChange={(value) => onChange("theme", value)}
       />

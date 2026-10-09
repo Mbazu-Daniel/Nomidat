@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { DbModule } from "../../common/db/db.module";
 import { FilesModule } from "../../common/files/files.module";
-import { BusinessModule } from "../business/business.module";
+import { OrganizationSummaryModule } from "../organization-summary/organization-summary.module";
 import { OrganizationController } from "./organization.controller";
 import { OrganizationLogoService } from "./organization-logo.service";
 import { OrganizationService } from "./organization.service";
@@ -12,7 +12,7 @@ import { OrganizationService } from "./organization.service";
  * membership.
  */
 @Module({
-  imports: [DbModule, FilesModule, BusinessModule],
+  imports: [DbModule, FilesModule, OrganizationSummaryModule],
   controllers: [OrganizationController],
   providers: [OrganizationService, OrganizationLogoService],
   exports: [OrganizationService, OrganizationLogoService],

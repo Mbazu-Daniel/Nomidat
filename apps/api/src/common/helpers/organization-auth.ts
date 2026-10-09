@@ -1,9 +1,9 @@
 import type { Request } from "express";
 import { extractHeaders } from "./auth-http";
-import type { BusinessAuthService } from "../../modules/business/business-auth.service";
+import type { OrganizationAuthService } from "../../modules/organization-summary/organization-auth.service";
 
 export async function authorizeOrganization(
-  auth: BusinessAuthService,
+  auth: OrganizationAuthService,
   req: Request,
   organizationId: string,
   area?: string,
