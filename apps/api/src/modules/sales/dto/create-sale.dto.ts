@@ -116,6 +116,17 @@ export class CreateSaleDto {
   @IsIn(["manual", "online", "pos"])
   source?: "manual" | "online" | "pos";
 
+  /**
+   * How the customer receives the order. Set by the POS only.
+   *
+   * Constrained here, unlike the column, because this DTO is the POS surface and
+   * the till is the one caller that has a fixed vocabulary. The storefront and
+   * the chat assistant do not send it at all.
+   */
+  @IsOptional()
+  @IsIn(["dine_in", "takeaway", "delivery"])
+  fulfilmentType?: "dine_in" | "takeaway" | "delivery";
+
   @IsOptional()
   @IsString()
   paymentProvider?: string;

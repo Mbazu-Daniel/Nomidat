@@ -19,6 +19,7 @@ const rice: PosCartItem = {
   quantity: 1,
   serialNumberId: null,
   serialCode: null,
+  note: "",
 };
 const beans: PosCartItem = {
   productId: "p2",
@@ -29,6 +30,7 @@ const beans: PosCartItem = {
   quantity: 2,
   serialNumberId: null,
   serialCode: null,
+  note: "",
 };
 
 describe("offline replay is ordered and failure-safe", () => {

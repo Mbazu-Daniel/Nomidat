@@ -2,6 +2,7 @@ import { and, eq } from "@nomidat/db";
 import { contact, invoice, invoiceItem, organization } from "@nomidat/db/schema";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
+import { FileStorageService } from "../../common/files/file-storage.service";
 import { randomBytes } from "node:crypto";
 import type { PublicInvoiceView } from "./types/public-invoice.type";
 
@@ -10,7 +11,10 @@ const SHARE_CODE_BYTES = 16;
 
 @Injectable()
 export class InvoiceShareService {
-  constructor(@Inject(DATABASE) private readonly db: DbHandle) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: DbHandle,
+    private readonly files: FileStorageService,
+  ) {}
   /**
    * Rotating is the only way to revoke a link already shared, so this is not
    * idempotent.
@@ -82,7 +86,8 @@ export class InvoiceShareService {
         createdAt: invoice.createdAt,
         customerName: contact.name,
         sellerName: organization.name,
-        sellerLogo: organization.logo,
+        logoKey: organization.logoKey,
+        legacyLogo: organization.logo,
       })
       .from(invoice)
       .innerJoin(organization, eq(invoice.organizationId, organization.id))
@@ -116,7 +121,15 @@ export class InvoiceShareService {
       dueDate: header.dueDate,
       notes: header.notes,
       issuedAt: header.createdAt,
-      seller: { name: header.sellerName, logo: header.sellerLogo },
+      // A URL a browser can render, not a storage key: this route is public and
+      // unauthenticated, so it must never hand out anything that names a location
+      // in the bucket beyond what the customer's own invoice needs. The legacy
+      // inline value still comes through as-is for organizations that predate the
+      // bucket, which is the same string they already receive today.
+      seller: {
+        name: header.sellerName,
+        logo: this.files.getPublicUrl(header.logoKey) ?? header.legacyLogo,
+      },
       customerName: header.customerName,
       items,
     };

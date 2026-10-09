@@ -1,12 +1,11 @@
+import Dexie, { Table } from "dexie";
+
 export interface QueuedPosSale {
   id: string;
   organizationId: string;
   payload: unknown;
   createdAt: number;
 }
-
-const DB_NAME = "nomidat-pos";
-const DB_VERSION = 1;
 
 /** Storage seam so the queue can be exercised without a browser IndexedDB. */
 export interface PosQueueStore {
@@ -15,46 +14,29 @@ export interface PosQueueStore {
   remove(id: string): Promise<void>;
 }
 
-const DB_STORE = "queue";
+class PosDatabase extends Dexie {
+  queue!: Table<QueuedPosSale, string>;
 
-export function createIndexedDbQueueStore(
-  openDatabase: IDBFactory["open"] = indexedDB.open.bind(indexedDB),
-): PosQueueStore {
-  async function withStore<T>(
-    mode: IDBTransactionMode,
-    run: (store: IDBObjectStore) => IDBRequest<T>,
-  ): Promise<T> {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = openDatabase(DB_NAME, DB_VERSION);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
-      request.onupgradeneeded = () => {
-        if (!request.result.objectStoreNames.contains(DB_STORE)) {
-          request.result.createObjectStore(DB_STORE, { keyPath: "id" });
-        }
-      };
+  constructor() {
+    super("nomidat-pos");
+    this.version(1).stores({
+      queue: "id, organizationId, createdAt",
     });
-
-    const transaction = db.transaction(DB_STORE, mode);
-    const result = await new Promise<T>((resolve, reject) => {
-      const request = run(transaction.objectStore(DB_STORE));
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    db.close();
-    return result;
   }
+}
 
+const db = new PosDatabase();
+
+export function createIndexedDbQueueStore(): PosQueueStore {
   return {
     async readAll(organizationId) {
-      const all = await withStore<QueuedPosSale[]>("readonly", (store) => store.getAll());
-      return (all ?? []).filter((entry) => entry.organizationId === organizationId);
+      return await db.queue.where("organizationId").equals(organizationId).toArray();
     },
     async put(entry) {
-      await withStore("readwrite", (store) => store.put(entry));
+      await db.queue.put(entry);
     },
     async remove(id) {
-      await withStore("readwrite", (store) => store.delete(id));
+      await db.queue.delete(id);
     },
   };
 }

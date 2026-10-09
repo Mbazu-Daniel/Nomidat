@@ -74,12 +74,7 @@ export function useAsyncResource<T>(
   initial: T,
   revision = 0,
 ) {
-  return useLoadedResource(
-    () => load(key as string),
-    [key, revision, load],
-    initial,
-    key !== null,
-  );
+  return useLoadedResource(() => load(key as string), [key, revision, load], initial, key !== null);
 }
 
 /**

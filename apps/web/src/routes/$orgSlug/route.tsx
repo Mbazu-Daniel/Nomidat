@@ -83,10 +83,10 @@ function OrgLayout() {
   const message = loaded.error;
 
   /*
- * The business currency, read through the offline cache so a reopened till
- * formats money in the right currency without a network. Until it arrives the
- * provider keeps the fallback, which is only ever wrong for a second.
- */
+   * The business currency, read through the offline cache so a reopened till
+   * formats money in the right currency without a network. Until it arrives the
+   * provider keeps the fallback, which is only ever wrong for a second.
+   */
   const money = useLoadedResource(
     () => {
       const orgId = value?.organization.id;

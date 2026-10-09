@@ -11,6 +11,8 @@ export interface SaleOrderInput {
   paymentReference?: string;
   clientReference?: string;
   notes?: string;
+  /** How the customer receives the order. Set by the POS; absent elsewhere. */
+  fulfilmentType?: "dine_in" | "takeaway" | "delivery";
 }
 
 /** A line as a caller states it: what was asked for, and at what price. */
@@ -25,6 +27,8 @@ export interface SaleRequestLine {
   /** Only an ad-hoc line has one. */
   productName?: string;
   serialNumberIds?: string[];
+  /** This line's own instruction, such as "extra spicy" or "no onions". */
+  note?: string;
 }
 
 /**
@@ -41,6 +45,8 @@ export interface PricedSaleLine {
   lineTotalMinor: number;
   discountMinor?: number;
   serialNumberIds?: string[];
+  /** Carried from the request unchanged; the pricing seams never read it. */
+  note?: string;
 }
 
 /** What an Order costs, as the Order writer needs it. */

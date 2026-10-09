@@ -35,7 +35,11 @@ export class SalePricingService {
           productSku: null,
           quantity: item.quantity,
           unitPriceMinor: item.unitPriceMinor,
-          lineTotalMinor: lineTotalMinor({ quantity: item.quantity, unitPriceMinor: item.unitPriceMinor }),
+          lineTotalMinor: lineTotalMinor({
+            quantity: item.quantity,
+            unitPriceMinor: item.unitPriceMinor,
+          }),
+          note: item.note,
         };
       }
 
@@ -65,6 +69,7 @@ export class SalePricingService {
         unitPriceMinor,
         lineTotalMinor: lineTotalMinor({ quantity: item.quantity, unitPriceMinor }),
         serialNumberIds: item.serialNumberIds,
+        note: item.note,
       };
     });
   }
@@ -90,7 +95,10 @@ export class SalePricingService {
             })
             .from(product)
             .where(
-              and(eq(product.organizationId, organizationId), inArray(product.id, uniqueProductIds)),
+              and(
+                eq(product.organizationId, organizationId),
+                inArray(product.id, uniqueProductIds),
+              ),
             );
 
     const variantIds = [

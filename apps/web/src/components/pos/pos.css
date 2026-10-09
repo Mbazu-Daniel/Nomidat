@@ -4,6 +4,16 @@
   flex-direction: column;
   gap: 16px;
 }
+/*
+  Two columns, and the catalog is deliberately the flexible one.
+
+  The reference layout this comes from uses three columns with its own icon
+  rail. The rail is the app's existing `workspace-sidebar`, not something the
+  terminal should grow a second copy of, so the till keeps two columns and the
+  rail stays outside it. The cart is pinned at 340px because a till is read at
+  arm's length on a counter: a cart that reflows with the window makes the
+  quantity steppers move under the cashier's finger mid-sale.
+*/
 .pos-terminal-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -45,6 +55,49 @@
   flex-direction: column;
   gap: 14px;
 }
+
+/*
+  Category tabs.
+
+  A horizontal scroller rather than a wrapped row: a shop with thirty categories
+  would push the product grid a full screen down, and the cashier would scroll
+  past the grid on every category change. `overflow-x: auto` keeps one row and
+  lets the long tail be swiped.
+*/
+.pos-catalog-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Room for the focus ring, which a scroll container would otherwise clip. */
+  padding: 2px;
+}
+.pos-catalog-tabs::-webkit-scrollbar {
+  display: none;
+}
+.pos-catalog-tab {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pos-catalog-tab:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.pos-catalog-tab.is-active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
 .pos-catalog-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -59,6 +112,32 @@
   padding: 12px;
   text-align: left;
   white-space: normal;
+}
+.pos-catalog-tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/*
+  The picture is square and cropped, matching a card grid rather than a portrait
+  tile: a seller photographing a menu shot gets a consistent row of equal-height
+  cards instead of a ragged one where a tall photo pushes its neighbours down.
+*/
+.pos-catalog-image,
+.pos-catalog-image-fallback {
+  width: 100%;
+  aspect-ratio: 1;
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  background: var(--muted);
+}
+.pos-catalog-image-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--muted-foreground);
+  font-size: 28px;
+  font-weight: 700;
 }
 .pos-catalog-name {
   font-weight: 600;
@@ -178,13 +257,22 @@
   max-height: 340px;
   overflow-y: auto;
 }
+/*
+  Wraps to a column so the note gets the full card width on its own row. A
+  single-row layout would squeeze it between the name and the stepper.
+*/
 .pos-cart-line {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.pos-cart-line-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
 }
 .pos-cart-line-detail {
   display: flex;
@@ -207,6 +295,32 @@
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+/*
+  The per-line instruction.
+
+  Full width under the line's own text rather than beside the quantity, because
+  the note is free text of unknown length: inline with the stepper it would either
+  truncate mid-word or push the quantity off the card on a long instruction.
+*/
+.pos-cart-line-note {
+  width: 100%;
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+}
+.pos-cart-line-note::placeholder {
+  color: var(--muted-foreground);
+}
+.pos-cart-line-note:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
 }
 .pos-cart-line-quantity {
   min-width: 26px;
@@ -269,7 +383,22 @@ input.pos-cart-line-quantity[type="number"] {
 }
 .pos-checkout-methods {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+/*
+  A group heading, styled like the field labels it sits above. A `<span>` rather
+  than a `<legend>` because these groups are a row of buttons, not a form
+  fieldset — the `aria-labelledby` on each group is what names them for a screen
+  reader.
+*/
+.pos-checkout-legend {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-foreground);
 }
 .pos-checkout-totals,
 .pos-receipt-totals {

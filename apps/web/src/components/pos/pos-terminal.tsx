@@ -28,7 +28,7 @@ import { toCartLineInput, summarizeCart } from "./pos-cart-state";
 import { PosCatalog } from "./pos-catalog";
 import { PosCheckoutDialog } from "./pos-checkout";
 import { PosReceiptDialog } from "./pos-receipt";
-import type { PosCartItem, PosPaymentMethod } from "./types/pos.type";
+import type { PosCartItem, PosFulfilmentType, PosPaymentMethod } from "./types/pos.type";
 
 /**
  * The queue is never silently downgraded to memory.
@@ -59,15 +59,22 @@ export function PosTerminal({
   const queue = useMemo(resolveQueueStore, []);
   const summary = summarizeCart(cart);
 
-  /** A till that cannot queue a sale must say so before a customer is waiting. */
+  /**
+   * Durable storage is claimed for the seller, never asked for.
+   *
+   * The grant is taken on load with no prompt and no banner: a till is not a
+   * consent screen, and a warning the seller can do nothing about is noise. If
+   * the browser refuses — normal on Chrome — queued sales are still kept, they
+   * are merely evictable, so there is nothing actionable to show them. Only a
+   * store that cannot be written at all is reported, because that is the one
+   * case where an offline sale is refused outright.
+   */
   const storage = useLoadedResource<StorageDurability | "checking">(
     async () => {
       // A real round-trip, not a check that the global exists. Refusing to trade
       // offline is better than accepting money we cannot record.
       if (!(await probeQueueStore(queue, organizationId))) return "unavailable" as const;
       if (await isStoragePersistent()) return "persistent" as const;
-      // Worth asking only once the queue is known to work. A refusal is normal
-      // on Chrome, which is why the seller is told rather than left guessing.
       return requestDurableStorage();
     },
     [queue, organizationId],
@@ -136,6 +143,7 @@ export function PosTerminal({
     discountMinor: number;
     tenderedMinor: number;
     paymentMethod: PosPaymentMethod;
+    fulfilmentType: PosFulfilmentType;
   }) {
     if (!cart.length) return;
 
@@ -148,6 +156,9 @@ export function PosTerminal({
       discountMinor: input.discountMinor,
       tenderedMinor: input.tenderedMinor,
       paymentMethod: input.paymentMethod,
+      // Part of the queued payload, not added at replay: an offline sale that
+      // synced days later must still arrive as the delivery it was taken as.
+      fulfilmentType: input.fulfilmentType,
       clientReference,
     };
 
@@ -217,16 +228,11 @@ export function PosTerminal({
         </p>
       )}
       {/*
-        Best-effort storage still works, but the browser may erase it. That risk
-        has to be visible to the seller, because an erased queue is money the
-        books never see and nobody else will notice.
+        The one storage failure worth interrupting for: nothing can be queued,
+        so an offline sale would be refused at the till. Best-effort storage
+        earns no banner — the grant is claimed automatically and a refusal
+        leaves the queue working, just evictable.
       */}
-      {storage === "best-effort" && (
-        <p className="pos-storage-warning" role="alert">
-          Install this app to protect unsynced sales. Until then this browser may erase them — sync
-          before closing the till.
-        </p>
-      )}
       {storage === "unavailable" && (
         <p className="pos-storage-warning" role="alert">
           This browser cannot store sales offline. Online sales are unaffected, but a sale cannot be

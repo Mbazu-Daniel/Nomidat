@@ -1,5 +1,5 @@
 ﻿import { IconPhotoPlus, IconBuildingStore } from "@tabler/icons-react";
-import { readBusinessLogo } from "@/components/workspace/business-logo";
+import { downscaleImage, readImageAsDataUrl } from "@/lib/browser-image";
 import { useState } from "react";
 
 /**
@@ -57,7 +57,10 @@ export function ImagePicker({
               setBusy(true);
               setError("");
               try {
-                onChange(await readBusinessLogo(file));
+                // The member avatar is stored inline on the profile, unlike the
+              // organization logo which goes to the bucket, so this one is read
+              // back as a data URL rather than kept as bytes.
+              onChange(await readImageAsDataUrl(await downscaleImage(file)));
               } catch (reason) {
                 setError((reason as Error).message);
               } finally {

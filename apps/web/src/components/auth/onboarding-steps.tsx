@@ -1,6 +1,8 @@
 import { AuthError, AuthField } from "./auth-shell";
 import { ChoiceGroup, ImagePicker } from "./onboarding-fields";
+import { downscaleImage } from "@/lib/browser-image";
 import { BUSINESS_THEMES, BUSINESS_TYPES, EMPLOYEE_BANDS } from "./onboarding-options";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -12,8 +14,79 @@ import { Button } from "@/components/ui/button";
 export type BusinessField = "logo" | "businessName" | "businessType" | "employees" | "theme";
 export type ProfileField = "avatar" | "firstName" | "lastName";
 
+/**
+ * The logo control for the business step.
+ *
+ * Not `ImagePicker`, which hands back a data URL and is used for the member
+ * avatar. The avatar is stored inline on the profile; the logo goes to the bucket,
+ * so this keeps the downsized Blob rather than a string that would have to be
+ * turned back into bytes later. The preview is a local object URL, revoked when
+ * the component goes away, so nothing is held after the step moves on.
+ */
+export function LogoPicker({
+  onChange,
+}: {
+  onChange: (file: Blob | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  return (
+    <div className="flex items-center gap-4">
+      <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-muted text-muted-foreground">
+        {preview ? (
+          <img src={preview} alt="Preview" className="size-full object-cover" />
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+        <button
+          type="button"
+          className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-sm font-medium text-foreground"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          {preview ? "Change logo" : "Upload logo"}
+        </button>
+        <span>Optional · PNG, JPG or WebP, up to 5 MB</span>
+        <AuthError message={error} />
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        hidden
+        disabled={busy}
+        onChange={async (event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (!file) return;
+          setBusy(true);
+          setError("");
+          try {
+            const blob = await downscaleImage(file);
+            // The previous object URL is revoked here rather than on unmount alone:
+            // a seller who changes their mind three times holds one preview, not
+            // three, and each is a full-size image.
+            setPreview((current) => {
+              if (current) URL.revokeObjectURL(current);
+              return URL.createObjectURL(blob);
+            });
+            onChange(blob);
+          } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "Could not read that logo.");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 export function BusinessStepForm(props: {
-  logo: string;
+  logoLabel: React.ReactNode;
   businessName: string;
   businessType: string;
   employees: string;
@@ -25,7 +98,7 @@ export function BusinessStepForm(props: {
   onSubmit: () => void;
 }) {
   const {
-    logo,
+    logoLabel,
     businessName,
     businessType,
     employees,
@@ -46,13 +119,7 @@ export function BusinessStepForm(props: {
       }}
       noValidate
     >
-      <ImagePicker
-        value={logo}
-        onChange={(value) => onChange("logo", value)}
-        label="Upload logo"
-        hint="Optional · PNG, JPG or WebP, up to 5 MB"
-        fallback="building"
-      />
+      {logoLabel}
 
       <AuthField
         label="Business name"
@@ -73,15 +140,14 @@ export function BusinessStepForm(props: {
       />
 
       <ChoiceGroup
-        legend="How many people work here?"
+        legend="Team size"
         options={EMPLOYEE_BANDS}
         value={employees}
         onChange={(value) => onChange("employees", value)}
-        showHint={false}
       />
 
       <ChoiceGroup
-        legend="Workspace theme"
+        legend="Theme"
         options={BUSINESS_THEMES}
         value={theme}
         onChange={(value) => onChange("theme", value)}
@@ -143,7 +209,7 @@ export function ProfileStepForm(props: {
 
       <AuthError message={error} />
       <Button type="submit" size="lg" disabled={saving || !firstName.trim()}>
-        {saving ? "Finishing up…" : "Enter your workspace"}
+        {saving ? "Saving…" : "Finish"}
       </Button>
     </form>
   );

@@ -6,9 +6,7 @@
  * that is safe to keep in `localStorage` (size, and it blocks the first paint).
  */
 
-const DB_NAME = "nomidat-cache";
-const DB_VERSION = 1;
-const STORE = "entries";
+import Dexie, { Table } from "dexie";
 
 export interface CachedSnapshot<T> {
   value: T;
@@ -22,45 +20,36 @@ export interface SnapshotStore {
   clear(): Promise<void>;
 }
 
-function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>) {
-  return openDatabase().then(
-    (db) =>
-      new Promise<T>((resolve, reject) => {
-        const transaction = db.transaction(STORE, mode);
-        const request = run(transaction.objectStore(STORE));
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-        transaction.oncomplete = () => db.close();
-      }),
-  );
+interface CacheEntry {
+  key: string;
+  value: unknown;
+  cachedAt: number;
 }
 
-function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(STORE)) {
-        request.result.createObjectStore(STORE, { keyPath: "key" });
-      }
-    };
-  });
+class CacheDatabase extends Dexie {
+  entries!: Table<CacheEntry, string>;
+
+  constructor() {
+    super("nomidat-cache");
+    this.version(1).stores({
+      entries: "key, cachedAt",
+    });
+  }
 }
+
+const db = new CacheDatabase();
 
 function createIndexedDbSnapshotStore(): SnapshotStore {
   return {
     async read<T>(key: string) {
-      const row = await withStore<CachedSnapshot<T> & { key: string }>("readonly", (store) =>
-        store.get(key),
-      );
-      return row ? { value: row.value, cachedAt: row.cachedAt } : null;
+      const row = await db.entries.get(key);
+      return row ? { value: row.value as T, cachedAt: row.cachedAt } : null;
     },
     async write<T>(key: string, value: T) {
-      await withStore("readwrite", (store) => store.put({ key, value, cachedAt: Date.now() }));
+      await db.entries.put({ key, value, cachedAt: Date.now() });
     },
     async clear() {
-      await withStore("readwrite", (store) => store.clear());
+      await db.entries.clear();
     },
   };
 }

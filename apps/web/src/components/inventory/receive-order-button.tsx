@@ -64,17 +64,15 @@ function ReceiveOrderForm({
   const loaded = useLoadedResource(
     async () => {
       const order = await getPurchaseOrder(organizationId, purchaseOrderId);
-      return order.items.map(
-        (item): OutstandingLine => ({
-          id: item.id,
-          productId: item.productId,
-          variantId: item.variantId,
-          productName: item.productName,
-          // What is still owed on this line. A line already fully received drops
-          // to zero and contributes nothing, so it needs no separate handling here.
-          outstanding: Math.max(Number(item.quantityOrdered) - Number(item.quantityReceived), 0),
-        }),
-      );
+      return order.items.map((item): OutstandingLine => ({
+        id: item.id,
+        productId: item.productId,
+        variantId: item.variantId,
+        productName: item.productName,
+        // What is still owed on this line. A line already fully received drops
+        // to zero and contributes nothing, so it needs no separate handling here.
+        outstanding: Math.max(Number(item.quantityOrdered) - Number(item.quantityReceived), 0),
+      }));
     },
     [organizationId, purchaseOrderId],
     null,
@@ -119,8 +117,7 @@ function ReceiveOrderForm({
     }
   }
 
-  if (error || countError)
-    return <p className="workspace-error">{error || countError}</p>;
+  if (error || countError) return <p className="workspace-error">{error || countError}</p>;
   if (!lines) return <p className="inventory-empty">Loading order…</p>;
 
   return (

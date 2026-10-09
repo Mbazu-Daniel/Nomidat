@@ -1,4 +1,14 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
+import {
+  IsBoolean,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  Min,
+  ValidateIf,
+} from "class-validator";
 
 export class CreateProductDto {
   @IsString()
@@ -43,6 +53,23 @@ export class CreateProductDto {
 }
 
 export class UpdateProductDto {
+  /**
+   * The bucket key of the product's picture, exactly as returned by
+   * `POST /files/upload-url`.
+   *
+   * A key rather than a URL, so the public hostname stays a deployment setting.
+   * Validated as belonging to this organization's own namespace, because the
+   * alternative is a product in one business rendering another business's image.
+   * A null clears the picture; omitted leaves it alone.
+   */
+  @IsOptional()
+  @ValidateIf((_value, address) => address !== null)
+  @Matches(/^[0-9a-f-]{36}\/(product-images|business-logos|avatars)\//, {
+    message:
+      "imageKey must be a key from this organization, of the form {organizationId}/{location}/{unique}-{fileName}",
+  })
+  imageKey?: string | null;
+
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;

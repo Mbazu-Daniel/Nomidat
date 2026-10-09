@@ -1,5 +1,12 @@
 import { and, eq } from "@nomidat/db";
-import { order, organization, payment, product, stockMovement, warehouse } from "@nomidat/db/schema";
+import {
+  order,
+  organization,
+  payment,
+  product,
+  stockMovement,
+  warehouse,
+} from "@nomidat/db/schema";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { openSalesJourney, type SalesJourney } from "./support/sales-fixture";
 

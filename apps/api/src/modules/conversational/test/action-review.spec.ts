@@ -78,9 +78,7 @@ describe("the review of a sale", () => {
 describe("a review that quotes no money", () => {
   it("isUnaffectedByTheCurrency", () => {
     const fields = { intent: "add_note", customerName: "Ada", description: "Call back" };
-    expect(getActionReview(action(fields), "JPY")).toBe(
-      getActionReview(action(fields), "USD"),
-    );
+    expect(getActionReview(action(fields), "JPY")).toBe(getActionReview(action(fields), "USD"));
     expect(getActionReview(action(fields), "USD")).toContain("Ada");
   });
 

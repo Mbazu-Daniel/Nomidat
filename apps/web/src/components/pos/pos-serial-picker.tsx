@@ -49,6 +49,7 @@ export function PosSerialPicker({
           quantity: 1,
           serialNumberId: serial.id,
           serialCode: serial.code,
+          note: "",
         }),
       cart,
     );

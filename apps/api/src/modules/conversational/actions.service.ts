@@ -2,14 +2,7 @@ import { PictureActionsService } from "./picture-actions.service";
 import { ExtendedActionsService } from "./extended-actions.service";
 import { Inject, Injectable } from "@nestjs/common";
 import { and, eq, ilike, sql, or, isNull, sum } from "@nomidat/db";
-import {
-  contact,
-  expense,
-  expenseCategory,
-  order,
-  product,
-  payment,
-} from "@nomidat/db/schema";
+import { contact, expense, expenseCategory, order, product, payment } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { formatMinorAmount, majorToMinor } from "../../common/helpers/money-format";
 import { totalOnHandSql } from "../inventory/stock-levels";

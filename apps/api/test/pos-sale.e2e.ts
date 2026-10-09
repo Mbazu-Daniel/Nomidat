@@ -11,7 +11,6 @@ import { SalePricingService } from "../src/modules/sales/sale-pricing.service";
 import { SalesService } from "../src/modules/sales/sales.service";
 import { POS_PAYMENT_METHODS } from "../src/modules/pos/types/pos.type";
 
-
 /**
  * The counter sale path, exercised the way the till calls it.
  *

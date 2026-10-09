@@ -4,7 +4,6 @@ export * from "../audit";
 export * from "../auth";
 export * from "../organization";
 export * from "../channel";
-export * from "../business";
 export * from "../contacts";
 export * from "../products";
 export * from "../inventory";

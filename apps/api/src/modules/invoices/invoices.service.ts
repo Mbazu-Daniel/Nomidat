@@ -72,7 +72,6 @@ export class InvoicesService {
     return result.document;
   }
 
-
   /**
    * Tells subscribers an invoice exists — after the insert has committed, and
    * without waiting for their receiver. A subscriber being down must not turn

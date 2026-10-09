@@ -16,6 +16,8 @@ import type { Request, Response as ExpressResponse } from "express";
 import { extractHeaders, proxyAuthResponse } from "../../common/helpers/auth-http";
 import { AuthRateLimitGuard } from "../../common/rate-limit/auth-rate-limit.guard";
 import { OrganizationService } from "./organization.service";
+import { OrganizationLogoService } from "./organization-logo.service";
+import { BusinessAuthService } from "../business/business-auth.service";
 import {
   CheckOrganizationPermissionDto,
   CheckOrganizationSlugDto,
@@ -24,12 +26,17 @@ import {
   OrganizationIdParamDto,
   SetActiveOrganizationDto,
   UpdateOrganizationDto,
+  UpdateOrganizationLogoDto,
 } from "./dto";
 
 @ApiTags("Organizations")
 @Controller("organizations")
 export class OrganizationController {
-  constructor(private readonly organizationService: OrganizationService) {}
+  constructor(
+    private readonly organizationService: OrganizationService,
+    private readonly auth: BusinessAuthService,
+    private readonly logos: OrganizationLogoService,
+  ) {}
 
   /**
    * Creating a business writes a row per call, so an unbounded loop here is a
@@ -136,6 +143,42 @@ export class OrganizationController {
         extractHeaders(req),
       ),
     );
+  }
+
+  /**
+   * The organization's logo, resolved from the bucket.
+   *
+   * Separate from `GET /:organizationId` because that one is a pass-through to
+   * Better Auth, which does not know about the logo key. Read access is enough:
+   * anyone in the business can see the logo, and a storefront can show it without
+   * holding a session.
+   */
+  @Get(":organizationId/logo")
+  @ApiOperation({ summary: "Get the organization's logo URL" })
+  async getOrganizationLogo(@Param() params: OrganizationIdParamDto) {
+    return this.logos.getLogo(params.organizationId);
+  }
+
+  @Patch(":organizationId/logo")
+  @ApiOperation({ summary: "Set or remove the organization's logo" })
+  async updateOrganizationLogo(
+    @Param() params: OrganizationIdParamDto,
+    @Body() body: UpdateOrganizationLogoDto,
+    @Req() req: Request,
+  ) {
+    // "business" write, not "settings". The area names a permission statement,
+    // and `business` is the only one covering the organization's own identity —
+    // the logo is what the storefront and every invoice show. Settings is not a
+    // statement here at all, so naming it would silently authorize against
+    // whatever an unknown area falls back to.
+    await this.auth.authorize(
+      extractHeaders(req),
+      params.organizationId,
+      true,
+      "business",
+    );
+    await this.logos.setLogo(params.organizationId, body.logoKey);
+    return this.logos.getLogo(params.organizationId);
   }
 
   @Delete(":organizationId")

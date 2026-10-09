@@ -1,9 +1,31 @@
-import { removeCartItem, setCartItemQuantity } from "./pos-cart-state";
+import { removeCartItem, setCartItemNote, setCartItemQuantity } from "./pos-cart-state";
 import type { PosCartItem } from "./types/pos.type";
 import "./pos.css";
 import { Button } from "@/components/ui/button";
 import { IconMinus, IconPlus, IconTrash } from "@tabler/icons-react";
 import { formatMoney } from "@/lib/money";
+
+/**
+ * The instruction row, split out because it is the one part of a line that is
+ * prose rather than a number.
+ */
+function PosCartLineNote({ item, onNote }: { item: PosCartItem; onNote: (note: string) => void }) {
+  return (
+    <input
+      className="pos-cart-line-note"
+      type="text"
+      maxLength={280}
+      placeholder="Note for the kitchen…"
+      aria-label={`Note for ${item.name}`}
+      // Uncontrolled on purpose. A controlled field would push every keystroke
+      // through the whole cart and re-render the till mid-word, which is what
+      // makes a note feel like it lags on a busy counter. The value is committed
+      // on blur, which is also the moment the cashier moves on to the next line.
+      defaultValue={item.note}
+      onBlur={(event) => onNote(event.target.value)}
+    />
+  );
+}
 
 /**
  * The quantity a seller would actually type, not the number stored.
@@ -40,100 +62,116 @@ export function PosCart({
               key={`${item.productId}:${item.variantId ?? ""}:${item.serialNumberId ?? ""}`}
               className="pos-cart-line"
             >
-              <div className="pos-cart-line-detail">
-                <strong>{item.name}</strong>
-                {item.sku && <span className="pos-cart-line-sku">{item.sku}</span>}
-                {item.serialCode && (
-                  <span className="pos-cart-line-serial">Serial {item.serialCode}</span>
-                )}
-                <span>{formatMoney(item.unitPriceMinor, currency)} each</span>
-              </div>
-              <div className="pos-cart-line-controls">
-                {item.serialNumberId ? (
-                  <span className="pos-cart-line-quantity">1 unit</span>
-                ) : (
-                  <>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Decrease ${item.name}`}
-                      onClick={() =>
-                        onChange(
-                          setCartItemQuantity(
-                            items,
-                            item.productId,
-                            item.variantId,
-                            null,
-                            item.quantity - 1,
-                          ),
-                        )
-                      }
-                    >
-                      <IconMinus size={16} />
-                    </Button>
-                    {/*
+              <div className="pos-cart-line-header">
+                <div className="pos-cart-line-detail">
+                  <strong>{item.name}</strong>
+                  {item.sku && <span className="pos-cart-line-sku">{item.sku}</span>}
+                  {item.serialCode && (
+                    <span className="pos-cart-line-serial">Serial {item.serialCode}</span>
+                  )}
+                  <span>{formatMoney(item.unitPriceMinor, currency)} each</span>
+                </div>
+                <div className="pos-cart-line-controls">
+                  {item.serialNumberId ? (
+                    <span className="pos-cart-line-quantity">1 unit</span>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Decrease ${item.name}`}
+                        onClick={() =>
+                          onChange(
+                            setCartItemQuantity(
+                              items,
+                              item.productId,
+                              item.variantId,
+                              null,
+                              item.quantity - 1,
+                            ),
+                          )
+                        }
+                      >
+                        <IconMinus size={16} />
+                      </Button>
+                      {/*
                       A typed quantity, because a till weighing produce cannot add
                       half a kilo with a +/- pair. `inputMode="decimal"` puts a
                       numeric keypad up on a phone, which is where a till actually
                       runs. Stepping the decrement by 1 keeps whole-unit stock fast;
                       the field is how a weighed amount is entered.
                     */}
-                    <input
-                      className="pos-cart-line-quantity"
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.001"
-                      aria-label={`${item.name} quantity`}
-                      value={displayQuantity(item.quantity)}
-                      onChange={(event) =>
-                        onChange(
-                          setCartItemQuantity(
-                            items,
-                            item.productId,
-                            item.variantId,
-                            null,
-                            Number(event.target.value),
-                          ),
-                        )
-                      }
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      aria-label={`Increase ${item.name}`}
-                      onClick={() =>
-                        onChange(
-                          setCartItemQuantity(
-                            items,
-                            item.productId,
-                            item.variantId,
-                            null,
-                            item.quantity + 1,
-                          ),
-                        )
-                      }
-                    >
-                      <IconPlus size={16} />
-                    </Button>
-                  </>
-                )}
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  aria-label={`Remove ${item.name}`}
-                  onClick={() =>
-                    onChange(
-                      removeCartItem(items, item.productId, item.variantId, item.serialNumberId),
-                    )
-                  }
-                >
-                  <IconTrash size={16} />
-                </Button>
+                      <input
+                        className="pos-cart-line-quantity"
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.001"
+                        aria-label={`${item.name} quantity`}
+                        value={displayQuantity(item.quantity)}
+                        onChange={(event) =>
+                          onChange(
+                            setCartItemQuantity(
+                              items,
+                              item.productId,
+                              item.variantId,
+                              null,
+                              Number(event.target.value),
+                            ),
+                          )
+                        }
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={`Increase ${item.name}`}
+                        onClick={() =>
+                          onChange(
+                            setCartItemQuantity(
+                              items,
+                              item.productId,
+                              item.variantId,
+                              null,
+                              item.quantity + 1,
+                            ),
+                          )
+                        }
+                      >
+                        <IconPlus size={16} />
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    aria-label={`Remove ${item.name}`}
+                    onClick={() =>
+                      onChange(
+                        removeCartItem(items, item.productId, item.variantId, item.serialNumberId),
+                      )
+                    }
+                  >
+                    <IconTrash size={16} />
+                  </Button>
+                </div>
               </div>
+              <PosCartLineNote
+                item={item}
+                onNote={(note) =>
+                  onChange(
+                    setCartItemNote(
+                      items,
+                      item.productId,
+                      item.variantId,
+                      item.serialNumberId,
+                      note,
+                    ),
+                  )
+                }
+              />
             </li>
           ))}
         </ul>

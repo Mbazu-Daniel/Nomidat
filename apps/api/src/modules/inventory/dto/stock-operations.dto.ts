@@ -18,10 +18,12 @@ import {
 
 class TransferLineDto {
   @IsUUID()
+  @IsString()
   productId!: string;
 
   @IsOptional()
   @IsUUID()
+  @IsString()
   variantId?: string;
 
   @IsNumber({ maxDecimalPlaces: 3 })
@@ -31,9 +33,11 @@ class TransferLineDto {
 
 export class CreateTransferDto {
   @IsUUID()
+  @IsString()
   fromWarehouseId!: string;
 
   @IsUUID()
+  @IsString()
   toWarehouseId!: string;
 
   @IsArray()
@@ -50,10 +54,12 @@ export class CreateTransferDto {
 
 class CountLineDto {
   @IsUUID()
+  @IsString()
   productId!: string;
 
   @IsOptional()
   @IsUUID()
+  @IsString()
   variantId?: string;
 
   @IsNumber({ maxDecimalPlaces: 3 })
@@ -63,6 +69,7 @@ class CountLineDto {
 
 export class CreateCycleCountDto {
   @IsUUID()
+  @IsString()
   warehouseId!: string;
 
   @IsArray()
@@ -78,10 +85,12 @@ export class CreateCycleCountDto {
 
 class ReturnLineDto {
   @IsUUID()
+  @IsString()
   productId!: string;
 
   @IsOptional()
   @IsUUID()
+  @IsString()
   variantId?: string;
 
   @IsNumber({ maxDecimalPlaces: 3 })
@@ -98,10 +107,12 @@ class ReturnLineDto {
 export class CreateReturnDto {
   @IsOptional()
   @IsUUID()
+  @IsString()
   orderId?: string;
 
   @IsOptional()
   @IsUUID()
+  @IsString()
   contactId?: string;
 
   @IsArray()
@@ -127,10 +138,12 @@ export class CreateReturnDto {
 
 class PurchaseOrderLineDto {
   @IsUUID()
+  @IsString()
   productId!: string;
 
   @IsOptional()
   @IsUUID()
+  @IsString()
   variantId?: string;
 
   @IsNumber({ maxDecimalPlaces: 3 })
@@ -146,9 +159,11 @@ class PurchaseOrderLineDto {
 export class CreatePurchaseOrderDto {
   @IsOptional()
   @IsUUID()
+  @IsString()
   supplierId?: string;
 
   @IsUUID()
+  @IsString()
   warehouseId!: string;
 
   @IsArray()

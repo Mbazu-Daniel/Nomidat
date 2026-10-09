@@ -8,7 +8,6 @@ import {
 } from "@nestjs/common";
 import { PaymentLedgerService } from "../../payment-ledger.service";
 import { PayoutAccountService } from "../../../payouts/payout-account.service";
-import { BusinessProfileService } from "../../../business-profile/business-profile.service";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { and, eq, generateId, sum } from "@nomidat/db";
@@ -41,7 +40,6 @@ export class PaystackService {
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
-    private readonly profiles: BusinessProfileService,
     private readonly ledger: PaymentLedgerService,
     private readonly notifications: PaymentNotificationService,
     private readonly payouts: PayoutAccountService,

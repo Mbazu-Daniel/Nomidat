@@ -18,7 +18,8 @@ export async function getInvoiceDocument(
       customerEmail: contact.email,
       businessName: organization.name,
       businessMetadata: organization.metadata,
-      businessLogo: organization.logo,
+      logoKey: organization.logoKey,
+      legacyLogo: organization.logo,
       status: invoice.status,
       subtotalMinor: invoice.subtotalMinor,
       discountMinor: invoice.discountMinor,
@@ -51,10 +52,13 @@ export async function getInvoiceDocument(
     .from(invoiceItem)
     .where(eq(invoiceItem.invoiceId, invoiceId));
 
-  const { businessMetadata, businessLogo, ...document } = result;
+  const { businessMetadata, logoKey, legacyLogo, ...document } = result;
   return {
     ...document,
-    businessLogo: invoiceBusinessLogo(businessLogo),
+    // The organization's own logo, which is also what the storefront shows. Falls
+    // back to the legacy inline value so a business that set its logo before the
+    // bucket existed keeps it on its invoices.
+    businessLogo: invoiceBusinessLogo(logoKey, legacyLogo),
     businessDetails: invoiceBusinessDetails(businessMetadata),
     items,
   };

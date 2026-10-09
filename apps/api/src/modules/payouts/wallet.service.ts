@@ -172,7 +172,12 @@ export class WalletService {
         // payment row it arrived alongside.
         { onDuplicate: "skip", mayOverdraw: true },
       );
-      return { credited: written.id !== null, netMinor, feeMinor, balanceAfterMinor: written.balanceAfterMinor };
+      return {
+        credited: written.id !== null,
+        netMinor,
+        feeMinor,
+        balanceAfterMinor: written.balanceAfterMinor,
+      };
     };
 
     return db === this.db ? this.db.transaction((tx) => credit(tx)) : credit(db);

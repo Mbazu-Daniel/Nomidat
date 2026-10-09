@@ -253,6 +253,34 @@
       "when": 1790397600000,
       "tag": "0035_order_payment_method_bank_transfer",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791567297503,
+      "tag": "0036_product_image_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791567547037,
+      "tag": "0037_order_fulfilment_and_line_note",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791575435995,
+      "tag": "0038_drop_business_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791576556194,
+      "tag": "0039_organization_logo_key",
+      "breakpoints": true
     }
   ]
 }

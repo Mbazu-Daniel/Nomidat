@@ -17,6 +17,7 @@ import {
 
 class PosSaleLineDto {
   @IsUUID()
+  @IsString()
   productId!: string;
 
   /**
@@ -25,6 +26,7 @@ class PosSaleLineDto {
    */
   @IsOptional()
   @IsUUID()
+  @IsString()
   variantId?: string;
 
   /**
@@ -52,6 +54,19 @@ class PosSaleLineDto {
   @ArrayMaxSize(100)
   @IsUUID("4", { each: true })
   serialNumberIds?: string[];
+
+  /**
+   * The kitchen's instruction for this line only — "extra spicy", "no onions".
+   *
+   * Kept on the line rather than the sale because a single order routinely needs
+   * different instructions per item, and one note on the order cannot say which
+   * dish it belongs to. The till captures it beside the quantity, where the
+   * seller is looking when they type it.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  note?: string;
 }
 
 /**
@@ -68,6 +83,7 @@ export class CreatePosSaleDto {
 
   @IsOptional()
   @IsUUID()
+  @IsString()
   customerId?: string;
 
   @IsOptional()
@@ -85,6 +101,19 @@ export class CreatePosSaleDto {
   @IsOptional()
   @IsIn(["cash", "bank_transfer", "card"])
   paymentMethod?: "cash" | "bank_transfer" | "card";
+
+  /**
+   * How the customer receives the order: served at a table, carried out, or
+   * delivered to them.
+   *
+   * Recorded on the Order rather than derived, because it changes what the
+   * business owes its staff — a table needs clearing, a delivery needs a driver —
+   * and a till that remembered it only on screen would leave every report unable
+   * to answer "how many deliveries today".
+   */
+  @IsOptional()
+  @IsIn(["dine_in", "takeaway", "delivery"])
+  fulfilmentType?: "dine_in" | "takeaway" | "delivery";
 
   @IsOptional()
   @IsString()

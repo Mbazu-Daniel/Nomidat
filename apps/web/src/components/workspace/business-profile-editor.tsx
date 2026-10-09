@@ -1,8 +1,9 @@
 import { BusinessHandle } from "./business-handle";
 import { useMemo, useState } from "react";
 import { createApiRequest } from "@/lib/api";
-import { errorMessage, useApiResource, useSubmit } from "@/lib/use-api-resource";
-import { readBusinessLogo } from "./business-logo";
+import { useApiResource, useSubmit } from "@/lib/use-api-resource";
+import { downscaleImage } from "@/lib/browser-image";
+import { uploadToBucket } from "@/lib/upload-to-bucket";
 import type { BusinessDetails, BusinessProfile } from "./types/settings.type";
 
 export function BusinessProfileEditor({
@@ -30,13 +31,54 @@ export function BusinessProfileEditor({
     return raw ?? {};
   }, [profile]);
   const details = (metadata.businessDetails ?? {}) as BusinessDetails;
-  const logoFromProfile = profile?.logo ?? null;
-  // A logo chosen in this session replaces the stored one without a round trip, so
-  // "Remove logo" is a local edit the seller can still change their mind about.
+  // The organization's logo, resolved from the bucket by the API. Read separately
+  // from the Better Auth row because `logo` there is the legacy inline value and
+  // the storefront and invoice both render this one.
+  // Re-fetched by bumping the revision rather than by a reload call, because a
+  // reload would drop the form the seller is halfway through filling in.
+  const [logoRevision, setLogoRevision] = useState(0);
+  const loadedLogo = useApiResource<{ logoUrl: string | null }>(
+    `/organizations/${organizationId}/logo`,
+    undefined as unknown as { logoUrl: string | null },
+    logoRevision,
+  );
+  const logoFromProfile = loadedLogo.data?.logoUrl ?? null;
   const [logoOverride, setLogo] = useState<string | null | undefined>(undefined);
   const logo = logoOverride === undefined ? logoFromProfile : logoOverride;
-  const { busy, error: writeError, setError, submit } = useSubmit();
-  const error = loaded.error || writeError;
+  const { busy, error: writeError, submit } = useSubmit();
+  const error = loaded.error || loadedLogo.error || writeError;
+
+  /**
+   * Uploads the logo to the bucket and points the organization at it.
+   *
+   * Three steps, in this order: ask for a presigned URL, PUT the bytes to it,
+   * then save the key. Saving the key last matters — the other order would leave
+   * the organization pointing at an object that was never written, which shows as
+   * a broken logo on the storefront and on every invoice.
+   */
+  async function uploadLogo(file: File | Blob, fileName: string) {
+    await submit(async () => {
+      // Same order as everywhere else: sign, upload the bytes, then save the key.
+      // Saving first would leave the organization pointing at an object that was
+      // never written.
+      const { fileKey, publicUrl } = await uploadToBucket(
+        organizationId,
+        file,
+        "business-logos",
+        fileName,
+      );
+
+      const saved = await createApiRequest<{ logoUrl: string | null }>(
+        `/organizations/${organizationId}/logo`,
+        { method: "PATCH", body: JSON.stringify({ logoKey: fileKey }) },
+      );
+
+      // From the response rather than the upload, so the preview matches what the
+      // storefront and the invoice will read back.
+      setLogo(saved.logoUrl ?? publicUrl ?? null);
+    });
+    setLogoRevision((revision) => revision + 1);
+  }
   function renderProfileForm() {
     if (!profile) return null;
     return (
@@ -53,7 +95,9 @@ export function BusinessProfileEditor({
                 data: {
                   name: value("name"),
                   slug: value("slug"),
-                  logo,
+                  // No logo field. The logo is a bucket key, so it goes through the
+                  // logo endpoint rather than Better Auth's update, which only
+                  // knows the legacy inline column.
                   metadata: {
                     ...metadata,
                     businessDetails: Object.fromEntries(
@@ -84,21 +128,38 @@ export function BusinessProfileEditor({
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                onChange={async (event) => {
+                onChange={(event) => {
                   const file = event.target.files?.[0];
+                  // Reset so choosing the same file twice still fires change.
+                  event.target.value = "";
                   if (!file) return;
-                  // Reading the file is local work, not a write, so it gets its own
-                  // error path rather than pretending to be a save.
-                  try {
-                    setLogo(await readBusinessLogo(file));
-                  } catch (reason) {
-                    setError(errorMessage(reason));
-                  }
+                  // Downsized in the browser before it goes up: a phone camera
+                  // makes a 12 MP image, and a logo is never shown larger than
+                  // 160px wide.
+                  void submit(async () => {
+                    const blob = await downscaleImage(file);
+                    await uploadLogo(blob, file.name);
+                  });
                 }}
               />
             </label>
             {logo && (
-              <button type="button" onClick={() => setLogo(null)}>
+              <button
+                type="button"
+                onClick={() => {
+                  // null, not an empty string: the API reads null as "remove it"
+                  // and an absent field as "leave it", so an empty string would
+                  // quietly do neither.
+                  void submit(async () => {
+                    const saved = await createApiRequest<{ logoUrl: string | null }>(
+                      `/organizations/${organizationId}/logo`,
+                      { method: "PATCH", body: JSON.stringify({ logoKey: null }) },
+                    );
+                    setLogo(saved.logoUrl);
+                  });
+                  setLogoRevision((revision) => revision + 1);
+                }}
+              >
                 Remove logo
               </button>
             )}

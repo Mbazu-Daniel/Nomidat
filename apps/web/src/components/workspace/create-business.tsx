@@ -2,7 +2,8 @@ import { BusinessHandle } from "./business-handle";
 import { useState } from "react";
 import { IconBuildingStore, IconPhotoPlus } from "@tabler/icons-react";
 import { createApiRequest } from "@/lib/api";
-import { readBusinessLogo } from "./business-logo";
+import { downscaleImage } from "@/lib/browser-image";
+import { uploadToBucket } from "@/lib/upload-to-bucket";
 import type { CreateBusinessProps } from "./types/create-business.type";
 
 export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
@@ -10,6 +11,7 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
   const [saving, setSaving] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
   const [logo, setLogo] = useState("");
+  const [logoFile, setLogoFile] = useState<Blob | null>(null);
   const [slug, setSlug] = useState("");
   const [editedSlug, setEditedSlug] = useState(false);
   return (
@@ -22,22 +24,51 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
         setSaving(true);
         setError("");
         try {
-          const business = await createApiRequest<{ id: string; name: string }>("/organizations", {
-            method: "POST",
-            body: JSON.stringify({
-              name: value("name"),
-              slug,
-              logo: logo || undefined,
-              businessDetails: {
-                ownerName: value("ownerName"),
-                phone: value("phone"),
-                address: value("address"),
-                shopNumber: value("shopNumber") || undefined,
-                email: value("email") || undefined,
-                registrationNumber: value("registrationNumber") || undefined,
-              },
-            }),
-          });
+          // Created first, logo second: a presigned URL is scoped to an
+          // organization, and there is none until this call returns. A logo that
+          // fails to upload does not block the business from existing — it is a
+          // picture, and one can be set later from settings.
+          const business = await createApiRequest<{ id: string; name: string }>(
+            "/organizations",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                name: value("name"),
+                slug,
+                businessDetails: {
+                  ownerName: value("ownerName"),
+                  phone: value("phone"),
+                  address: value("address"),
+                  shopNumber: value("shopNumber") || undefined,
+                  email: value("email") || undefined,
+                  registrationNumber: value("registrationNumber") || undefined,
+                },
+              }),
+            },
+          );
+
+          if (logoFile) {
+            try {
+              const { fileKey } = await uploadToBucket(
+                business.id,
+                logoFile,
+                "business-logos",
+                "logo",
+              );
+              await createApiRequest(`/organizations/${business.id}/logo`, {
+                method: "PATCH",
+                body: JSON.stringify({ logoKey: fileKey }),
+              });
+            } catch {
+              // The business already exists, so this is not fatal: it is reported
+              // and the seller carries on. Blocking creation on a picture would
+              // be worse than handing them a business they can finish later.
+              setError(
+                "Your business was created, but the logo could not be uploaded. You can add it from settings.",
+              );
+            }
+          }
+
           onCreated(business);
         } catch (reason) {
           setError((reason as Error).message);
@@ -69,12 +100,15 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
                 disabled={logoBusy}
                 onChange={async (event) => {
                   const file = event.target.files?.[0];
+                  // Reset so choosing the same file twice still fires change.
                   event.target.value = "";
                   if (!file) return;
                   setLogoBusy(true);
                   setError("");
                   try {
-                    setLogo(await readBusinessLogo(file));
+                    const blob = await downscaleImage(file);
+                    setLogo(URL.createObjectURL(blob));
+                    setLogoFile(blob);
                   } catch (reason) {
                     setError((reason as Error).message);
                   } finally {
@@ -85,7 +119,7 @@ export function CreateBusiness({ onCreated, onCancel }: CreateBusinessProps) {
             </label>
             <p>Optional · PNG, JPG or WebP, up to 5 MB</p>
             {logo && (
-              <button type="button" onClick={() => setLogo("")}>
+              <button type="button" onClick={() => { setLogo(""); setLogoFile(null); }}>
                 Remove logo
               </button>
             )}

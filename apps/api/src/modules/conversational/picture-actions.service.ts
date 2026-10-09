@@ -38,8 +38,7 @@ export class PictureActionsService {
       action.items.reduce(
         (sum, item) => sum + item.quantity * majorToMinor(item.unitPriceNaira, currency),
         0,
-      ) -
-      discountMinor;
+      ) - discountMinor;
     const sale = await this.sales.createSale(organizationId, userId, {
       customerId: action.contactId,
       items: action.items.map((item) => ({

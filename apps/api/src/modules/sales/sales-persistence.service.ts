@@ -87,6 +87,7 @@ export class SalesPersistenceService {
         // never how it is arriving.
         paymentMethod: input.paymentMethod ?? "cash",
         clientReference: input.clientReference ?? null,
+        fulfilmentType: input.fulfilmentType ?? null,
         notes: input.notes,
         createdAt: now,
         updatedAt: now,
@@ -110,6 +111,7 @@ export class SalesPersistenceService {
         variantId: item.variantId,
         productName: item.productName,
         productSku: item.productSku,
+        note: item.note ?? null,
         discountMinor: item.discountMinor,
         quantity: item.quantity,
         unitPriceMinor: item.unitPriceMinor,
@@ -197,6 +199,7 @@ export class SalesPersistenceService {
       variantId: item.variantId ?? null,
       productName: item.productName,
       productSku: item.productSku,
+      note: item.note ?? null,
       discountMinor: item.discountMinor ?? 0,
       quantity: item.quantity,
       unitPriceMinor: item.unitPriceMinor,

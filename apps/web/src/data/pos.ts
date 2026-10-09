@@ -12,6 +12,10 @@ export interface PosCatalogProduct {
   variantName: string | null;
   /** The product is tracked unit by unit, so a serial must be named to sell it. */
   isSerialized: boolean;
+  /** Absolute picture URL, or null when the product has none. */
+  imageUrl: string | null;
+  /** Category names, for the terminal's category tabs. Empty when unassigned. */
+  categoryNames: string[];
 }
 
 export interface PosSaleLineInput {
@@ -20,6 +24,8 @@ export interface PosSaleLineInput {
   quantity: number;
   /** The exact units sold, for a serialised product. */
   serialNumberIds?: string[];
+  /** This line's own instruction, such as "extra spicy". */
+  note?: string;
 }
 
 export interface CreatePosSaleInput {
@@ -28,6 +34,8 @@ export interface CreatePosSaleInput {
   discountMinor?: number;
   tenderedMinor?: number;
   paymentMethod?: "cash" | "bank_transfer" | "card";
+  /** How the customer receives the order. The till sends one; the server stores it. */
+  fulfilmentType?: "dine_in" | "takeaway" | "delivery";
   paymentReference?: string;
   notes?: string;
   clientReference?: string;

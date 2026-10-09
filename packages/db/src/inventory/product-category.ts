@@ -7,6 +7,9 @@ export const productCategory = pgTable(
   {
     ...createOrgScopedColumns(),
     name: text("name").notNull(),
+    // Terminals and storefronts both need a stable, immutable handle for a
+    // category (deep links, a saved filter). `slug` already covers that, so no
+    // second identifier is introduced here.
     /** URL-safe handle, unique per organization. */
     slug: text("slug").notNull(),
     description: text("description"),

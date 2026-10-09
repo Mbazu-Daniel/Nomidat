@@ -40,7 +40,7 @@ export function orderTotals(
     throw new BadRequestException("Discount cannot exceed the subtotal.");
   }
 
-  const taxMinor = Math.round((subtotalMinor - appliedDiscountMinor) * taxRateBps / 10_000);
+  const taxMinor = Math.round(((subtotalMinor - appliedDiscountMinor) * taxRateBps) / 10_000);
   const totalMinor = subtotalMinor - appliedDiscountMinor + taxMinor;
 
   if (totalMinor > MAX_MINOR) {

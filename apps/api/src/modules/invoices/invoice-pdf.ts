@@ -7,7 +7,12 @@ const muted = "#8b9099";
 const accent = "#e76b35";
 const rule = "#eeece9";
 
-export function createInvoicePdf(invoice: InvoiceDocument, businessName: string): Promise<Buffer> {
+export function createInvoicePdf(
+  invoice: InvoiceDocument,
+  businessName: string,
+  /** Already-resolved logo bytes, or none to draw the vector fallback. */
+  logoBytes?: Buffer,
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const pdf = new PDFDocument({
       size: "A4",
@@ -46,14 +51,15 @@ export function createInvoicePdf(invoice: InvoiceDocument, businessName: string)
     function drawLogo() {
       pdf.rect(0, 0, 596, 5).fill(accent);
       let hasLogo = false;
-      if (invoice.businessLogo) {
+      // Bytes are resolved by the caller rather than fetched here. `drawLogo` runs
+      // inside the document stream, and the fetch is async, so awaiting inside
+      // would leave the PDF half-written while the logo was still in flight.
+      if (logoBytes) {
         try {
-          pdf.image(Buffer.from(invoice.businessLogo.split(",")[1], "base64"), 48, 40, {
-            fit: [160, 48],
-          });
+          pdf.image(logoBytes, 48, 40, { fit: [160, 48] });
           hasLogo = true;
         } catch {
-          /* Older or invalid logos use the vector fallback. */
+          /* An unreadable image falls through to the vector mark below. */
         }
       }
       if (!hasLogo) {

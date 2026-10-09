@@ -16,12 +16,13 @@ import { WarehouseService } from "./warehouse.service";
 import { Module } from "@nestjs/common";
 import { BetterAuthModule } from "../../common/better-auth/better-auth.module";
 import { DbModule } from "../../common/db/db.module";
+import { FilesModule } from "../../common/files/files.module";
 import { BusinessModule } from "../business/business.module";
 import { InventoryController } from "./inventory.controller";
 import { InventoryService } from "./inventory.service";
 
 @Module({
-  imports: [BetterAuthModule, DbModule, BusinessModule],
+  imports: [BetterAuthModule, DbModule, FilesModule, BusinessModule],
   controllers: [
     InventoryController,
     CatalogController,

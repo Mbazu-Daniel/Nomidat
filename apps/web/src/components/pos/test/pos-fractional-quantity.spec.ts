@@ -29,6 +29,7 @@ const mangos: PosCartItem = {
   quantity: 1,
   serialNumberId: null,
   serialCode: null,
+  note: "",
 };
 
 describe("a weighed quantity", () => {

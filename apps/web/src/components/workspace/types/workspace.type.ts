@@ -27,6 +27,8 @@ export type BusinessRecord = {
   customer?: string | null;
   description?: string | null;
   category?: string | null;
+  /** Picture for a product, resolved from its stored bucket key. */
+  imageUrl?: string | null;
   totalMinor?: number;
   amountMinor?: number;
   balanceMinor?: number;

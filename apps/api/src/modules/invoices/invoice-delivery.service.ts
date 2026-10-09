@@ -14,12 +14,14 @@ import { DATABASE, type DbHandle } from "../../common/db/db.provider";
 import { API_ENV } from "../../common/config/env.module";
 import type { ApiEnv } from "../../common/config/env";
 import { EMAIL_CLIENT } from "../../common/email/email.module";
+import { FileStorageService } from "../../common/files/file-storage.service";
 import type { EmailClient } from "@nomidat/email";
 import { TelegramClient } from "../telegram/telegram.client";
 import { WhatsAppClient } from "../whatsapp/whatsapp.client";
 import { ChannelProvider } from "../channel/types";
 import { InvoicesService } from "./invoices.service";
 import { createInvoicePdf } from "./invoice-pdf";
+import type { BusinessLogo } from "./types";
 import type { SendInvoiceDto } from "./dto";
 
 @Injectable()
@@ -27,6 +29,7 @@ export class InvoiceDeliveryService {
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     @Inject(API_ENV) private readonly env: ApiEnv,
+    private readonly files: FileStorageService,
     @Inject(EMAIL_CLIENT) private readonly email: EmailClient | null,
     private readonly invoices: InvoicesService,
     private readonly telegram: TelegramClient,
@@ -41,7 +44,11 @@ export class InvoiceDeliveryService {
       .where(eq(organization.id, organizationId))
       .limit(1);
     if (!business) throw new BadRequestException("Business not found.");
-    const pdf = await createInvoicePdf(document, business.name);
+    const pdf = await createInvoicePdf(
+      document,
+      business.name,
+      await this.resolveLogoBytes(document.businessLogo),
+    );
     const directory = resolve(this.env.INVOICE_STORAGE_DIR, organizationId);
     await mkdir(directory, { recursive: true });
     await writeFile(resolve(directory, `${invoiceId}.pdf`), pdf, { mode: 0o600 });
@@ -73,6 +80,26 @@ export class InvoiceDeliveryService {
       ],
     });
   }
+  /**
+   * Resolves the logo to bytes for the PDF to embed.
+   *
+   * A PDF cannot link an image, so the bytes have to be in the document. Every
+   * failure here returns nothing rather than throwing: the renderer draws a
+   * vector fallback, and an invoice that fails to generate because a logo could
+   * not be fetched is a far worse outcome than an invoice without the picture.
+   */
+  private async resolveLogoBytes(logo?: BusinessLogo): Promise<Buffer | undefined> {
+    if (!logo) return undefined;
+    if (logo.kind === "data-url") {
+      try {
+        return Buffer.from(logo.dataUrl.split(",")[1] ?? "", "base64");
+      } catch {
+        return undefined;
+      }
+    }
+    return (await this.files.getFileBytes(logo.fileKey)) ?? undefined;
+  }
+
   private async deliverChannel(
     organizationId: string,
     invoiceId: string,

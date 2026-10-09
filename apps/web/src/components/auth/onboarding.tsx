@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AuthDivider, AuthError, AuthField, AuthShell, PasswordField } from "./auth-shell";
 import {
   BusinessStepForm,
+  LogoPicker,
   ProfileStepForm,
   type BusinessField,
   type ProfileField,
@@ -16,6 +17,7 @@ import {
   TELEGRAM_BOT_USERNAME,
 } from "@/lib/api";
 import { rememberActiveOrg, resolveOrgSlug } from "@/lib/active-org";
+import { uploadToBucket } from "@/lib/upload-to-bucket";
 import { IconBrandGoogle, IconCheck } from "@tabler/icons-react";
 
 /**
@@ -69,7 +71,10 @@ export function Onboarding({ initialStep = "account" }: { initialStep?: Step }) 
   const [businessType, setBusinessType] = useState<string>(BUSINESS_TYPES[0].value);
   const [employees, setEmployees] = useState<string>(EMPLOYEE_BANDS[0].value);
   const [theme, setTheme] = useState<string>(BUSINESS_THEMES[0].value);
-  const [logo, setLogo] = useState("");
+  // The chosen logo is held as a Blob, not a data URL: the Blob is what the
+  // upload takes, and a URL would only have to be turned back into bytes.
+  const [logoFile, setLogoFile] = useState<Blob | null>(null);
+  const [logoError, setLogoError] = useState("");
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -81,8 +86,7 @@ export function Onboarding({ initialStep = "account" }: { initialStep?: Step }) 
 
   /** Updates from the extracted step forms, which hold no state of their own. */
   function setBusinessField(field: BusinessField, value: string) {
-    if (field === "logo") setLogo(value);
-    else if (field === "businessName") setBusinessName(value);
+    if (field === "businessName") setBusinessName(value);
     else if (field === "businessType") setBusinessType(value);
     else if (field === "employees") setEmployees(value);
     else setTheme(value);
@@ -128,18 +132,44 @@ export function Onboarding({ initialStep = "account" }: { initialStep?: Step }) 
     setSaving(true);
     setError("");
     try {
+      // The organization is created first and the logo uploaded second, because a
+      // presigned URL is scoped to an organization and there is no organization
+      // until this call returns. Uploading before it would mean signing a key
+      // under a business that does not exist yet.
       const business = await createApiRequest<{ id: string }>("/organizations", {
         method: "POST",
         body: JSON.stringify({
           name: businessName,
           slug,
-          logo: logo || undefined,
           // These are onboarding answers, not invoice fields, so they live in
           // organization metadata rather than the business profile document.
           metadata: { businessType, employees, theme },
         }),
       });
       setOrganizationId(business.id);
+
+      if (logoFile) {
+        try {
+          // The Blob carries no original file name, so it is named for the
+          // organization rather than for something the seller never named.
+          const { fileKey } = await uploadToBucket(
+            business.id,
+            logoFile,
+            "business-logos",
+            `logo.${logoFile.type.split("/")[1] ?? "png"}`,
+          );
+          await createApiRequest(`/organizations/${business.id}/logo`, {
+            method: "PATCH",
+            body: JSON.stringify({ logoKey: fileKey }),
+          });
+        } catch (reason) {
+          // Shown but not fatal: the business now exists and the seller can set a
+          // logo from settings. Blocking onboarding on a picture would be worse
+          // than handing them an organization without one.
+          setLogoError(reason instanceof Error ? reason.message : "Could not upload the logo.");
+        }
+      }
+
       setStep("profile");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not create the business.");
@@ -263,13 +293,13 @@ export function Onboarding({ initialStep = "account" }: { initialStep?: Step }) 
 
       {step === "business" && (
         <BusinessStepForm
-          logo={logo}
+          logoLabel={<LogoPicker onChange={setLogoFile} />}
           businessName={businessName}
           businessType={businessType}
           employees={employees}
           theme={theme}
           slug={slug}
-          error={error}
+          error={error || logoError}
           saving={saving}
           onChange={setBusinessField}
           onSubmit={() => void createBusiness()}

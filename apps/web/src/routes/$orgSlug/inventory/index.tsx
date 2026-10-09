@@ -11,10 +11,7 @@ function StockPage() {
   const { organization } = useOrgContext();
   const warehouseId = useWarehouseFilter();
   return (
-    <InventoryShell
-      title="Stock"
-      description="What you have on hand and what is on the way."
-    >
+    <InventoryShell title="Stock" description="What you have on hand and what is on the way.">
       <StockLevelsPanel organizationId={organization.id} warehouseId={warehouseId} />
     </InventoryShell>
   );

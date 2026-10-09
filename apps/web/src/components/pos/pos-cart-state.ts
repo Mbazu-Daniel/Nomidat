@@ -36,6 +36,9 @@ export function addCartItem(items: PosCartItem[], product: PosCartItem, step = 1
   if (product.serialNumberId) {
     return items.some((item) => lineKey(item) === key) ? items : [...items, product];
   }
+  // Re-adding an existing line must not wipe the instruction the cashier already
+  // typed for it. Tapping "Jollof" twice should raise the quantity and leave
+  // "extra spicy" alone, or the note silently reverts on a busy counter.
   if (!items.some((item) => lineKey(item) === key))
     return [...items, { ...product, quantity: normalizeQuantity(step) }];
 
@@ -68,6 +71,18 @@ export function removeCartItem(
   return items.filter((item) => lineKey(item) !== key);
 }
 
+/** Replaces the instruction on one line, leaving its quantity alone. */
+export function setCartItemNote(
+  items: PosCartItem[],
+  productId: string,
+  variantId: string | null,
+  serialNumberId: string | null,
+  note: string,
+): PosCartItem[] {
+  const key = `${productId}:${variantId ?? ""}:${serialNumberId ?? ""}`;
+  return items.map((item) => (lineKey(item) === key ? { ...item, note } : item));
+}
+
 export function summarizeCart(items: PosCartItem[]) {
   return {
     // A weighed line is 1.5 of something, so the count is rounded for display
@@ -91,5 +106,8 @@ export function toCartLineInput(items: PosCartItem[]): PosCartLineInput[] {
     // Omitted rather than sent null: an ordinary line carries no serial at all,
     // and the sale DTO models the absent case as an absent field.
     ...(item.serialNumberId ? { serialNumberIds: [item.serialNumberId] } : {}),
+    // Same reasoning. A blank note is no note, and trimming here keeps a stray
+    // space from being stored as one.
+    ...(item.note.trim() ? { note: item.note.trim() } : {}),
   }));
 }

@@ -297,117 +297,21 @@
   --chart-5: oklch(0.62 0.014 20);
 }
 
+/*
+ * The component tokens (--background, --primary, --card and the rest) are set
+ * in the first `.dark` block above and are deliberately not repeated here.
+ *
+ * This block once redeclared all 39 of them, which made the hand-tuned palette
+ * above dead code: a later rule with equal specificity wins, so every one of
+ * those tokens was silently being served from this copy instead. Editing the
+ * palette appeared to do nothing. Keeping only the extended tokens here means
+ * one place owns each token, and the two palettes cannot drift apart again.
+ *
+ * Note that this copy was a generic starter palette (a 145-hue green for
+ * --success, pure-white overlay borders) rather than Nomidat's 20/30-hue rose,
+ * which is why the override was not obvious by eye either.
+ */
 .dark {
-  --background: oklch(0.145 0.01 30);
-  --foreground: oklch(0.985 0.005 30);
-  --card: oklch(0.2 0.012 30);
-  --card-foreground: oklch(0.985 0.005 30);
-  --popover: oklch(0.2 0.012 30);
-  --popover-foreground: oklch(0.985 0.005 30);
-  --primary: oklch(0.75 0.085 15);
-  --primary-foreground: oklch(0.18 0.02 15);
-  --primary-light: oklch(0.8 0.07 15);
-  --primary-dark: oklch(0.55 0.1 15);
-  --primary-soft: oklch(0.3 0.04 15);
-  --secondary: oklch(0.27 0.01 30);
-  --secondary-foreground: oklch(0.985 0.005 30);
-  --muted: oklch(0.27 0.01 30);
-  --muted-foreground: oklch(0.72 0.01 30);
-  --accent: oklch(0.3 0.04 15);
-  --accent-foreground: oklch(0.8 0.07 15);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.72 0.15 145);
-  --success-light: oklch(0.8 0.13 145);
-  --success-dark: oklch(0.55 0.14 145);
-  --success-soft: oklch(0.28 0.05 145);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.75 0.085 15);
-  --sidebar: oklch(0.2 0.012 30);
-  --sidebar-foreground: oklch(0.985 0.005 30);
-  --sidebar-primary: oklch(0.75 0.085 15);
-  --sidebar-primary-foreground: oklch(0.18 0.02 15);
-  --sidebar-accent: oklch(0.3 0.04 15);
-  --sidebar-accent-foreground: oklch(0.8 0.07 15);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.75 0.085 15);
-  --chart-1: oklch(0.75 0.085 15);
-  --chart-2: oklch(0.72 0.15 145);
-  --chart-3: oklch(0.8 0.07 15);
-  --chart-4: oklch(0.55 0.14 145);
-  --chart-5: oklch(0.65 0.02 30);
-
-  /* --- Dark: recalculated, not inverted. Surfaces darken, ink lightens, and
-     the accent loses chroma so it does not glow against a dark field. --- */
-
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --space-8: 64px;
-
-  --ink: oklch(0.96 0.006 20);
-  --ink-muted: oklch(0.72 0.012 20);
-  --ink-subtle: oklch(0.6 0.014 20);
-
-  --surface-base: oklch(0.16 0.012 20);
-  --surface-raised: oklch(0.205 0.014 20);
-  --surface-sunken: oklch(0.13 0.012 20);
-  --line: oklch(0.3 0.014 20);
-  --line-strong: oklch(0.4 0.016 20);
-
-  --warning: oklch(0.78 0.13 80);
-  --warning-soft: oklch(0.3 0.05 80);
-  --warning-soft-ink: oklch(0.86 0.1 80);
-  --danger: oklch(0.68 0.19 27);
-  --danger-soft: oklch(0.3 0.07 27);
-  --danger-soft-ink: oklch(0.82 0.13 27);
-  --info: oklch(0.72 0.11 240);
-  --info-soft: oklch(0.28 0.05 240);
-  --info-soft-ink: oklch(0.86 0.08 240);
-
-  --shadow-pop: 0 12px 32px -12px oklch(0 0 0 / 0.55);
-  --shadow-dialog: 0 24px 60px -20px oklch(0 0 0 / 0.65);
-
-  /* --- Dark: recalculated, not inverted. Surfaces darken, ink lightens, and
-     the accent loses chroma so it does not glow against a dark field. --- */
-
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --space-8: 64px;
-
-  --ink: oklch(0.96 0.006 20);
-  --ink-muted: oklch(0.72 0.012 20);
-  --ink-subtle: oklch(0.6 0.014 20);
-
-  --surface-base: oklch(0.16 0.012 20);
-  --surface-raised: oklch(0.205 0.014 20);
-  --surface-sunken: oklch(0.13 0.012 20);
-  --line: oklch(0.3 0.014 20);
-  --line-strong: oklch(0.4 0.016 20);
-
-  --warning: oklch(0.78 0.13 80);
-  --warning-soft: oklch(0.3 0.05 80);
-  --warning-soft-ink: oklch(0.86 0.1 80);
-  --danger: oklch(0.68 0.19 27);
-  --danger-soft: oklch(0.3 0.07 27);
-  --danger-soft-ink: oklch(0.82 0.13 27);
-  --info: oklch(0.72 0.11 240);
-  --info-soft: oklch(0.28 0.05 240);
-  --info-soft-ink: oklch(0.86 0.08 240);
-
-  --shadow-pop: 0 12px 32px -12px oklch(0 0 0 / 0.55);
-  --shadow-dialog: 0 24px 60px -20px oklch(0 0 0 / 0.65);
-
   /* --- Dark: recalculated, not inverted. Surfaces darken, ink lightens, and
      the accent loses chroma so it does not glow against a dark field. --- */
 
@@ -1039,6 +943,31 @@
   border-radius: var(--radius-lg);
   font-size: 28px;
 }
+/*
+  The product's picture in the editor.
+
+  Bounded square rather than a natural-size image: an editor that renders a photo
+  at its own dimensions pushes the rest of the form off screen, and the seller
+  only needs to recognise which product this is.
+*/
+.workspace-product-image h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.workspace-product-image-preview {
+  display: block;
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  background: var(--surface-base);
+}
+.workspace-product-image .workspace-actions {
+  margin-bottom: 0;
+}
+
 .workspace-error {
   color: var(--primary);
   background: var(--surface-base);

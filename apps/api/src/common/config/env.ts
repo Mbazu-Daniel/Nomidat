@@ -95,7 +95,76 @@ const apiEnvSchema = z.object({
   PLATFORM_PAYSTACK_SECRET,
   PLATFORM_PAYSTACK_PUBLIC,
   PLATFORM_DEFAULT_FEE_BPS,
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().optional(),
+  R2_CUSTOM_DOMAIN: z.string().optional(),
+  R2_PUBLIC_ID: z.string().optional(),
 });
+
+/** The four values that make an R2 bucket reachable, plus its public hostname. */
+const R2_REQUIRED_KEYS = [
+  "R2_ACCOUNT_ID",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_BUCKET_NAME",
+] as const;
+
+export interface R2Config {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucketName: string;
+  /** Absent when the bucket is private, which is a valid setup. */
+  publicUrl?: string;
+}
+
+/**
+ * Works out the public hostname for the bucket.
+ *
+ * A custom domain wins over the `r2.dev` fallback because it is the one an
+ * organization owns: it survives a move between Cloudflare accounts, and it can
+ * be put behind a CDN later without changing a single stored key. `r2.dev` is
+ * the safety net for a bucket that has not been given a domain yet.
+ *
+ * Both absent is not an error. A private bucket is a legitimate choice, so the
+ * caller gets `undefined` and decides what to do; signing uploads still works.
+ */
+function resolvePublicUrl(
+  customDomain: string | undefined,
+  publicId: string | undefined,
+): string | undefined {
+  const domain = customDomain?.trim();
+  if (domain) {
+    return domain.startsWith("http://") || domain.startsWith("https://")
+      ? domain
+      : `https://${domain}`;
+  }
+  const id = publicId?.trim();
+  return id ? `https://pub-${id}.r2.dev` : undefined;
+}
+
+/**
+ * Collapses the flat R2 variables into one config, or `undefined` when the
+ * deployment has no bucket at all.
+ *
+ * Returning undefined rather than throwing is deliberate: file uploads are one
+ * feature among many, so a deployment that has not configured R2 still boots and
+ * serves everything else. The feature that needs it fails loudly at the call.
+ */
+export function getR2Config(env: ApiEnv): R2Config | undefined {
+  const values = R2_REQUIRED_KEYS.map((key) => env[key]);
+  if (!values.every((value) => Boolean(value?.trim()))) return undefined;
+
+  return {
+    accountId: env.R2_ACCOUNT_ID as string,
+    accessKeyId: env.R2_ACCESS_KEY_ID as string,
+    secretAccessKey: env.R2_SECRET_ACCESS_KEY as string,
+    bucketName: env.R2_BUCKET_NAME as string,
+    publicUrl: resolvePublicUrl(env.R2_CUSTOM_DOMAIN, env.R2_PUBLIC_ID),
+  };
+}
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 
@@ -115,6 +184,21 @@ const apiEnv = apiEnvSchema.superRefine((value, ctx) => {
       message:
         "ENCRYPTION_KEY is required when PLATFORM_PAYSTACK_SECRET is set. Generate one with `openssl rand -hex 32`.",
     });
+  }
+
+  // A half-configured bucket is worse than an unconfigured one: it boots, and
+  // the first upload fails deep in the S3 client with a credential error rather
+  // than a missing-variable error. Refuse the combination instead.
+  const configured = R2_REQUIRED_KEYS.filter((key) => Boolean(value[key]?.trim()));
+  if (configured.length > 0 && configured.length < R2_REQUIRED_KEYS.length) {
+    for (const key of R2_REQUIRED_KEYS) {
+      if (configured.includes(key)) continue;
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [key],
+        message: `${key} is required because ${configured.join(", ")} is set.`,
+      });
+    }
   }
 });
 

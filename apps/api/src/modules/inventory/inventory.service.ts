@@ -9,6 +9,7 @@ import {
 import { and, desc, eq, sql } from "@nomidat/db";
 import { product } from "@nomidat/db/schema";
 import { DATABASE, type DbHandle } from "../../common/db/db.provider";
+import { FileStorageService } from "../../common/files/file-storage.service";
 import type { AdjustStockDto, CreateProductDto, UpdateProductDto } from "./dto";
 
 const MAX_LIMIT = 50;
@@ -18,6 +19,7 @@ export class InventoryService {
   constructor(
     @Inject(DATABASE) private readonly db: DbHandle,
     private readonly stock: StockService,
+    private readonly files: FileStorageService,
   ) {}
 
   async getProducts(organizationId: string, limit = 20, offset = 0) {
@@ -31,6 +33,7 @@ export class InventoryService {
         costMinor: product.costMinor,
         lowStockThreshold: product.lowStockThreshold,
         unit: product.unit,
+        imageKey: product.imageKey,
         isActive: product.isActive,
         createdAt: product.createdAt,
         updatedAt: product.updatedAt,
@@ -46,7 +49,15 @@ export class InventoryService {
       organizationId,
       rows.map((row) => row.id),
     );
-    return rows.map((row) => ({ ...row, stockQuantity: totals.get(row.id) ?? 0 }));
+    // The key is not returned: the editor needs a URL it can render and re-submit,
+    // and handing out the raw key invites a client writing back a value it read
+    // from a different organization.
+    return rows.map((row) => ({
+      ...row,
+      imageKey: undefined,
+      imageUrl: this.files.getPublicUrl(row.imageKey),
+      stockQuantity: totals.get(row.id) ?? 0,
+    }));
   }
 
   async getProduct(organizationId: string, productId: string) {
@@ -59,7 +70,13 @@ export class InventoryService {
     if (!item) throw new NotFoundException("Product not found.");
 
     const totals = await this.stock.totalOnHand(organizationId, [productId]);
-    return { ...item, stockQuantity: totals.get(productId) ?? 0 };
+    // Same as the list: the URL is returned, the stored key is not.
+    return {
+      ...item,
+      imageKey: undefined,
+      imageUrl: this.files.getPublicUrl(item.imageKey),
+      stockQuantity: totals.get(productId) ?? 0,
+    };
   }
 
   async createProduct(organizationId: string, input: CreateProductDto) {
@@ -104,6 +121,19 @@ export class InventoryService {
     const sku = input.sku === undefined ? existing.sku : input.sku.trim() || null;
     if (sku && sku !== existing.sku) await this.ensureSkuAvailable(organizationId, sku, productId);
 
+    // Re-checked against the organization the caller was authorized for, not just
+    // the DTO's shape. The pattern matches any well-formed key, so on its own it
+    // would happily accept a key belonging to a different business and render
+    // their picture here.
+    const imageKey =
+      input.imageKey === undefined
+        ? existing.imageKey
+        : input.imageKey === null || input.imageKey.startsWith(`${organizationId}/`)
+          ? input.imageKey
+          : (() => {
+              throw new BadRequestException("That image does not belong to this organization.");
+            })();
+
     const [updated] = await this.db
       .update(product)
       .set({
@@ -115,10 +145,19 @@ export class InventoryService {
         costMinor: input.costMinor ?? existing.costMinor,
         lowStockThreshold: input.lowStockThreshold ?? existing.lowStockThreshold,
         unit: input.unit?.trim() ?? existing.unit,
+        imageKey,
         updatedAt: new Date(),
       })
       .where(and(eq(product.id, productId), eq(product.organizationId, organizationId)))
       .returning();
+
+    // After the row has moved on, so a failure here costs a leaked object rather
+    // than a product pointing at a picture that is already gone. Every key is
+    // unique, so replacing a picture orphans the old one and nothing else reaps it.
+    const replaced = existing.imageKey;
+    if (imageKey !== replaced && replaced) {
+      await this.files.deleteFile(organizationId, replaced);
+    }
 
     return updated;
   }

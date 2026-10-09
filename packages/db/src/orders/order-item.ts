@@ -19,6 +19,15 @@ export const orderItem = pgTable(
     variantId: uuid("variant_id").references(() => productVariant.id, { onDelete: "set null" }),
     productName: text("product_name"),
     productSku: text("product_sku"),
+    /**
+     * This line's own instruction — "extra spicy", "no onions".
+     *
+     * Per line, not per order, because one order routinely needs a different
+     * instruction per dish and the kitchen reads them while filling it. Kept
+     * here after the sale so a receipt reprint or a dispute can show what was
+     * actually asked for, rather than what the till remembers.
+     */
+    note: text("note"),
     discountMinor: integer("discount_minor").notNull().default(0),
     ...createLineItemColumns(),
   },

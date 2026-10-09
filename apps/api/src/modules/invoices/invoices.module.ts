@@ -9,6 +9,7 @@ import { PublicInvoiceController } from "./public-invoice.controller";
 import { TelegramClient } from "../telegram/telegram.client";
 import { WhatsAppClient } from "../whatsapp/whatsapp.client";
 import { EmailModule } from "../../common/email/email.module";
+import { FilesModule } from "../../common/files/files.module";
 import { InvoiceNegotiationService } from "./invoice-negotiation.service";
 import { InvoiceShareService } from "./invoice-share.service";
 import { Module } from "@nestjs/common";
@@ -24,6 +25,9 @@ import { InvoicesService } from "./invoices.service";
     BusinessModule,
     BetterAuthModule,
     DbModule,
+    // For the logo bytes the PDF embeds. Without a bucket the invoice still
+    // renders, drawing the vector fallback.
+    FilesModule,
     EngagementModule,
     MoneyModule,
   ],

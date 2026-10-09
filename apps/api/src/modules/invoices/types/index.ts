@@ -1,1 +1,1 @@
-export type { InvoiceDocument } from "./invoice-document.type";
+export type { BusinessLogo, InvoiceDocument } from "./invoice-document.type";

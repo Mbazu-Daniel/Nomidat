@@ -1,5 +1,11 @@
 import { formatMoney, parseMoneyToMinor } from "@/lib/money";
-import { POS_PAYMENT_METHODS, type PosCartItem, type PosPaymentMethod } from "./types/pos.type";
+import {
+  POS_FULFILMENT_TYPES,
+  POS_PAYMENT_METHODS,
+  type PosCartItem,
+  type PosFulfilmentType,
+  type PosPaymentMethod,
+} from "./types/pos.type";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -74,9 +80,13 @@ export function PosCheckoutDialog({
     discountMinor: number;
     tenderedMinor: number;
     paymentMethod: PosPaymentMethod;
+    fulfilmentType: PosFulfilmentType;
   }) => void;
 }) {
   const [method, setMethod] = useState<PosPaymentMethod>("cash");
+  // Dine in first: it is the common case at a counter, and a default of takeaway
+  // would silently mislabel every table order the cashier did not think to change.
+  const [fulfilment, setFulfilment] = useState<PosFulfilmentType>("dine_in");
   const [discount, setDiscount] = useState("");
   const [tendered, setTendered] = useState("");
 
@@ -98,18 +108,49 @@ export function PosCheckoutDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="pos-checkout-methods" role="group" aria-label="Payment method">
-          {POS_PAYMENT_METHODS.map((option) => (
-            <Button
-              key={option.value}
-              type="button"
-              variant={method === option.value ? "default" : "outline"}
-              aria-pressed={method === option.value}
-              onClick={() => setMethod(option.value)}
+        <div className="pos-checkout-fields">
+          <div>
+            <span className="pos-checkout-legend" id="pos-fulfilment-label">
+              Fulfilment
+            </span>
+            <div
+              className="pos-checkout-methods"
+              role="group"
+              aria-labelledby="pos-fulfilment-label"
             >
-              {option.label}
-            </Button>
-          ))}
+              {POS_FULFILMENT_TYPES.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={fulfilment === option.value ? "default" : "outline"}
+                  aria-pressed={fulfilment === option.value}
+                  onClick={() => setFulfilment(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <span className="pos-checkout-legend" id="pos-method-label">
+              Payment method
+            </span>
+            <div className="pos-checkout-methods" role="group" aria-labelledby="pos-method-label">
+              {POS_PAYMENT_METHODS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={method === option.value ? "default" : "outline"}
+                  aria-pressed={method === option.value}
+                  onClick={() => setMethod(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="pos-checkout-fields">
@@ -172,6 +213,7 @@ export function PosCheckoutDialog({
                 discountMinor: totals.discountMinor,
                 tenderedMinor: toMinor(tendered, currency),
                 paymentMethod: method,
+                fulfilmentType: fulfilment,
               })
             }
           >

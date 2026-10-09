@@ -121,7 +121,7 @@ End to end against PostgreSQL, in `apps/api/test`:
 - `org-context-guard`, `staff-boundary` — who may reach a route and which
   business's records they reach.
 - `contact-edit`, `expense-category`, `invoice-edit`, `invoice-offer`,
-  `transfer-cancel`, `business-profile` — what each area can change, archive,
+  `transfer-cancel`, `member-profile` — what each area can change, archive,
   refuse and undo, and that another business cannot touch it.
 - `wallet` — withdrawal atomicity, platform fee arithmetic, a refused withdrawal
   that restores the funds once, and two requests racing for the same balance.
@@ -179,7 +179,7 @@ limit storage before deploying multiple API instances.
 Staff keeps view access to all business records and reports. Owners/admins may
 add editing permissions for inventory, sales/payments, expenses, invoices, contacts,
 and channel management. These are enforced by the API and chat confirmation flow,
-including WhatsApp/Telegram. They do not grant staff administration, business-profile
+including WhatsApp/Telegram. They do not grant staff administration, member-profile
 editing, payment-key management, or ownership rights. Manager/admin roles retain their
 existing broader permissions; choose Staff for a restricted combination.
 

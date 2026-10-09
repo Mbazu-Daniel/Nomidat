@@ -1,5 +1,6 @@
 import type { ProductEditorProps } from "./types";
 import { ProductCategories } from "./product-categories";
+import { ProductImageUploader } from "./product-image-uploader";
 import { VariantEditor } from "./variant-editor";
 import { minorToDecimalInput, parseMoneyToMinor } from "@/lib/money";
 import { useCurrency } from "@/lib/currency-context";
@@ -131,6 +132,13 @@ export function ProductEditor({ organizationId, record, busy, save, onSaved }: P
           Update stock
         </button>
       </form>
+
+      <ProductImageUploader
+        organizationId={organizationId}
+        productId={record.id}
+        imageUrl={record.imageUrl ?? null}
+        onSaved={onSaved}
+      />
 
       <ProductCategories organizationId={organizationId} productId={record.id} />
 

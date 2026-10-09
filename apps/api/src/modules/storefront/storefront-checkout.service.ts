@@ -56,5 +56,4 @@ export class StorefrontCheckoutService {
 
     return { orderId: sale.id, status: sale.status, totalMinor: sale.totalMinor };
   }
-
-  }
+}
